@@ -1,6 +1,6 @@
 import { API_CONFIG } from '../config/api';
 
-export interface Country {
+interface Country {
   name: {
     common: string;
     official: string;
@@ -12,12 +12,7 @@ export interface Country {
   };
 }
 
-interface LocationService {
-  getCountries: () => Promise<Country[]>;
-}
-
-// Ülke listesini getir fonksiyonu
-const getCountries = async (): Promise<Country[]> => {
+export const getCountries = async (): Promise<Country[]> => {
   try {
     const response = await fetch('https://restcountries.com/v3.1/all');
     const data = await response.json();
@@ -42,19 +37,4 @@ const getCountries = async (): Promise<Country[]> => {
       }
     }];
   }
-};
-
-// Servis nesnesini oluştur
-const locationService: LocationService = {
-  getCountries
-};
-
-// JSX component for Expo Router
-function LocationServiceComponent() {
-  return null;
-}
-
-// Default ve named exports
-LocationServiceComponent.getCountries = getCountries;
-
-export default LocationServiceComponent;
+}; 

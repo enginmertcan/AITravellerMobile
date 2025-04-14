@@ -34,13 +34,19 @@ export default function PlanTripScreen() {
   const [countries, setCountries] = useState<Country[]>([]);
   const [formState, setFormState] = useState({
     city: '',
-    days: 1,
+    days: 7,
     startDate: new Date(),
     budget: '',
     companion: '',
     residenceCountry: '',
     citizenship: '',
   });
+  const [countrySearchText, setCountrySearchText] = useState('');
+  const [citizenshipSearchText, setCitizenshipSearchText] = useState('');
+  const [filteredResidenceCountries, setFilteredResidenceCountries] = useState<typeof countries>([]);
+  const [filteredCitizenshipCountries, setFilteredCitizenshipCountries] = useState<typeof countries>([]);
+  const [showResidenceResults, setShowResidenceResults] = useState(false);
+  const [showCitizenshipResults, setShowCitizenshipResults] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PlaceType[]>([]);
@@ -51,12 +57,54 @@ export default function PlanTripScreen() {
       try {
         const fetchedCountries = await getCountries();
         setCountries(fetchedCountries);
+        setFilteredResidenceCountries(fetchedCountries);
+        setFilteredCitizenshipCountries(fetchedCountries);
       } catch (error) {
         console.error('Error fetching countries:', error);
       }
     };
     fetchCountries();
   }, []);
+
+  const filterResidenceCountries = (text: string) => {
+    setCountrySearchText(text);
+    
+    if (text.trim().length >= 3) {
+      const filtered = countries.filter(country => 
+        country.name.common.toLowerCase().includes(text.toLowerCase())
+      );
+      setFilteredResidenceCountries(filtered);
+      setShowResidenceResults(true);
+    } else {
+      setShowResidenceResults(false);
+    }
+  };
+  
+  const filterCitizenshipCountries = (text: string) => {
+    setCitizenshipSearchText(text);
+    
+    if (text.trim().length >= 3) {
+      const filtered = countries.filter(country => 
+        country.name.common.toLowerCase().includes(text.toLowerCase())
+      );
+      setFilteredCitizenshipCountries(filtered);
+      setShowCitizenshipResults(true);
+    } else {
+      setShowCitizenshipResults(false);
+    }
+  };
+  
+  const selectResidenceCountry = (country: Country) => {
+    setFormState({ ...formState, residenceCountry: country.name.common });
+    setCountrySearchText(country.name.common);
+    setShowResidenceResults(false);
+  };
+  
+  const selectCitizenshipCountry = (country: Country) => {
+    setFormState({ ...formState, citizenship: country.name.common });
+    setCitizenshipSearchText(country.name.common);
+    setShowCitizenshipResults(false);
+  };
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -106,7 +154,6 @@ export default function PlanTripScreen() {
       return;
     }
 
-    // Form validation
     if (!formState.city) {
       Alert.alert('Hata', 'Lütfen bir şehir seçin.');
       return;
@@ -145,7 +192,6 @@ export default function PlanTripScreen() {
       const aiResponse = await chatSession.sendMessage(FINAL_PROMPT);
       const aiItinerary = aiResponse?.response?.text;
 
-      // TODO: Save the travel plan to your database
       console.log('AI Response:', aiItinerary);
 
       Alert.alert(
@@ -168,7 +214,7 @@ export default function PlanTripScreen() {
 
   const renderDatePicker = () => {
     const showPicker = Platform.OS === 'ios' || showDatePicker;
-    
+
     return showPicker ? (
       <DateTimePicker
         value={formState.startDate}
@@ -211,7 +257,6 @@ export default function PlanTripScreen() {
       </View>
 
       <View style={styles.formContainer}>
-        {/* Trip Type Selection */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Seyahat Türü</ThemedText>
           <View style={styles.tripTypeContainer}>
@@ -255,7 +300,6 @@ export default function PlanTripScreen() {
           </View>
         </View>
 
-        {/* Destination Search */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Nereyi Keşfetmek İstersin?</ThemedText>
           <View style={styles.searchContainer}>
@@ -319,11 +363,9 @@ export default function PlanTripScreen() {
           )}
         </View>
 
-        {/* Travel Details */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Seyahat Detayları</ThemedText>
-          
-          {/* Date Selection */}
+
           <TouchableOpacity
             style={styles.detailCard}
             onPress={() => setShowDatePicker(true)}
@@ -344,7 +386,6 @@ export default function PlanTripScreen() {
           </TouchableOpacity>
           {renderDatePicker()}
 
-          {/* Duration Selection */}
           <View style={styles.detailCard}>
             <View style={[styles.iconContainer, { backgroundColor: '#4c669f33' }]}>
               <MaterialCommunityIcons name="clock-outline" size={24} color="#4c669f" />
@@ -370,7 +411,6 @@ export default function PlanTripScreen() {
           </View>
         </View>
 
-        {/* Budget Selection */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Bütçe</ThemedText>
           <View style={styles.optionsGrid}>
@@ -401,7 +441,6 @@ export default function PlanTripScreen() {
           </View>
         </View>
 
-        {/* Companion Selection */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Kiminle Seyahat Edeceksin?</ThemedText>
           <View style={styles.optionsGrid}>
@@ -432,7 +471,6 @@ export default function PlanTripScreen() {
           </View>
         </View>
 
-        {/* Country Selection */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Ülke Bilgileri</ThemedText>
           <View style={styles.countryCard}>
@@ -441,30 +479,49 @@ export default function PlanTripScreen() {
             </View>
             <View style={styles.countryPicker}>
               <ThemedText style={styles.countryLabel}>Yaşadığınız Ülke</ThemedText>
-              <View style={styles.pickerContainer}>
-                <MaterialCommunityIcons name="chevron-down" size={24} color="#666" style={styles.pickerIcon} />
-                <Picker
-                  selectedValue={formState.residenceCountry}
-                  onValueChange={(value) => setFormState({ ...formState, residenceCountry: value })}
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
-                >
-                  <Picker.Item label="Ülke Seçin" value="" color="#666" />
-                  {countries.map((country) => (
-                    <Picker.Item
-                      key={country.cca2}
-                      label={country.name.common}
-                      value={country.name.common}
-                      color="#fff"
+              <View style={styles.searchablePickerContainer}>
+                <View style={styles.inputContainer}>
+                  {formState.residenceCountry && countrySearchText === formState.residenceCountry && (
+                    <Image 
+                      source={{ uri: countries.find(c => c.name.common === formState.residenceCountry)?.flags.png }}
+                      style={styles.selectedCountryFlag}
                     />
-                  ))}
-                </Picker>
+                  )}
+                  <TextInput
+                    style={styles.countrySearchInput}
+                    placeholder="Ülke ara..."
+                    placeholderTextColor="#999"
+                    value={countrySearchText}
+                    onChangeText={filterResidenceCountries}
+                  />
+                </View>
+                {showResidenceResults && (
+                  <ScrollView style={styles.searchResultsList} nestedScrollEnabled={true}>
+                    {filteredResidenceCountries.length === 0 ? (
+                      <TouchableOpacity style={styles.countryResultItem}>
+                        <ThemedText>Sonuç bulunamadı</ThemedText>
+                      </TouchableOpacity>
+                    ) : (
+                      filteredResidenceCountries.map((country) => (
+                        <TouchableOpacity 
+                          key={country.cca2} 
+                          style={styles.countryResultItem}
+                          onPress={() => selectResidenceCountry(country)}
+                        >
+                          <Image 
+                            source={{ uri: country.flags.png }} 
+                            style={styles.countryFlag} 
+                          />
+                          <ThemedText style={styles.countryName}>
+                            {country.name.common}
+                          </ThemedText>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </ScrollView>
+                )}
               </View>
-              {formState.residenceCountry && (
-                <ThemedText style={styles.selectedValue}>
-                  Seçilen: {formState.residenceCountry}
-                </ThemedText>
-              )}
+
             </View>
           </View>
 
@@ -474,30 +531,49 @@ export default function PlanTripScreen() {
             </View>
             <View style={styles.countryPicker}>
               <ThemedText style={styles.countryLabel}>Vatandaşlık</ThemedText>
-              <View style={styles.pickerContainer}>
-                <MaterialCommunityIcons name="chevron-down" size={24} color="#666" style={styles.pickerIcon} />
-                <Picker
-                  selectedValue={formState.citizenship}
-                  onValueChange={(value) => setFormState({ ...formState, citizenship: value })}
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
-                >
-                  <Picker.Item label="Vatandaşlık Seçin" value="" color="#666" />
-                  {countries.map((country) => (
-                    <Picker.Item
-                      key={country.cca2}
-                      label={country.name.common}
-                      value={country.name.common}
-                      color="#fff"
+              <View style={styles.searchablePickerContainer}>
+                <View style={styles.inputContainer}>
+                  {formState.citizenship && citizenshipSearchText === formState.citizenship && (
+                    <Image 
+                      source={{ uri: countries.find(c => c.name.common === formState.citizenship)?.flags.png }}
+                      style={styles.selectedCountryFlag}
                     />
-                  ))}
-                </Picker>
+                  )}
+                  <TextInput
+                    style={styles.countrySearchInput}
+                    placeholder="Vatandaşlık ara..."
+                    placeholderTextColor="#999"
+                    value={citizenshipSearchText}
+                    onChangeText={filterCitizenshipCountries}
+                  />
+                </View>
+                {showCitizenshipResults && (
+                  <ScrollView style={styles.searchResultsList} nestedScrollEnabled={true}>
+                    {filteredCitizenshipCountries.length === 0 ? (
+                      <TouchableOpacity style={styles.countryResultItem}>
+                        <ThemedText>Sonuç bulunamadı</ThemedText>
+                      </TouchableOpacity>
+                    ) : (
+                      filteredCitizenshipCountries.map((country) => (
+                        <TouchableOpacity 
+                          key={country.cca2} 
+                          style={styles.countryResultItem}
+                          onPress={() => selectCitizenshipCountry(country)}
+                        >
+                          <Image 
+                            source={{ uri: country.flags.png }} 
+                            style={styles.countryFlag} 
+                          />
+                          <ThemedText style={styles.countryName}>
+                            {country.name.common}
+                          </ThemedText>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </ScrollView>
+                )}
               </View>
-              {formState.citizenship && (
-                <ThemedText style={styles.selectedValue}>
-                  Seçilen: {formState.citizenship}
-                </ThemedText>
-              )}
+
             </View>
           </View>
         </View>
@@ -525,6 +601,57 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  searchablePickerContainer: {
+    backgroundColor: '#222',
+    borderRadius: 12,
+    marginBottom: 8,
+    overflow: 'hidden',
+    maxHeight: 250,
+  },
+  countrySearchInput: {
+    backgroundColor: '#333',
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+    fontSize: 16,
+    padding: 12,
+    borderRadius: 8,
+  },
+  searchResultsList: {
+    maxHeight: 200,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  countryResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  countryFlag: {
+    width: 30,
+    height: 20,
+    marginRight: 10,
+    borderRadius: 4,
+  },
+  countryName: {
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+    fontSize: 16,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#333',
+    borderRadius: 8,
+    padding: 8,
+  },
+  selectedCountryFlag: {
+    width: 25,
+    height: 18,
+    marginRight: 8,
+    borderRadius: 3,
   },
   header: {
     padding: 24,
