@@ -48,6 +48,7 @@ export default function PlanTripScreen() {
   const [showResidenceResults, setShowResidenceResults] = useState(false);
   const [showCitizenshipResults, setShowCitizenshipResults] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PlaceType[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -212,34 +213,58 @@ export default function PlanTripScreen() {
     }
   };
 
+  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    if (date) {
+      // Güncellenen tarihi kaydet
+      setSelectedDate(date);
+      setFormState({ ...formState, startDate: date });
+    }
+  };
+  
   const renderDatePicker = () => {
-    const showPicker = Platform.OS === 'ios' || showDatePicker;
-
-    return showPicker ? (
-      <DateTimePicker
-        value={formState.startDate}
-        mode="date"
-        display={Platform.OS === 'ios' ? "spinner" : "default"}
-        onChange={(event: DateTimePickerEvent, date?: Date) => {
-          if (Platform.OS === 'android') {
-            setShowDatePicker(false);
-          }
-          if (date) {
-            setFormState({ ...formState, startDate: date });
-          }
-        }}
-        minimumDate={new Date()}
-      />
-    ) : null;
+    if (Platform.OS === 'ios') {
+      // iOS için her zaman göster
+      return (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="spinner"
+          onChange={handleDateChange}
+          minimumDate={new Date()}
+          style={{ width: '100%', backgroundColor: '#222' }}
+          textColor="#fff"
+        />
+      );
+    } else if (showDatePicker) {
+      // Android için sadece showDatePicker true olduğunda göster
+      return (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+          minimumDate={new Date()}
+        />
+      );
+    }
+    
+    return null;
   };
 
   const handlePlaceSelect = async (place: PlaceType) => {
     try {
       const details = await getPlaceDetails(place.placeId, isDomestic);
       if (details) {
+        // Şehir seçildiğinde form güncellenir ve arama kapatılır
         setFormState({ ...formState, city: details.description });
         setSearchQuery(place.mainText);
         setShowResults(false);
+        // Arama sonuçlarını temizle
+        setSearchResults([]);
       }
     } catch (error) {
       console.error('Error getting place details:', error);
@@ -309,7 +334,8 @@ export default function PlanTripScreen() {
               value={searchQuery}
               onChangeText={(text) => {
                 setSearchQuery(text);
-                if (text.length >= 2) {
+                // Eğer bir şehir seçilmediyse ve arama 2+ karakter ise sonuçları göster
+                if (text.length >= 2 && !formState.city) {
                   setShowResults(true);
                 } else {
                   setShowResults(false);
@@ -324,6 +350,7 @@ export default function PlanTripScreen() {
                   setSearchQuery('');
                   setShowResults(false);
                   setFormState({ ...formState, city: '' });
+                  setSearchResults([]);
                 }}
                 style={styles.clearButton}
               >
@@ -331,7 +358,7 @@ export default function PlanTripScreen() {
               </TouchableOpacity>
             )}
           </View>
-          {showResults && searchResults.length > 0 && (
+          {showResults && searchResults.length > 0 && !formState.city && (
             <View style={styles.searchResults}>
               {searchResults.map((place, index) => (
                 <TouchableOpacity
@@ -352,7 +379,7 @@ export default function PlanTripScreen() {
               ))}
             </View>
           )}
-          {showResults && searchResults.length === 0 && searchQuery.length >= 2 && (
+          {showResults && searchResults.length === 0 && searchQuery.length >= 2 && !formState.city && (
             <View style={styles.searchResults}>
               <View style={styles.searchResultItem}>
                 <ThemedText style={styles.searchResultMainText}>
@@ -383,8 +410,24 @@ export default function PlanTripScreen() {
                 })}
               </ThemedText>
             </View>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity 
+                onPress={() => setShowDatePicker(!showDatePicker)} 
+                style={{ padding: 8 }}
+              >
+                <MaterialCommunityIcons 
+                  name={showDatePicker ? "chevron-up" : "chevron-down"} 
+                  size={24} 
+                  color="#666" 
+                />
+              </TouchableOpacity>
+            )}
           </TouchableOpacity>
-          {renderDatePicker()}
+          {Platform.OS === 'ios' ? (
+            <View style={[styles.datePickerContainer, !showDatePicker && styles.hiddenDatePicker]}>
+              {renderDatePicker()}
+            </View>
+          ) : renderDatePicker()}
 
           <View style={styles.detailCard}>
             <View style={[styles.iconContainer, { backgroundColor: '#4c669f33' }]}>
@@ -610,12 +653,12 @@ const styles = StyleSheet.create({
     maxHeight: 250,
   },
   countrySearchInput: {
-    backgroundColor: '#333',
+    flex: 1,
+    backgroundColor: 'transparent',
     color: '#fff',
     fontFamily: 'SpaceMono',
     fontSize: 16,
-    padding: 12,
-    borderRadius: 8,
+    padding: 8,
   },
   searchResultsList: {
     maxHeight: 200,
@@ -652,6 +695,20 @@ const styles = StyleSheet.create({
     height: 18,
     marginRight: 8,
     borderRadius: 3,
+  },
+  datePickerContainer: {
+    backgroundColor: '#222',
+    marginVertical: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+    padding: 8,
+    zIndex: 1000,
+  },
+  hiddenDatePicker: {
+    display: 'none',
+  },
+  datePickerButton: {
+    padding: 8,
   },
   header: {
     padding: 24,
