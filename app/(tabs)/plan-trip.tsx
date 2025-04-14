@@ -5,14 +5,16 @@ import { ThemedView } from '@/components/ThemedView';
 import { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@clerk/clerk-expo';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { AI_PROMPT, budgetOptions, companionOptions } from '@/app/constants/options';
 import { chatSession } from '@/app/services/ai.service';
+import { FirebaseService } from '@/app/services/firebase.service';
 import { getCountries } from '@/app/services/location.service';
 import { searchPlaces, getPlaceDetails, type Place as PlaceType } from '@/app/services/places.service';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Country {
   name: {
@@ -27,15 +29,25 @@ interface Country {
 }
 
 export default function PlanTripScreen() {
-  const { isSignedIn } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const { userId, isSignedIn } = useAuth(); // useAuth hook'unu en üst seviyede çağırıyoruz
   const [isDomestic, setIsDomestic] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [countries, setCountries] = useState<Country[]>([]);
-  const [formState, setFormState] = useState({
+  const [formState, setFormState] = useState<{
+    city: string;
+    startDate: Date;
+    days: number;
+    budget: string;
+    companion: string;
+    residenceCountry: string;
+    citizenship: string;
+  }>({
     city: '',
-    days: 7,
     startDate: new Date(),
+    days: 7,
     budget: '',
     companion: '',
     residenceCountry: '',
@@ -149,12 +161,15 @@ export default function PlanTripScreen() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery, isDomestic]);
 
+
+  
   const handlePlanTrip = async () => {
     if (!isSignedIn) {
       Alert.alert('Giriş Gerekli', 'Lütfen önce giriş yapın.');
       return;
     }
 
+    // Tüm form alanlarını kontrol et
     if (!formState.city) {
       Alert.alert('Hata', 'Lütfen bir şehir seçin.');
       return;
@@ -177,23 +192,53 @@ export default function PlanTripScreen() {
     }
 
     setIsLoading(true);
-
+    
     try {
-      const selectedBudget = budgetOptions.find(opt => opt.value === formState.budget);
-      const selectedCompanion = companionOptions.find(opt => opt.value === formState.companion);
-
-      const FINAL_PROMPT = AI_PROMPT
-        .replace('{location}', formState.city)
-        .replace('{totalDays}', formState.days.toString())
-        .replace('{traveller}', selectedCompanion?.title || 'Belirtilmedi')
-        .replace('{budget}', selectedBudget?.title || 'Belirtilmedi')
-        .replace('{residenceCountry}', formState.residenceCountry)
-        .replace('{citizenship}', formState.citizenship);
-
-      const aiResponse = await chatSession.sendMessage(FINAL_PROMPT);
-      const aiItinerary = aiResponse?.response?.text;
-
-      console.log('AI Response:', aiItinerary);
+      // Kullanıcı ID'sini kullan
+      const userIdStr = userId || '';
+      
+      // Form verilerini hazırla
+      const travelFormData = {
+        city: formState.city,
+        destination: formState.city,
+        days: formState.days,
+        startDate: formState.startDate.toISOString(),
+        budget: formState.budget,
+        companion: formState.companion,
+        residenceCountry: formState.residenceCountry,
+        citizenship: formState.citizenship,
+        isDomestic: isDomestic,
+        userId: userIdStr,
+      };
+      
+      console.log('Seyahat planı oluşturuluyor...', travelFormData);
+      
+      // AI servisini çağır - createTravelPlan metodu
+      const travelPlan = await chatSession.createTravelPlan(travelFormData);
+      
+      // Sadece konsol için
+      console.log('Oluşturulan seyahat planı:', JSON.stringify(travelPlan, null, 2));
+      
+      // Firebase'e kaydet
+      try {
+        const travelPlanId = await FirebaseService.TravelPlan.createTravelPlan(travelPlan);
+        console.log("Seyahat planı Firebase'e kaydedildi, ID:", travelPlanId);
+        
+        // AsyncStorage'a ID'yi kaydet (detay sayfasında kullanmak için)
+        await AsyncStorage.setItem('currentTravelPlanId', travelPlanId);
+      } catch (error) {
+        console.error('Firebase kaydetme hatası:', error);
+        // Firebase'e kaydedilemese bile kullanıcıyı devam ettirelim
+      }
+      
+      // AI yanıtını JSON string olarak kaydet
+      const travelPlanString = JSON.stringify(travelPlan);
+      await AsyncStorage.setItem('aiTripResponse', travelPlanString);
+      
+      console.log('Seyahat planı oluşturuldu ve kaydedildi');
+      
+      // Kullanıcıyı detay sayfasına yönlendir
+      router.push('/trip-details');
 
       Alert.alert(
         'Başarılı',
