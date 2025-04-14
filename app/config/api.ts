@@ -8,7 +8,7 @@ export const API_CONFIG = {
 };
 
 export const API_ENDPOINTS = {
-  GOOGLE_MAPS: 'https://maps.googleapis.com/maps/api',
+  GOOGLE_MAPS: 'https://maps.googleapis.com',
   OPENWEATHER: 'https://api.openweathermap.org/data/2.5',
   VISUAL_CROSSING: 'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services',
   RESEND: 'https://api.resend.com',

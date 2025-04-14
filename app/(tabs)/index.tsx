@@ -1,39 +1,38 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Dimensions, RefreshControl } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Dimensions, RefreshControl, Platform } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, useCallback } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-expo';
+import { BlurView } from 'expo-blur';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 const { width } = Dimensions.get('window');
 
-type Route = '/ai-planner' | '/guide' | '/recommendations' | '/my-plans' | '/explore' | '/favorites' | '/settings' | '/profile' | '/(auth)/sign-in';
-
 interface Feature {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: string;
   title: string;
   description: string;
   color: string;
-  route: Route;
 }
 
 interface QuickAction {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: string;
   title: string;
   color: string;
-  route: Route;
 }
 
 export default function HomeScreen() {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
   const [refreshing, setRefreshing] = useState(false);
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // Burada yenileme işlemleri yapılabilir
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
@@ -41,150 +40,109 @@ export default function HomeScreen() {
 
   const features: Feature[] = [
     {
-      icon: 'map',
-      title: 'AI Seyahat Planlayıcı',
-      description: 'Yapay zeka ile kişiselleştirilmiş seyahat planları oluşturun',
+      icon: 'compass',
+      title: 'Popüler Rotalar',
+      description: 'En çok tercih edilen seyahat rotaları',
       color: '#4c669f',
-      route: '/ai-planner'
     },
     {
-      icon: 'book',
-      title: 'Seyahat Rehberi',
-      description: 'Popüler destinasyonlar hakkında detaylı bilgiler',
+      icon: 'map-marker-radius',
+      title: 'Yakın Yerler',
+      description: 'Yakınınızdaki keşfedilecek yerler',
       color: '#3b5998',
-      route: '/guide'
     },
     {
-      icon: 'location',
-      title: 'Yerel Öneriler',
-      description: 'En iyi restoranlar, oteller ve aktiviteler',
+      icon: 'star',
+      title: 'Öneriler',
+      description: 'Size özel seyahat önerileri',
       color: '#192f6a',
-      route: '/recommendations'
     },
     {
-      icon: 'calendar',
-      title: 'Planlarım',
-      description: 'Oluşturduğunuz seyahat planlarını görüntüleyin',
+      icon: 'calendar-month',
+      title: 'Etkinlikler',
+      description: 'Yaklaşan seyahat etkinlikleri',
       color: '#4c669f',
-      route: '/my-plans'
     },
   ];
 
   const quickActions: QuickAction[] = [
     {
-      icon: 'calendar',
-      title: 'Planlarım',
+      icon: 'robot',
+      title: 'AI Planlayıcı',
       color: '#4c669f',
-      route: '/my-plans'
     },
     {
       icon: 'compass',
-      title: 'Rehber',
+      title: 'Keşfet',
       color: '#3b5998',
-      route: '/guide'
     },
-    {
-      icon: 'star',
-      title: 'Öneriler',
-      color: '#192f6a',
-      route: '/recommendations'
-    },
-    {
-      icon: 'settings',
-      title: 'Ayarlar',
-      color: '#607D8B',
-      route: '/settings'
-    }
   ];
 
   return (
     <ScrollView 
-      style={styles.container} 
+      style={styles.container}
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      {/* Welcome Section */}
-      <LinearGradient
-        colors={['#4c669f', '#3b5998', '#192f6a']}
-        style={styles.welcomeSection}
-      >
-        <View style={styles.welcomeContent}>
-          <View style={styles.welcomeHeader}>
-            <View>
-              <ThemedText style={styles.welcomeText}>
-                {isSignedIn ? `Merhaba, ${user?.firstName || 'Gezgin'}` : 'Merhaba, Gezgin'}
-              </ThemedText>
-              <ThemedText style={styles.welcomeSubtext}>
-                Yeni bir maceraya hazır mısın?
-              </ThemedText>
-            </View>
-            {isSignedIn ? (
-              <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
-                <Image
-                  source={{ uri: user?.imageUrl || 'https://via.placeholder.com/40' }}
-                  style={styles.profileImage}
-                />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity 
-                style={styles.signInButton}
-                onPress={() => router.push('/(auth)/sign-in')}
+      <View style={styles.header}>
+        <View style={styles.welcomeSection}>
+          <ThemedText style={styles.welcomeText}>
+            Merhaba, {user?.firstName || 'Gezgin'} 👋
+          </ThemedText>
+          <ThemedText style={styles.welcomeSubtext}>
+            Yeni maceralar seni bekliyor
+          </ThemedText>
+        </View>
+      </View>
+
+      <View style={styles.content}>
+        <TouchableOpacity style={styles.searchBar}>
+          <MaterialCommunityIcons 
+            name="magnify" 
+            size={22} 
+            color="#666" 
+          />
+          <ThemedText style={styles.searchText}>Nereyi keşfetmek istersin?</ThemedText>
+        </TouchableOpacity>
+
+        <View style={styles.quickActionsContainer}>
+          <ThemedText style={styles.sectionTitle}>Hızlı İşlemler</ThemedText>
+          <View style={styles.quickActions}>
+            {quickActions.map((action, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.quickActionCard}
+                onPress={() => router.push('/(tabs)/ai-planner')}
               >
-                <ThemedText style={styles.signInButtonText}>Giriş Yap</ThemedText>
+                <View style={[styles.iconContainer, { backgroundColor: action.color + '15' }]}>
+                  <MaterialCommunityIcons name={action.icon} size={26} color={action.color} />
+                </View>
+                <ThemedText style={styles.quickActionTitle}>{action.title}</ThemedText>
               </TouchableOpacity>
-            )}
+            ))}
           </View>
         </View>
-      </LinearGradient>
 
-      {/* Quick Actions */}
-      <View style={styles.quickActionsContainer}>
-        {quickActions.map((action, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[styles.quickActionButton, { backgroundColor: action.color }]}
-            onPress={() => router.push(action.route as any)}
-          >
-            <Ionicons name={action.icon} size={24} color="#fff" />
-            <ThemedText style={styles.quickActionText}>{action.title}</ThemedText>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Features Section */}
-      <View style={styles.featuresSection}>
-        <ThemedText style={styles.sectionTitle}>Özellikler</ThemedText>
-        <View style={styles.featuresGrid}>
-          {features.map((feature, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.featureCard}
-              onPress={() => router.push(feature.route as any)}
-            >
-              <View style={[styles.iconContainer, { backgroundColor: feature.color + '20' }]}>
-                <Ionicons name={feature.icon} size={32} color={feature.color} />
-              </View>
-              <ThemedText style={styles.featureTitle}>{feature.title}</ThemedText>
-              <ThemedText style={styles.featureDescription}>{feature.description}</ThemedText>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.featuresContainer}>
+          <ThemedText style={styles.sectionTitle}>Keşfet</ThemedText>
+          <View style={styles.featuresGrid}>
+            {features.map((feature, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.featureCard}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: feature.color + '15' }]}>
+                  <MaterialCommunityIcons name={feature.icon} size={24} color={feature.color} />
+                </View>
+                <ThemedText style={styles.featureTitle}>{feature.title}</ThemedText>
+                <ThemedText style={styles.featureDescription}>{feature.description}</ThemedText>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </View>
-
-      {/* Promotion Section */}
-      <TouchableOpacity
-        style={styles.promotionCard}
-        onPress={() => router.push('/ai-planner' as any)}
-      >
-        <ThemedText style={styles.promotionTitle}>
-          AI ile Seyahat Planlamanın Geleceği
-        </ThemedText>
-        <ThemedText style={styles.promotionDescription}>
-          Yapay zeka destekli planlayıcımız ile unutulmaz bir seyahat deneyimi yaşayın.
-        </ThemedText>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -192,151 +150,107 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#000',
+  },
+  header: {
+    padding: 24,
+    paddingTop: Platform.OS === 'ios' ? 20 : 10,
+    backgroundColor: '#000',
   },
   welcomeSection: {
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-  },
-  welcomeContent: {
     marginBottom: 20,
-  },
-  welcomeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   welcomeText: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    marginBottom: 8,
     color: '#fff',
-    marginBottom: 4,
+    fontFamily: 'SpaceMono',
   },
   welcomeSubtext: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
+    fontSize: 15,
+    color: '#999',
+    fontFamily: 'SpaceMono',
   },
-  profileImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#fff',
+  content: {
+    flex: 1,
+    padding: 20,
   },
-  signInButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 24,
   },
-  signInButtonText: {
-    color: '#4c669f',
-    fontWeight: '600',
+  searchText: {
+    marginLeft: 12,
+    fontSize: 15,
+    color: '#666',
+    fontFamily: 'SpaceMono',
   },
   quickActionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 20,
-    marginTop: -20,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  quickActionButton: {
-    alignItems: 'center',
-    width: (width - 80) / 4,
-  },
-  quickActionText: {
-    fontSize: 12,
-    color: '#fff',
-    textAlign: 'center',
-  },
-  featuresSection: {
-    padding: 20,
-    backgroundColor: '#fff',
+    marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+    color: '#fff',
+    fontFamily: 'SpaceMono',
   },
-  featuresGrid: {
+  quickActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
+    gap: 12,
   },
-  featureCard: {
-    width: (width - 56) / 2,
-    backgroundColor: '#fff',
+  quickActionCard: {
+    flex: 1,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
+    alignItems: 'center',
+    backgroundColor: '#111',
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
+  quickActionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+  },
+  featuresContainer: {
+    gap: 12,
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  featureCard: {
+    width: (width - 52) / 2,
+    borderRadius: 16,
+    padding: 16,
+    backgroundColor: '#111',
+  },
   featureTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 15,
+    fontWeight: '600',
     marginBottom: 4,
+    color: '#fff',
+    fontFamily: 'SpaceMono',
   },
   featureDescription: {
-    fontSize: 12,
-    color: '#666',
-    lineHeight: 16,
-  },
-  promotionCard: {
-    margin: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  promotionContent: {
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  promotionTextContainer: {
-    flex: 1,
-  },
-  promotionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  promotionDescription: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  promotionIconContainer: {
-    marginLeft: 20,
+    fontSize: 13,
+    color: '#999',
+    lineHeight: 18,
+    fontFamily: 'SpaceMono',
   },
 });

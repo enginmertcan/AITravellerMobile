@@ -1,99 +1,82 @@
-import { StyleSheet, View, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
 export default function ProfileScreen() {
-  const { isSignedIn, signOut } = useAuth();
+  const { signOut } = useAuth();
   const { user } = useUser();
-
-  if (!isSignedIn || !user) {
-    router.replace('/(auth)/sign-in');
-    return null;
-  }
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.replace('/(auth)/sign-in');
-    } catch (err) {
-      Alert.alert('Hata', 'Çıkış yapılırken bir hata oluştu.');
-    }
-  };
 
   const menuItems = [
     {
-      icon: 'person-outline',
+      icon: 'account-outline',
       title: 'Hesap Bilgileri',
-      onPress: () => Alert.alert('Bilgi', 'Bu özellik yakında kullanıma açılacak!')
+      route: '/account',
+      color: '#4c669f',
     },
     {
-      icon: 'shield-outline',
-      title: 'Güvenlik Ayarları',
-      onPress: () => Alert.alert('Bilgi', 'Bu özellik yakında kullanıma açılacak!')
+      icon: 'bell-outline',
+      title: 'Bildirimler',
+      route: '/notifications',
+      color: '#3b5998',
     },
     {
-      icon: 'notifications-outline',
-      title: 'Bildirim Ayarları',
-      onPress: () => Alert.alert('Bilgi', 'Bu özellik yakında kullanıma açılacak!')
-    },
-    {
-      icon: 'language-outline',
-      title: 'Dil Seçenekleri',
-      onPress: () => Alert.alert('Bilgi', 'Bu özellik yakında kullanıma açılacak!')
+      icon: 'cog-outline',
+      title: 'Ayarlar',
+      route: '/settings',
+      color: '#192f6a',
     },
     {
       icon: 'help-circle-outline',
-      title: 'Yardım ve Destek',
-      onPress: () => Alert.alert('Bilgi', 'Bu özellik yakında kullanıma açılacak!')
-    }
+      title: 'Yardım',
+      route: '/help',
+      color: '#4c669f',
+    },
   ];
 
   return (
     <ScrollView style={styles.container}>
-      <LinearGradient
-        colors={['#4c669f', '#3b5998', '#192f6a']}
-        style={styles.header}
-      >
-        <View style={styles.profileSection}>
-          <Image
-            source={{ uri: user.imageUrl || 'https://via.placeholder.com/100' }}
-            style={styles.profileImage}
-          />
-          <View style={styles.profileInfo}>
-            <ThemedText style={styles.name}>{user.fullName}</ThemedText>
-            <ThemedText style={styles.email}>{user.primaryEmailAddress?.emailAddress}</ThemedText>
+      <View style={styles.header}>
+        <ThemedText style={styles.title}>Profil</ThemedText>
+        <View style={styles.userInfo}>
+          <View style={styles.avatarContainer}>
+            <MaterialCommunityIcons name="account" size={40} color="#fff" />
+          </View>
+          <View style={styles.userDetails}>
+            <ThemedText style={styles.userName}>
+              {user?.firstName} {user?.lastName}
+            </ThemedText>
+            <ThemedText style={styles.userEmail}>{user?.emailAddresses[0].emailAddress}</ThemedText>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       <View style={styles.content}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.menuItem}
-            onPress={item.onPress}
-          >
-            <View style={styles.menuItemContent}>
-              <Ionicons name={item.icon as any} size={24} color="#4c669f" />
-              <ThemedText style={styles.menuItemText}>{item.title}</ThemedText>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#999" />
-          </TouchableOpacity>
-        ))}
+        <View style={styles.menuContainer}>
+          {menuItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.menuItem}
+              onPress={() => router.push(item.route)}
+            >
+              <View style={[styles.iconContainer, { backgroundColor: item.color + '15' }]}>
+                <MaterialCommunityIcons name={item.icon} size={24} color={item.color} />
+              </View>
+              <View style={styles.menuItemContent}>
+                <ThemedText style={styles.menuItemTitle}>{item.title}</ThemedText>
+                <MaterialCommunityIcons name="chevron-right" size={20} color="#666" />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <TouchableOpacity
-          style={[styles.menuItem, styles.signOutButton]}
-          onPress={handleSignOut}
+          style={styles.signOutButton}
+          onPress={() => signOut()}
         >
-          <View style={styles.menuItemContent}>
-            <Ionicons name="log-out-outline" size={24} color="#ff4444" />
-            <ThemedText style={[styles.menuItemText, styles.signOutText]}>
-              Çıkış Yap
-            </ThemedText>
-          </View>
+          <MaterialCommunityIcons name="logout" size={20} color="#ff4444" />
+          <ThemedText style={styles.signOutText}>Çıkış Yap</ThemedText>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -103,70 +86,96 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#000',
   },
   header: {
-    padding: 32,
-    paddingTop: 60,
+    padding: 24,
+    paddingTop: Platform.OS === 'ios' ? 20 : 10,
   },
-  profileSection: {
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 24,
+    fontFamily: 'SpaceMono',
+  },
+  userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  profileImage: {
+  avatarContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    borderWidth: 3,
-    borderColor: '#fff',
+    backgroundColor: '#111',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
-  profileInfo: {
-    marginLeft: 20,
+  userDetails: {
+    flex: 1,
   },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  userName: {
+    fontSize: 20,
+    fontWeight: '600',
     color: '#fff',
     marginBottom: 4,
+    fontFamily: 'SpaceMono',
   },
-  email: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
+  userEmail: {
+    fontSize: 14,
+    color: '#999',
+    fontFamily: 'SpaceMono',
   },
   content: {
+    flex: 1,
     padding: 20,
   },
+  menuContainer: {
+    backgroundColor: '#111',
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
   menuItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
-    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  menuItemContent: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
-  menuItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuItemText: {
+  menuItemTitle: {
     fontSize: 16,
-    marginLeft: 12,
-    color: '#333',
+    color: '#fff',
+    fontFamily: 'SpaceMono',
   },
   signOutButton: {
-    marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#111',
+    borderRadius: 14,
+    padding: 16,
+    gap: 8,
   },
   signOutText: {
+    fontSize: 16,
     color: '#ff4444',
+    fontWeight: '600',
+    fontFamily: 'SpaceMono',
   },
 }); 

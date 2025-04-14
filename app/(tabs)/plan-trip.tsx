@@ -1,4 +1,5 @@
-import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform } from 'react-native';
+import React from 'react';
+import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, Image } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useState, useEffect } from 'react';
@@ -10,8 +11,8 @@ import { Picker } from '@react-native-picker/picker';
 import { AI_PROMPT, budgetOptions, companionOptions } from '@/app/constants/options';
 import { chatSession } from '@/app/services/ai.service';
 import { getCountries } from '@/app/services/location.service';
-import { searchPlaces, getPlaceDetails } from '@/app/services/places.service';
-import { Ionicons } from '@expo/vector-icons';
+import { searchPlaces, getPlaceDetails, type Place as PlaceType } from '@/app/services/places.service';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface Country {
   name: {
@@ -23,11 +24,6 @@ interface Country {
     png: string;
     svg: string;
   };
-}
-
-interface Place {
-  place_id: string;
-  formatted_address: string;
 }
 
 export default function PlanTripScreen() {
@@ -47,7 +43,7 @@ export default function PlanTripScreen() {
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Place[]>([]);
+  const [searchResults, setSearchResults] = useState<PlaceType[]>([]);
   const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
@@ -86,7 +82,9 @@ export default function PlanTripScreen() {
     const timeoutId = setTimeout(async () => {
       if (searchQuery.length >= 2) {
         try {
+          console.log('Searching places with:', { query: searchQuery, domestic: isDomestic });
           const results = await searchPlaces(searchQuery, isDomestic);
+          console.log('Search results:', results);
           setSearchResults(results);
           setShowResults(true);
         } catch (error) {
@@ -97,7 +95,7 @@ export default function PlanTripScreen() {
         setSearchResults([]);
         setShowResults(false);
       }
-    }, 500);
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery, isDomestic]);
@@ -169,48 +167,34 @@ export default function PlanTripScreen() {
   };
 
   const renderDatePicker = () => {
-    if (Platform.OS === 'ios') {
-      return (
-        <DateTimePicker
-          value={formState.startDate}
-          mode="date"
-          display="spinner"
-          onChange={(event: DateTimePickerEvent, date?: Date) => {
-            if (date) {
-              setFormState({ ...formState, startDate: date });
-            }
-          }}
-          minimumDate={new Date()}
-        />
-      );
-    }
-
-    if (Platform.OS === 'android') {
-      return showDatePicker ? (
-        <DateTimePicker
-          value={formState.startDate}
-          mode="date"
-          display="default"
-          onChange={(event: DateTimePickerEvent, date?: Date) => {
+    const showPicker = Platform.OS === 'ios' || showDatePicker;
+    
+    return showPicker ? (
+      <DateTimePicker
+        value={formState.startDate}
+        mode="date"
+        display={Platform.OS === 'ios' ? "spinner" : "default"}
+        onChange={(event: DateTimePickerEvent, date?: Date) => {
+          if (Platform.OS === 'android') {
             setShowDatePicker(false);
-            if (date) {
-              setFormState({ ...formState, startDate: date });
-            }
-          }}
-          minimumDate={new Date()}
-        />
-      ) : null;
-    }
-
-    return null;
+          }
+          if (date) {
+            setFormState({ ...formState, startDate: date });
+          }
+        }}
+        minimumDate={new Date()}
+      />
+    ) : null;
   };
 
-  const handlePlaceSelect = async (place: Place) => {
+  const handlePlaceSelect = async (place: PlaceType) => {
     try {
-      const details = await getPlaceDetails(place.place_id);
-      setFormState({ ...formState, city: details.name });
-      setSearchQuery(details.name);
-      setShowResults(false);
+      const details = await getPlaceDetails(place.placeId, isDomestic);
+      if (details) {
+        setFormState({ ...formState, city: details.description });
+        setSearchQuery(place.mainText);
+        setShowResults(false);
+      }
     } catch (error) {
       console.error('Error getting place details:', error);
       Alert.alert('Hata', 'Şehir detayları alınırken bir hata oluştu. Lütfen tekrar deneyin.');
@@ -219,231 +203,318 @@ export default function PlanTripScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <LinearGradient
-        colors={['#4c669f', '#3b5998', '#192f6a']}
-        style={styles.header}
-      >
+      <View style={styles.header}>
         <ThemedText style={styles.title}>Seyahat Planı Oluştur</ThemedText>
         <ThemedText style={styles.subtitle}>
           Yapay zeka asistanımız size özel bir seyahat planı hazırlayacak
         </ThemedText>
-      </LinearGradient>
+      </View>
 
       <View style={styles.formContainer}>
-        {/* Domestic/International Toggle */}
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={[styles.toggleButton, isDomestic && styles.toggleButtonActive]}
-            onPress={() => setIsDomestic(true)}
-          >
-            <Ionicons
-              name="home-outline"
-              size={24}
-              color={isDomestic ? '#fff' : '#4c669f'}
-            />
-            <ThemedText style={[styles.toggleButtonText, isDomestic && styles.toggleButtonTextActive]}>
-              TÜRKİYE GEZİSİ
-            </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleButton, !isDomestic && styles.toggleButtonActive]}
-            onPress={() => setIsDomestic(false)}
-          >
-            <Ionicons
-              name="airplane-outline"
-              size={24}
-              color={!isDomestic ? '#fff' : '#4c669f'}
-            />
-            <ThemedText style={[styles.toggleButtonText, !isDomestic && styles.toggleButtonTextActive]}>
-              YURT DIŞI GEZİSİ
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
-
-        {/* Country Selection */}
-        <View style={styles.inputContainer}>
-          <ThemedText style={styles.label}>Yaşadığınız Ülke</ThemedText>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formState.residenceCountry}
-              onValueChange={(value: string) => setFormState({ ...formState, residenceCountry: value })}
-              style={styles.picker}
+        {/* Trip Type Selection */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Seyahat Türü</ThemedText>
+          <View style={styles.tripTypeContainer}>
+            <TouchableOpacity
+              style={[styles.tripTypeCard, isDomestic && styles.tripTypeCardActive]}
+              onPress={() => setIsDomestic(true)}
             >
-              <Picker.Item label="Seçiniz" value="" />
-              {countries.map((country) => (
-                <Picker.Item
-                  key={country.cca2}
-                  label={country.name.common}
-                  value={country.name.common}
+              <View style={[styles.iconContainer, { backgroundColor: isDomestic ? '#4c669f33' : '#11111166' }]}>
+                <MaterialCommunityIcons
+                  name="home-heart"
+                  size={32}
+                  color={isDomestic ? '#4c669f' : '#666'}
                 />
-              ))}
-            </Picker>
+              </View>
+              <ThemedText style={[styles.tripTypeTitle, isDomestic && styles.tripTypeTitleActive]}>
+                Yurt İçi
+              </ThemedText>
+              <ThemedText style={[styles.tripTypeDesc, isDomestic && styles.tripTypeDescActive]}>
+                Türkiye'nin güzelliklerini keşfet
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tripTypeCard, !isDomestic && styles.tripTypeCardActive]}
+              onPress={() => setIsDomestic(false)}
+            >
+              <View style={[styles.iconContainer, { backgroundColor: !isDomestic ? '#4c669f33' : '#11111166' }]}>
+                <MaterialCommunityIcons
+                  name="airplane-takeoff"
+                  size={32}
+                  color={!isDomestic ? '#4c669f' : '#666'}
+                />
+              </View>
+              <ThemedText style={[styles.tripTypeTitle, !isDomestic && styles.tripTypeTitleActive]}>
+                Yurt Dışı
+              </ThemedText>
+              <ThemedText style={[styles.tripTypeDesc, !isDomestic && styles.tripTypeDescActive]}>
+                Dünyayı keşfetmeye hazır mısın?
+              </ThemedText>
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.inputContainer}>
-          <ThemedText style={styles.label}>Vatandaşlık</ThemedText>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formState.citizenship}
-              onValueChange={(value: string) => setFormState({ ...formState, citizenship: value })}
-              style={styles.picker}
-            >
-              <Picker.Item label="Seçiniz" value="" />
-              {countries.map((country) => (
-                <Picker.Item
-                  key={country.cca2}
-                  label={country.name.common}
-                  value={country.name.common}
-                />
-              ))}
-            </Picker>
-          </View>
-        </View>
-
-        {/* City Input */}
-        <View style={styles.inputContainer}>
-          <ThemedText style={styles.label}>Nereye gitmek istiyorsunuz?</ThemedText>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="location-outline" size={24} color="#666" style={styles.inputIcon} />
+        {/* Destination Search */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Nereyi Keşfetmek İstersin?</ThemedText>
+          <View style={styles.searchContainer}>
+            <MaterialCommunityIcons name="map-search" size={24} color="#666" style={styles.searchIcon} />
             <TextInput
-              style={styles.input}
+              style={styles.searchInput}
               value={searchQuery}
               onChangeText={(text) => {
                 setSearchQuery(text);
-                setFormState({ ...formState, city: text });
+                if (text.length >= 2) {
+                  setShowResults(true);
+                } else {
+                  setShowResults(false);
+                }
               }}
-              placeholder={isDomestic ? "Örn: İstanbul, Türkiye" : "Örn: Paris, Fransa"}
+              placeholder={isDomestic ? "Örn: İstanbul, Antalya..." : "Örn: Paris, Roma..."}
               placeholderTextColor="#666"
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchQuery('');
+                  setShowResults(false);
+                  setFormState({ ...formState, city: '' });
+                }}
+                style={styles.clearButton}
+              >
+                <MaterialCommunityIcons name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            )}
           </View>
           {showResults && searchResults.length > 0 && (
             <View style={styles.searchResults}>
-              {searchResults.map((place) => (
+              {searchResults.map((place, index) => (
                 <TouchableOpacity
-                  key={place.place_id}
+                  key={place.placeId}
                   style={styles.searchResultItem}
                   onPress={() => handlePlaceSelect(place)}
                 >
-                  <Ionicons name="location-outline" size={20} color="#666" style={styles.searchResultIcon} />
-                  <ThemedText style={styles.searchResultText}>
-                    {place.formatted_address}
-                  </ThemedText>
+                  <MaterialCommunityIcons name="map-marker" size={20} color="#4c669f" />
+                  <View style={styles.searchResultTextContainer}>
+                    <ThemedText style={styles.searchResultMainText}>
+                      {place.mainText}
+                    </ThemedText>
+                    <ThemedText style={styles.searchResultSecondaryText}>
+                      {place.secondaryText}
+                    </ThemedText>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
           )}
-        </View>
-
-        {/* Days Input */}
-        <View style={styles.inputContainer}>
-          <ThemedText style={styles.label}>Kaç gün kalacaksınız?</ThemedText>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="calendar-outline" size={24} color="#666" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              value={formState.days.toString()}
-              onChangeText={(text) => {
-                const days = parseInt(text) || 1;
-                if (days >= 1 && days <= 5) {
-                  setFormState({ ...formState, days });
-                }
-              }}
-              placeholder="1-5 gün"
-              keyboardType="numeric"
-              placeholderTextColor="#666"
-            />
-          </View>
-        </View>
-
-        {/* Date Selection */}
-        <View style={styles.inputContainer}>
-          <ThemedText style={styles.label}>Başlangıç Tarihi</ThemedText>
-          {Platform.OS === 'android' ? (
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Ionicons name="calendar-outline" size={24} color="#666" style={styles.inputIcon} />
-              <ThemedText style={styles.dateButtonText}>
-                {formState.startDate.toLocaleDateString('tr-TR')}
-              </ThemedText>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.datePickerContainer}>
-              {renderDatePicker()}
+          {showResults && searchResults.length === 0 && searchQuery.length >= 2 && (
+            <View style={styles.searchResults}>
+              <View style={styles.searchResultItem}>
+                <ThemedText style={styles.searchResultMainText}>
+                  Sonuç bulunamadı
+                </ThemedText>
+              </View>
             </View>
           )}
         </View>
 
+        {/* Travel Details */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Seyahat Detayları</ThemedText>
+          
+          {/* Date Selection */}
+          <TouchableOpacity
+            style={styles.detailCard}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <View style={[styles.iconContainer, { backgroundColor: '#4c669f33' }]}>
+              <MaterialCommunityIcons name="calendar-month" size={24} color="#4c669f" />
+            </View>
+            <View style={styles.detailContent}>
+              <ThemedText style={styles.detailLabel}>Başlangıç Tarihi</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {formState.startDate.toLocaleDateString('tr-TR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </ThemedText>
+            </View>
+          </TouchableOpacity>
+          {renderDatePicker()}
+
+          {/* Duration Selection */}
+          <View style={styles.detailCard}>
+            <View style={[styles.iconContainer, { backgroundColor: '#4c669f33' }]}>
+              <MaterialCommunityIcons name="clock-outline" size={24} color="#4c669f" />
+            </View>
+            <View style={styles.detailContent}>
+              <ThemedText style={styles.detailLabel}>Süre (Maksimum 5 gün)</ThemedText>
+              <View style={styles.durationControl}>
+                <TouchableOpacity
+                  style={styles.durationButton}
+                  onPress={() => setFormState({ ...formState, days: Math.max(1, formState.days - 1) })}
+                >
+                  <MaterialCommunityIcons name="minus" size={20} color="#fff" />
+                </TouchableOpacity>
+                <ThemedText style={styles.durationText}>{formState.days} Gün</ThemedText>
+                <TouchableOpacity
+                  style={styles.durationButton}
+                  onPress={() => setFormState({ ...formState, days: Math.min(5, formState.days + 1) })}
+                >
+                  <MaterialCommunityIcons name="plus" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+
         {/* Budget Selection */}
-        <View style={styles.inputContainer}>
-          <ThemedText style={styles.label}>Bütçe</ThemedText>
-          <View style={styles.optionsContainer}>
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Bütçe</ThemedText>
+          <View style={styles.optionsGrid}>
             {budgetOptions.map((option) => (
               <TouchableOpacity
                 key={option.value}
                 style={[
                   styles.optionCard,
-                  formState.budget === option.value && styles.optionCardActive,
+                  formState.budget === option.value && styles.optionCardActive
                 ]}
                 onPress={() => setFormState({ ...formState, budget: option.value })}
               >
-                <Ionicons
-                  name={option.value === 'low' ? 'wallet-outline' : option.value === 'medium' ? 'card-outline' : 'cash-outline'}
-                  size={24}
-                  color={formState.budget === option.value ? '#4c669f' : '#666'}
-                />
-                <ThemedText style={styles.optionTitle}>{option.title}</ThemedText>
-                <ThemedText style={styles.optionDescription}>{option.description}</ThemedText>
+                <View style={[styles.iconContainer, { backgroundColor: formState.budget === option.value ? '#4c669f33' : '#11111166' }]}>
+                  <MaterialCommunityIcons
+                    name={option.value === 'low' ? 'wallet-outline' : option.value === 'medium' ? 'credit-card-outline' : 'cash-multiple'}
+                    size={24}
+                    color={formState.budget === option.value ? '#4c669f' : '#666'}
+                  />
+                </View>
+                <ThemedText style={[styles.optionTitle, formState.budget === option.value && styles.optionTitleActive]}>
+                  {option.title}
+                </ThemedText>
+                <ThemedText style={[styles.optionDesc, formState.budget === option.value && styles.optionDescActive]}>
+                  {option.description}
+                </ThemedText>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {/* Companion Selection */}
-        <View style={styles.inputContainer}>
-          <ThemedText style={styles.label}>Seyahat Arkadaşı</ThemedText>
-          <View style={styles.optionsContainer}>
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Kiminle Seyahat Edeceksin?</ThemedText>
+          <View style={styles.optionsGrid}>
             {companionOptions.map((option) => (
               <TouchableOpacity
                 key={option.value}
                 style={[
                   styles.optionCard,
-                  formState.companion === option.value && styles.optionCardActive,
+                  formState.companion === option.value && styles.optionCardActive
                 ]}
                 onPress={() => setFormState({ ...formState, companion: option.value })}
               >
-                <Ionicons
-                  name={option.value === 'alone' ? 'person-outline' : option.value === 'couple' ? 'people-outline' : 'people'}
-                  size={24}
-                  color={formState.companion === option.value ? '#4c669f' : '#666'}
-                />
-                <ThemedText style={styles.optionTitle}>{option.title}</ThemedText>
-                <ThemedText style={styles.optionDescription}>{option.description}</ThemedText>
+                <View style={[styles.iconContainer, { backgroundColor: formState.companion === option.value ? '#4c669f33' : '#11111166' }]}>
+                  <MaterialCommunityIcons
+                    name={option.value === 'alone' ? 'account' : option.value === 'couple' ? 'account-multiple' : 'account-group'}
+                    size={24}
+                    color={formState.companion === option.value ? '#4c669f' : '#666'}
+                  />
+                </View>
+                <ThemedText style={[styles.optionTitle, formState.companion === option.value && styles.optionTitleActive]}>
+                  {option.title}
+                </ThemedText>
+                <ThemedText style={[styles.optionDesc, formState.companion === option.value && styles.optionDescActive]}>
+                  {option.description}
+                </ThemedText>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+        {/* Country Selection */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Ülke Bilgileri</ThemedText>
+          <View style={styles.countryCard}>
+            <View style={[styles.iconContainer, { backgroundColor: '#4c669f33' }]}>
+              <MaterialCommunityIcons name="home-city" size={24} color="#4c669f" />
+            </View>
+            <View style={styles.countryPicker}>
+              <ThemedText style={styles.countryLabel}>Yaşadığınız Ülke</ThemedText>
+              <View style={styles.pickerContainer}>
+                <MaterialCommunityIcons name="chevron-down" size={24} color="#666" style={styles.pickerIcon} />
+                <Picker
+                  selectedValue={formState.residenceCountry}
+                  onValueChange={(value) => setFormState({ ...formState, residenceCountry: value })}
+                  style={styles.picker}
+                  itemStyle={styles.pickerItem}
+                >
+                  <Picker.Item label="Ülke Seçin" value="" color="#666" />
+                  {countries.map((country) => (
+                    <Picker.Item
+                      key={country.cca2}
+                      label={country.name.common}
+                      value={country.name.common}
+                      color="#fff"
+                    />
+                  ))}
+                </Picker>
+              </View>
+              {formState.residenceCountry && (
+                <ThemedText style={styles.selectedValue}>
+                  Seçilen: {formState.residenceCountry}
+                </ThemedText>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.countryCard}>
+            <View style={[styles.iconContainer, { backgroundColor: '#4c669f33' }]}>
+              <MaterialCommunityIcons name="passport" size={24} color="#4c669f" />
+            </View>
+            <View style={styles.countryPicker}>
+              <ThemedText style={styles.countryLabel}>Vatandaşlık</ThemedText>
+              <View style={styles.pickerContainer}>
+                <MaterialCommunityIcons name="chevron-down" size={24} color="#666" style={styles.pickerIcon} />
+                <Picker
+                  selectedValue={formState.citizenship}
+                  onValueChange={(value) => setFormState({ ...formState, citizenship: value })}
+                  style={styles.picker}
+                  itemStyle={styles.pickerItem}
+                >
+                  <Picker.Item label="Vatandaşlık Seçin" value="" color="#666" />
+                  {countries.map((country) => (
+                    <Picker.Item
+                      key={country.cca2}
+                      label={country.name.common}
+                      value={country.name.common}
+                      color="#fff"
+                    />
+                  ))}
+                </Picker>
+              </View>
+              {formState.citizenship && (
+                <ThemedText style={styles.selectedValue}>
+                  Seçilen: {formState.citizenship}
+                </ThemedText>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
           onPress={handlePlanTrip}
           disabled={isLoading}
         >
-          <LinearGradient
-            colors={['#4c669f', '#3b5998']}
-            style={styles.buttonGradient}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="create-outline" size={24} color="#fff" style={styles.buttonIcon} />
-                <ThemedText style={styles.buttonText}>Plan Oluştur</ThemedText>
-              </>
-            )}
-          </LinearGradient>
+          {isLoading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="robot" size={24} color="#fff" />
+              <ThemedText style={styles.submitButtonText}>AI ile Plan Oluştur</ThemedText>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -453,205 +524,267 @@ export default function PlanTripScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#000',
   },
   header: {
-    padding: 32,
-    paddingTop: 60,
+    padding: 24,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 12,
+    marginBottom: 8,
+    fontFamily: 'SpaceMono',
   },
   subtitle: {
     fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
-    lineHeight: 24,
+    color: '#999',
+    fontFamily: 'SpaceMono',
   },
   formContainer: {
-    flex: 1,
-    padding: 24,
-    marginTop: -40,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    padding: 20,
   },
-  toggleContainer: {
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 16,
+    fontFamily: 'SpaceMono',
+  },
+  tripTypeContainer: {
     flexDirection: 'row',
-    marginBottom: 24,
     gap: 12,
   },
-  toggleButton: {
+  tripTypeCard: {
     flex: 1,
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#111',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+  },
+  tripTypeCardActive: {
+    backgroundColor: '#4c669f22',
     borderWidth: 1,
     borderColor: '#4c669f',
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
   },
-  toggleButtonActive: {
-    backgroundColor: '#4c669f',
-  },
-  toggleButtonText: {
-    color: '#4c669f',
-    fontWeight: 'bold',
-  },
-  toggleButtonTextActive: {
-    color: '#fff',
-  },
-  inputContainer: {
-    marginBottom: 24,
-  },
-  label: {
+  tripTypeTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    color: '#666',
+    marginTop: 12,
+    marginBottom: 4,
+    fontFamily: 'SpaceMono',
   },
-  inputWrapper: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 4,
-    flexDirection: 'row',
+  tripTypeTitleActive: {
+    color: '#4c669f',
+  },
+  tripTypeDesc: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    fontFamily: 'SpaceMono',
+  },
+  tripTypeDescActive: {
+    color: '#999',
+  },
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  inputIcon: {
-    marginHorizontal: 12,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#fff',
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111',
+    borderRadius: 16,
     padding: 16,
-    borderRadius: 8,
-    fontSize: 16,
-    color: '#333',
-    borderWidth: 1,
-    borderColor: '#e9ecef',
   },
-  pickerContainer: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'SpaceMono',
+  },
+  searchResults: {
+    backgroundColor: '#111',
+    borderRadius: 16,
+    marginTop: 8,
     overflow: 'hidden',
   },
-  picker: {
-    height: 50,
-  },
-  dateButton: {
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+  searchResultItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+    gap: 12,
   },
-  dateButtonText: {
+  searchResultTextContainer: {
     flex: 1,
-    fontSize: 16,
-    color: '#333',
+    marginLeft: 12,
   },
-  optionsContainer: {
+  searchResultMainText: {
+    fontSize: 16,
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+    fontWeight: '600',
+  },
+  searchResultSecondaryText: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: 'SpaceMono',
+    marginTop: 2,
+  },
+  detailCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  detailContent: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+    fontFamily: 'SpaceMono',
+  },
+  detailValue: {
+    fontSize: 16,
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+  },
+  durationControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  durationButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#4c669f',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  durationText: {
+    fontSize: 16,
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+  },
+  optionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
   optionCard: {
+    width: '48%',
+    backgroundColor: '#111',
+    borderRadius: 16,
     padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    backgroundColor: '#fff',
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
   optionCardActive: {
+    backgroundColor: '#4c669f22',
+    borderWidth: 1,
     borderColor: '#4c669f',
-    backgroundColor: '#f8f9fa',
   },
   optionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 12,
     marginBottom: 4,
+    textAlign: 'center',
+    fontFamily: 'SpaceMono',
   },
-  optionDescription: {
+  optionTitleActive: {
+    color: '#4c669f',
+  },
+  optionDesc: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    fontFamily: 'SpaceMono',
+  },
+  optionDescActive: {
+    color: '#999',
+  },
+  countryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  countryPicker: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  countryLabel: {
     fontSize: 14,
     color: '#666',
+    marginBottom: 4,
+    fontFamily: 'SpaceMono',
   },
-  button: {
-    marginTop: 32,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  buttonGradient: {
-    padding: 16,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  datePickerContainer: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  searchResults: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    marginTop: 4,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    zIndex: 1000,
-    maxHeight: 200,
-  },
-  searchResultItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+  pickerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: '#222',
+    borderRadius: 12,
+    paddingHorizontal: 12,
   },
-  searchResultIcon: {
+  pickerIcon: {
     marginRight: 8,
   },
-  searchResultText: {
+  picker: {
     flex: 1,
+    color: '#fff',
+  },
+  pickerItem: {
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4c669f',
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    marginTop: 32,
+  },
+  submitButtonDisabled: {
+    opacity: 0.5,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+  },
+  selectedValue: {
     fontSize: 14,
-    color: '#333',
+    color: '#4c669f',
+    marginTop: 8,
+    fontFamily: 'SpaceMono',
+  },
+  clearButton: {
+    padding: 4,
   },
 }); 
