@@ -5,6 +5,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useEffect } from 'react';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -32,8 +33,17 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
+  // SplashScreen'i manuel olarak gizleme
+  useEffect(() => {
+    if (loaded) {
+      // Splash screen'i gizle
+      SplashScreen.hideAsync().catch(console.warn);
+      console.log('Font yüklendi, splash screen gizleniyor');
+    }
+  }, [loaded]);
+
   if (!loaded) {
-    return null;
+    return null; // Fontlar yüklenmeden önce hiçbir şey render etme
   }
 
   return (

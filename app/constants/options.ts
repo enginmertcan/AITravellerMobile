@@ -26,4 +26,16 @@ export const companionOptions = [
   { value: 'couple', title: 'Çift', description: 'İki kişilik', people: 2 },
   { value: 'family', title: 'Aile', description: 'Aile ile', people: 4 },
   { value: 'group', title: 'Grup', description: 'Arkadaş grubu', people: 6 },
-]; 
+];
+
+// JSX component for Expo Router
+function OptionsComponent() {
+  return null;
+}
+
+// Default ve named exports
+OptionsComponent.AI_PROMPT = AI_PROMPT;
+OptionsComponent.budgetOptions = budgetOptions;
+OptionsComponent.companionOptions = companionOptions;
+
+export default OptionsComponent;

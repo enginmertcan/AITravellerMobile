@@ -1,3 +1,6 @@
+// ÖNEMLİ GÜVENLİK UYARISI: Bu API anahtarlarını güvenli bir ortama taşıyın (örneğin .env dosyası)
+// Bu anahtarlar public repolarda olmamalı ve gizli tutulmalıdır
+
 export const API_CONFIG = {
   GOOGLE_MAPS: 'AIzaSyCP-WHzK8XQXT_ThNQ5g5oNVXqNMtZ4cOg',
   GEMINI: 'AIzaSyA7U8nOp60TreFZ5g9CJ3zloEFheLHkOes',
@@ -12,4 +15,20 @@ export const API_ENDPOINTS = {
   OPENWEATHER: 'https://api.openweathermap.org/data/2.5',
   VISUAL_CROSSING: 'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services',
   RESEND: 'https://api.resend.com',
-}; 
+};
+
+const apiConfig = {
+  API_CONFIG,
+  API_ENDPOINTS
+};
+
+// JSX component for Expo Router
+function ApiConfigComponent() {
+  return null;
+}
+
+// Default ve named exports
+ApiConfigComponent.API_CONFIG = API_CONFIG;
+ApiConfigComponent.API_ENDPOINTS = API_ENDPOINTS;
+
+export default ApiConfigComponent;

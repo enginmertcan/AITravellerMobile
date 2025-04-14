@@ -1,6 +1,6 @@
 import { AI_PROMPT } from '../constants/options';
 
-export const chatSession = {
+const chatSession = {
   async sendMessage(message: string) {
     try {
       // TODO: Implement actual AI service integration
@@ -16,3 +16,13 @@ export const chatSession = {
     }
   }
 }; 
+
+// JSX component for Expo Router
+function AiServiceComponent() {
+  return null;
+}
+
+// Default ve named exports
+AiServiceComponent.chatSession = chatSession;
+
+export default AiServiceComponent;

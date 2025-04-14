@@ -1,4 +1,5 @@
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
+import React from 'react';
 
 export interface Place {
   placeId: string;
@@ -100,3 +101,15 @@ export const getPlaceDetails = async (placeId: string, isDomestic: boolean = tru
     return null;
   }
 }; 
+
+// JSX component for Expo Router
+export function PlacesServiceComponent() {
+  return null;
+}
+
+// Static properties for component
+PlacesServiceComponent.searchPlaces = searchPlaces;
+PlacesServiceComponent.getPlaceDetails = getPlaceDetails;
+
+// Default export Expo Router için gerekli
+export default PlacesServiceComponent;
