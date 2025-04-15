@@ -4,11 +4,12 @@ import { getFirestore } from "firebase/firestore";
 // Auth sorunlu olduğu için şimdilik çıkarttık
 // import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
+import Constants from "expo-constants";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
+  apiKey: Constants.expoConfig?.extra?.firebaseApiKey || process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyBGux1bZhFmmuNQDvGr2CDsUxIrHF1pFhU", // Önce Constants, sonra process.env, son olarak yedek
   authDomain: "ai-traveller-67214.firebaseapp.com",
   projectId: "ai-traveller-67214",
   storageBucket: "ai-traveller-67214.appspot.com",
@@ -18,11 +19,36 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase - check if already initialized to avoid multiple instances
-let app;
-if (getApps().length === 0) {
+let app: any = null;
+
+try {
+  if (getApps().length === 0) {
+    console.log('Firebase: İlk kez başlatılıyor...');
+    app = initializeApp(firebaseConfig);
+    console.log('Firebase: Başarıyla başlatıldı!');
+  } else {
+    console.log('Firebase: Mevcut instance kullanılıyor...');
+    app = getApp(); // Eğer zaten initialize edilmişse mevcut app'i kullan
+  }
+  
+  // API anahtarı kontrolü
+  if (!firebaseConfig.apiKey) {
+    console.error('Firebase API anahtarı bulunamadı! Environment değişkenleri kontrol edin.');
+    throw new Error('Firebase API anahtarı bulunamadı!');
+  }
+} catch (error) {
+  console.error('Firebase başlatma hatası:', error);
+  // Hata durumunda varsayılan bir uygulama oluşturmayı deneyelim
+  if (!app && firebaseConfig.apiKey) {
+    console.log('Varsayılan firebase app oluşturuluyor...');
+    app = initializeApp(firebaseConfig);
+  }
+}
+
+// App önceden oluşturulduğundan emin olalım
+if (!app) {
+  console.log('Firebase: Acil durum - app oluşturuluyor');
   app = initializeApp(firebaseConfig);
-} else {
-  app = getApp(); // Eğer zaten initialize edilmişse mevcut app'i kullan
 }
 
 // Initialize Firestore

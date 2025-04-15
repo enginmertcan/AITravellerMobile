@@ -1,48 +1,54 @@
 export interface TravelPlan {
+  // Temel bilgiler
   id?: string;                // Firebase document ID
   destination: string;        // Ana destinasyon/şehir adı
   rawResponse?: string;       // Ham AI yanıtı
   
   // Temel seyahat bilgileri
-  startDate: string;
-  endDate: string;
-  duration: number;           // Seyahat süresi (gün)
-  days?: number;              // Alternatif süre gösterimi
+  startDate: string;           // Başlangıç tarihi
+  endDate?: string;            // Bitiş tarihi (opsiyonel)
+  duration: number;            // Seyahat süresi (gün)
+  days?: number;               // Alternatif süre gösterimi
+  
+  // Ülke ve konum bilgileri
+  country?: string;            // Ziyaret edilen ülke
+  city?: string;               // Ziyaret edilen şehir
   
   // Konaklama ve bütçe
-  budget: string;
-  accommodationType: string;
+  budget: string;              // Bütçe durumu ("ekonomik", "standart", "lüks" vb)
+  accommodationType?: string;  // Konaklama türü (otel, hostel, Airbnb vb)
+  bestTimeToVisit?: string;    // Ziyaret için en uygun zaman
   
   // Seyahat tipi ve kişi sayısı
-  travelType: string;
-  travelerCount: number;
-  groupType?: string;
-  numberOfPeople?: string;    // Alternatif kişi sayısı gösterimi
+  travelType?: string;         // Seyahat türü (tatil, iş, aile ziyareti vb)
+  travelerCount?: number;       // Seyahat eden kişi sayısı (sayısal)
+  groupType?: string;           // Grup tipi (aile, çift, arkadaş grubu vb)
+  numberOfPeople?: string;      // Kişi sayısı (metin olarak ör: "2 Kişi")
   
   // Özel durumlar
-  includeChildren: boolean;
-  includeElderly: boolean;
+  includeChildren?: boolean;    // Çocuklu aile mi?
+  includeElderly?: boolean;     // Yaşlı var mı?
   
   // Tercihler
-  travelStyle: string[];
-  mustSeeAttractions: string[];
+  travelStyle?: string[];       // Seyahat stili (macera, kültür, doğa vb)
+  mustSeeAttractions?: string[]; // Mutlaka görülmesi gereken yerler
   
   // Vize ve Dil
-  needsVisa: boolean;
-  requiresTranslationSupport: boolean;
+  needsVisa?: boolean;          // Vize gerekiyor mu?
+  requiresTranslationSupport?: boolean; // Çeviri desteği gerekli mi?
   
   // Vatandaşlık ve ülke bilgileri
-  residenceCountry: string;   // İkamet ülkesi
-  citizenship: string;        // Vatandaşlık
-  isDomestic: boolean;        // Yurtiçi seyahat mi?
+  residenceCountry: string;     // İkamet ülkesi
+  citizenship: string;          // Vatandaşlık 
+  isDomestic: boolean;          // Yurtiçi seyahat mi?
   
   // Kullanıcı ve zaman bilgileri
-  userId: string;
-  createdAt?: string;         // ISO string of Firebase Timestamp
-  updatedAt?: string;         // ISO string of Firebase Timestamp
+  userId: string;               // Kullanıcı ID'si (Clerk veya Firebase)
+  createdAt?: string;           // Oluşturma zamanı (ISO string)
+  updatedAt?: string;           // Güncelleme zamanı (ISO string)
   
-  // Destinasyon detayları
-  destinationInfo: {
+  // Destinasyon detayları (opsiyonel)
+  destinationInfo?: {
     name: string;
     country: string;
     bestTimeToVisit: string;
@@ -51,41 +57,35 @@ export interface TravelPlan {
     currency: string;
   };
   
-  // Gezi planı
-  itinerary: any;
+  // Gezi planı ve otel bilgileri - JSON.stringify edilmiş olabilir veya JSON nesnesi
+  itinerary?: string | any;     // Seyahat programı (günlük plan)
+  hotelOptions?: any[] | any;    // Otel seçenekleri listesi
 
-  // Kültürel bilgiler
-  culturalDifferences: any;
-
-  // Yerel ipuçları
-  localTips: any;
-
-  // Otel seçenekleri
-  hotelOptions: any;
+  // Kültürel bilgiler ve yerel ipuçları
+  culturalDifferences?: any;     // Kültürel farklılıklar
+  localTips?: any;               // Yerel ipuçları
 
   // Seyahat özeti
-  tripSummary: {
+  tripSummary?: {
     duration: string;
     travelers: string;
     budget: string;
   };
 
   // Vize bilgileri
-  visaInfo: {
+  visaInfo?: {
     visaRequirement: string;
     visaApplicationProcess: string;
     requiredDocuments: string[];
     visaFee?: string;
   };
 
-  // Seyahat belgeleri kontrol listesi
-  travelDocumentChecklist: string | string[];
-  
-  // Yerel yaşam tavsiyeleri
-  localTransportationGuide: string;
-  emergencyContacts: string | string[];
-  currencyAndPayment: string;
-  communicationInfo: string;
+  // Diğer yardımcı bilgiler
+  travelDocumentChecklist?: string | string[];
+  localTransportationGuide?: string;
+  emergencyContacts?: string | string[];
+  currencyAndPayment?: string;
+  communicationInfo?: string;
 }
 
 // Yardımcı fonksiyonlar
@@ -108,25 +108,19 @@ export const DEFAULT_TRAVEL_PLAN: TravelPlan = {
   id: '',
   destination: '',
   startDate: '',
-  endDate: '',
-  duration: 0,  
-  days: 0,
+  duration: 0,
   budget: '',
-  accommodationType: '',
-  travelType: '',
-  travelerCount: 0,
-  groupType: '',
-  numberOfPeople: '',
-  includeChildren: false,
-  includeElderly: false,
-  travelStyle: [],
-  mustSeeAttractions: [],
-  needsVisa: false,
-  requiresTranslationSupport: false,
   residenceCountry: '',
   citizenship: '',
   isDomestic: false,
   userId: '',
+  // Opsiyonel alanlar
+  days: 0,
+  groupType: '',
+  numberOfPeople: '',
+  country: '',
+  bestTimeToVisit: '',
+  // Destinasyon detayları
   destinationInfo: {
     name: '',
     country: '',
@@ -135,9 +129,8 @@ export const DEFAULT_TRAVEL_PLAN: TravelPlan = {
     timezone: '',
     currency: ''
   },
-  itinerary: [],
-  culturalDifferences: {},
-  localTips: {},
+  // Boş diziler ve nesneler
+  itinerary: '',
   hotelOptions: [],
   tripSummary: {
     duration: '',

@@ -1,13 +1,15 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Dimensions, RefreshControl, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Dimensions, RefreshControl, Platform, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { BlurView } from 'expo-blur';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { TravelPlanService } from '@/app/services/firebase.service';
+import { TravelPlan } from '@/app/types/travel';
 
 const { width } = Dimensions.get('window');
 
@@ -25,18 +27,41 @@ interface QuickAction {
 }
 
 export default function HomeScreen() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, userId } = useAuth();
   const { user } = useUser();
   const [refreshing, setRefreshing] = useState(false);
+  const [travelPlans, setTravelPlans] = useState<Partial<TravelPlan>[]>([]);
+  const [loading, setLoading] = useState(false);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
+  // Seyahat planlarını çek
+  const fetchTravelPlans = async () => {
+    try {
+      setLoading(true);
+      console.log('Kullanıcının seyahat planları çekiliyor...');
+      if (userId) {
+        const plans = await TravelPlanService.getUserTravelPlans(userId);
+        setTravelPlans(plans);
+        console.log(`${plans.length} seyahat planı bulundu.`);
+      }
+    } catch (error) {
+      console.error('Seyahat planları çekilirken hata oluştu:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTravelPlans();
+  }, [userId]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => {
+    fetchTravelPlans().then(() => {
       setRefreshing(false);
-    }, 1000);
-  }, []);
+    });
+  }, [userId]);
 
   const features: Feature[] = [
     {
@@ -106,6 +131,58 @@ export default function HomeScreen() {
           />
           <ThemedText style={styles.searchText}>Nereyi keşfetmek istersin?</ThemedText>
         </TouchableOpacity>
+        
+        {/* Seyahat Planları Listesi */}
+        <View style={styles.travelPlansContainer}>
+          <View style={styles.travelPlansHeader}>
+            <ThemedText style={styles.sectionTitle}>Seyahat Planlarım</ThemedText>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/ai-planner')}>
+              <ThemedText style={styles.seeAllText}>Yeni Ekle</ThemedText>
+            </TouchableOpacity>
+          </View>
+          
+          {loading ? (
+            <ActivityIndicator size="large" color="#4c669f" style={styles.loader} />
+          ) : travelPlans.length > 0 ? (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              style={styles.travelPlansScroll}
+            >
+              {travelPlans.map((plan, index) => (
+                <TouchableOpacity 
+                  key={plan.id || index} 
+                  style={styles.travelPlanCard}
+                  onPress={() => router.push(`/trip-details?id=${plan.id}`)}
+                >
+                  <View style={styles.travelPlanImageContainer}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={50} color="#4c669f" />
+                  </View>
+                  <View style={styles.travelPlanContent}>
+                    <ThemedText style={styles.travelPlanDestination}>{plan.destination}</ThemedText>
+                    <ThemedText style={styles.travelPlanDetails}>
+                      {plan.startDate} • {plan.days || plan.duration} gün
+                    </ThemedText>
+                    <View style={styles.travelPlanBadge}>
+                      <ThemedText style={styles.travelPlanBadgeText}>{plan.budget}</ThemedText>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.noPlansContainer}>
+              <MaterialCommunityIcons name="map-search" size={50} color="#ccc" />
+              <ThemedText style={styles.noPlansText}>Henüz seyahat planı yok</ThemedText>
+              <TouchableOpacity 
+                style={styles.createPlanButton}
+                onPress={() => router.push('/(tabs)/ai-planner')}
+              >
+                <ThemedText style={styles.createPlanButtonText}>Plan Oluştur</ThemedText>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         <View style={styles.quickActionsContainer}>
           <ThemedText style={styles.sectionTitle}>Hızlı İşlemler</ThemedText>
@@ -150,7 +227,96 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#f9f9f9',
+  },
+  travelPlansContainer: {
+    marginVertical: 20,
+  },
+  travelPlansHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  seeAllText: {
+    color: '#4c669f',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  travelPlansScroll: {
+    paddingVertical: 10,
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+  },
+  travelPlanCard: {
+    width: 250,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  travelPlanImageContainer: {
+    height: 120,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  travelPlanContent: {
+    padding: 12,
+  },
+  travelPlanDestination: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  travelPlanDetails: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 8,
+  },
+  travelPlanBadge: {
+    backgroundColor: '#4c669f15',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  travelPlanBadgeText: {
+    color: '#4c669f',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  noPlansContainer: {
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+  },
+  noPlansText: {
+    marginTop: 10,
+    color: '#888',
+    fontSize: 16,
+  },
+  createPlanButton: {
+    marginTop: 20,
+    backgroundColor: '#4c669f',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  createPlanButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  loader: {
+    marginVertical: 30,
   },
   header: {
     padding: 24,
