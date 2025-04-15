@@ -331,3 +331,8 @@ export {
   getPromptTemplate,
   parseGeminiResponse
 };
+
+// Expo Router için default export gereklidir
+export default function AiServiceComponent() {
+  return null;
+}

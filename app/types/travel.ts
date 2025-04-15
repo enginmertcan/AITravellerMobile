@@ -1,6 +1,7 @@
 export interface TravelPlan {
   id?: string;                // Firebase document ID
   destination: string;        // Ana destinasyon/şehir adı
+  rawResponse?: string;       // Ham AI yanıtı
   
   // Temel seyahat bilgileri
   startDate: string;
@@ -95,6 +96,11 @@ export function safeParseJSON(jsonString: string) {
     console.error('Error parsing JSON:', e);
     return null;
   }
+}
+
+// Expo Router için default export gereklidir
+export default function TravelTypesComponent() {
+  return null;
 }
 
 // Default empty travel plan object

@@ -32,9 +32,18 @@ export const getCountries = async (): Promise<Country[]> => {
       },
       cca2: 'TR',
       flags: {
-        png: 'https://flagcdn.com/w80/tr.png',
+        png: 'https://flagcdn.com/w320/tr.png',
         svg: 'https://flagcdn.com/tr.svg'
       }
     }];
   }
-}; 
+};
+
+export const geocodeAddress = async (address: string): Promise<any> => {
+  // Implementation
+};
+
+// Expo Router için default export gereklidir
+export default function LocationServiceComponent() {
+  return null;
+}

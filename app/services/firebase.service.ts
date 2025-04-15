@@ -59,10 +59,13 @@ export const TravelPlanService = {
       }
 
       const travelPlansRef = collection(db, TRAVEL_PLANS_COLLECTION);
+      // Bileşik indeks hatasını önlemek için orderBy kullanmıyoruz
+      // Kalıcı çözüm için: Firebase konsolunda indeksi oluşturmak gerekiyor
+      // https://console.firebase.google.com/project/ai-traveller-67214/firestore/indexes
       const q = query(
         travelPlansRef, 
-        where("userId", "==", userId),
-        orderBy("createdAt", "desc")
+        where("userId", "==", userId)
+        // orderBy('createdAt', 'desc') - indeks gerektirir
       );
       
       const querySnapshot = await getDocs(q);
@@ -286,3 +289,8 @@ export const FirebaseService = {
   TravelPlan: TravelPlanService,
   User: UserService
 };
+
+// Expo Router için default export gereklidir
+export default function FirebaseServiceComponent() {
+  return null;
+}

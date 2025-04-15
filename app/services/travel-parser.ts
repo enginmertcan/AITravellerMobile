@@ -19,30 +19,36 @@ export function parseItinerary(data: any) {
       };
 
       // Safely extract cultural differences
-      const culturalDiff = parsedItinerary.culturalDifferences || {};
-      if (typeof culturalDiff === 'object') {
-        parsedData.culturalDifferences = culturalDiff.culturalDifferences || '';
-        parsedData.lifestyleDifferences = culturalDiff.lifestyleDifferences || '';
-        parsedData.foodCultureDifferences = culturalDiff.foodCultureDifferences || '';
-        parsedData.socialNormsDifferences = culturalDiff.socialNormsDifferences || '';
+      if (parsedItinerary.culturalDifferences) {
+        parsedData.culturalDifferences = parsedItinerary.culturalDifferences;
       }
 
-      // Safely extract visa requirements
-      const visaReq = parsedItinerary.visaAndTravelRequirements || {};
-      if (typeof visaReq === 'object') {
-        parsedData.visaRequirements = visaReq.visaRequirements || '';
-        parsedData.visaApplicationProcess = visaReq.visaApplicationProcess || '';
-        parsedData.visaFees = visaReq.visaFees || '';
-        parsedData.travelDocumentChecklist = Array.isArray(visaReq.travelDocumentChecklist) 
-          ? visaReq.travelDocumentChecklist 
-          : typeof visaReq.travelDocumentChecklist === 'string' 
-            ? visaReq.travelDocumentChecklist 
+      // Safely extract visa info
+      if (parsedItinerary.visaInfo) {
+        parsedData.visaInfo = parsedItinerary.visaInfo;
+      } else if (parsedItinerary.visaRequirements || parsedItinerary.visaApplicationProcess) {
+        parsedData.visaInfo = {
+          visaRequirement: parsedItinerary.visaRequirements || '',
+          visaApplicationProcess: parsedItinerary.visaApplicationProcess || '',
+          requiredDocuments: Array.isArray(parsedItinerary.requiredDocuments) 
+            ? parsedItinerary.requiredDocuments 
+            : [],
+          visaFee: parsedItinerary.visaFees || '',
+        };
+      }
+
+      // Safely extract local info
+      const localInfo = parsedItinerary.localTips || {};
+      if (localInfo) {
+        parsedData.localTips = localInfo;
+
+        // Backward compatibility for fields that might be directly in data
+        parsedData.travelDocumentChecklist = Array.isArray(localInfo.travelDocumentChecklist)
+          ? localInfo.travelDocumentChecklist
+          : typeof localInfo.travelDocumentChecklist === 'string'
+            ? localInfo.travelDocumentChecklist
             : '';
-      }
 
-      // Safely extract local life information
-      const localInfo = parsedItinerary.localLifeInformation || {};
-      if (typeof localInfo === 'object') {
         parsedData.localTransportationGuide = localInfo.localTransportationGuide || '';
         parsedData.emergencyContacts = Array.isArray(localInfo.emergencyContacts)
           ? localInfo.emergencyContacts
@@ -50,7 +56,6 @@ export function parseItinerary(data: any) {
             ? localInfo.emergencyContacts
             : '';
         parsedData.currencyAndPayment = localInfo.currencyAndPayment || '';
-        parsedData.healthcareInfo = localInfo.healthcareInfo || '';
         parsedData.communicationInfo = localInfo.communicationInfo || '';
       }
     }
@@ -77,17 +82,9 @@ export function formatTravelPlan(data: any): Partial<TravelPlan> {
       }, {});
     }
     
-    // Ensure all required fields exist with proper types
     return {
-      ...DEFAULT_TRAVEL_PLAN,
       ...parsedData,
-      id: data?.id || DEFAULT_TRAVEL_PLAN.id,
-      itinerary: formattedItinerary || DEFAULT_TRAVEL_PLAN.itinerary,
-      hotelOptions: Array.isArray(parsedData.hotelOptions) 
-        ? parsedData.hotelOptions.filter(hotel => hotel && typeof hotel === 'object')
-        : DEFAULT_TRAVEL_PLAN.hotelOptions,
-      days: typeof parsedData.days === 'number' ? parsedData.days : DEFAULT_TRAVEL_PLAN.days,
-      isDomestic: typeof parsedData.isDomestic === 'boolean' ? parsedData.isDomestic : DEFAULT_TRAVEL_PLAN.isDomestic,
+      itinerary: formattedItinerary
     };
   } catch (error) {
     console.error('Error formatting travel plan:', error);
@@ -110,19 +107,22 @@ export function parseGeminiResponse(responseText: string): Partial<TravelPlan> {
       cleanedResponse = cleanedResponse.substring(0, jsonEndIndex + 1);
     }
     
-    // JSON parse
+    // JSON olarak parse etme
     const parsedData = safeParseJSON(cleanedResponse);
     if (!parsedData) {
-      throw new Error('JSON parse error');
+      console.error('JSON parse hatası');
+      return DEFAULT_TRAVEL_PLAN;
     }
     
-    // TravelPlan formatına çevirme
+    // TravelPlan formatına dönüştürme
     return formatTravelPlan(parsedData);
   } catch (error) {
-    console.error('Error parsing Gemini response:', error);
-    return { 
-      ...DEFAULT_TRAVEL_PLAN,
-      error: 'Yanıt işlenemedi' 
-    };
+    console.error('AI yanıtı parse hatası:', error);
+    return DEFAULT_TRAVEL_PLAN;
   }
+}
+
+// Expo Router için default export gereklidir
+export default function TravelParserComponent() {
+  return null;
 }

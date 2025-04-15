@@ -14,7 +14,7 @@ import { FirebaseService } from '@/app/services/firebase.service';
 import { getCountries } from '@/app/services/location.service';
 import { searchPlaces, getPlaceDetails, type Place as PlaceType } from '@/app/services/places.service';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// AsyncStorage kaldırıldı
 
 interface Country {
   name: {
@@ -220,25 +220,28 @@ export default function PlanTripScreen() {
       console.log('Oluşturulan seyahat planı:', JSON.stringify(travelPlan, null, 2));
       
       // Firebase'e kaydet
+      let travelPlanId = '';
       try {
-        const travelPlanId = await FirebaseService.TravelPlan.createTravelPlan(travelPlan);
+        travelPlanId = await FirebaseService.TravelPlan.createTravelPlan(travelPlan);
         console.log("Seyahat planı Firebase'e kaydedildi, ID:", travelPlanId);
-        
-        // AsyncStorage'a ID'yi kaydet (detay sayfasında kullanmak için)
-        await AsyncStorage.setItem('currentTravelPlanId', travelPlanId);
       } catch (error) {
         console.error('Firebase kaydetme hatası:', error);
-        // Firebase'e kaydedilemese bile kullanıcıyı devam ettirelim
+        Alert.alert(
+          'Hata',
+          'Seyahat planı kaydedilemedi. Lütfen daha sonra tekrar deneyin.',
+          [{ text: 'Tamam' }]
+        );
+        return; // Hata durumunda işlemi sonlandır
       }
-      
-      // AI yanıtını JSON string olarak kaydet
-      const travelPlanString = JSON.stringify(travelPlan);
-      await AsyncStorage.setItem('aiTripResponse', travelPlanString);
       
       console.log('Seyahat planı oluşturuldu ve kaydedildi');
       
-      // Kullanıcıyı detay sayfasına yönlendir
-      router.push('/trip-details');
+      // Kullanıcıyı detay sayfasına yönlendir (plan ID ile)
+      if (travelPlanId) {
+        router.push(`/trip-details?id=${travelPlanId}`);
+      } else {
+        router.push('/trip-details');
+      }
 
       Alert.alert(
         'Başarılı',
