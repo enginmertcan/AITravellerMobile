@@ -20,14 +20,30 @@ export default function TripDetailsScreen() {
     const fetchTripData = async () => {
       try {
         setLoading(true);
-        
+
         if (planId) {
           // Belirli bir plan ID'si varsa, onu Firebase'den çekelim
           console.log('Firebase\'den belirli seyahat planı çekiliyor, ID:', planId);
           const plan = await FirebaseService.TravelPlan.getTravelPlanById(planId);
-          
+
           if (plan && Object.keys(plan).length > 0) {
             console.log('Plan başarıyla çekildi');
+
+            // İtinerary alanını parse et
+            if (plan.itinerary && typeof plan.itinerary === 'string') {
+              try {
+                const parsedItinerary = safeParseJSON(plan.itinerary);
+                if (parsedItinerary) {
+                  console.log('İtinerary başarıyla parse edildi');
+                  plan.itinerary = parsedItinerary;
+                } else {
+                  console.error('İtinerary parse edilemedi');
+                }
+              } catch (parseError) {
+                console.error('İtinerary parse hatası:', parseError);
+              }
+            }
+
             setTripData(plan);
           } else {
             console.error('Plan bulunamadı:', planId);
@@ -45,7 +61,7 @@ export default function TripDetailsScreen() {
         setLoading(false);
       }
     };
-    
+
     // Kullanıcının planlarını çeken yardımcı fonksiyon
     const loadUserPlans = async () => {
       // Sabit test dataları - kullanıcı ID olmayan durumda kullan
@@ -67,23 +83,40 @@ export default function TripDetailsScreen() {
           budget: "Orta"
         }
       };
-      
+
       if (userId) {
         console.log('Kullanıcının seyahat planları çekiliyor...');
         try {
           const userPlans = await FirebaseService.TravelPlan.getUserTravelPlans(userId);
-          
+
           if (userPlans && userPlans.length > 0) {
             console.log('Kullanıcının seyahat planları başarıyla alındı');
-            // En son oluşturulan planı gösterelim
-            setTripData(userPlans[0]); 
+            // En son oluşturulan planı alalım
+            const latestPlan = userPlans[0];
+
+            // İtinerary alanını parse et
+            if (latestPlan.itinerary && typeof latestPlan.itinerary === 'string') {
+              try {
+                const parsedItinerary = safeParseJSON(latestPlan.itinerary);
+                if (parsedItinerary) {
+                  console.log('Kullanıcı planı itinerary başarıyla parse edildi');
+                  latestPlan.itinerary = parsedItinerary;
+                } else {
+                  console.error('Kullanıcı planı itinerary parse edilemedi');
+                }
+              } catch (parseError) {
+                console.error('Kullanıcı planı itinerary parse hatası:', parseError);
+              }
+            }
+
+            setTripData(latestPlan);
             return;
           }
         } catch (error) {
           console.error('Plan çekme hatası:', error);
         }
       }
-      
+
       console.log('Kullanıcı ID bulunamadı veya planları yoktu, örnek veri gösteriliyor');
       // Kullanıcı yoksa veya planları yoksa örnek test planını göster
       setTripData(testTravelPlan);
@@ -104,8 +137,8 @@ export default function TripDetailsScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={() => router.back()}
         >
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
@@ -155,45 +188,83 @@ export default function TripDetailsScreen() {
           )}
 
           {/* Otel Seçenekleri */}
-          {tripData.hotelOptions && Array.isArray(tripData.hotelOptions) && tripData.hotelOptions.length > 0 && (
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Konaklama Seçenekleri</ThemedText>
-              {tripData.hotelOptions.map((hotel: any, index: number) => (
-                <View key={index} style={styles.card}>
-                  <ThemedText style={styles.hotelName}>{hotel.hotelName}</ThemedText>
-                  <ThemedText style={styles.infoItem}>{hotel.hotelAddress}</ThemedText>
-                  <ThemedText style={styles.infoItem}>Fiyat: {hotel.price}</ThemedText>
-                  <ThemedText style={styles.infoItem}>Değerlendirme: {hotel.rating}</ThemedText>
-                  <ThemedText style={styles.description}>{hotel.description}</ThemedText>
-                </View>
-              ))}
-            </View>
-          )}
+          {tripData.hotelOptions && (() => {
+            // İtinerary içindeki hotelOptions'ı kontrol et
+            let hotelOptionsToUse = tripData.hotelOptions;
 
-          {/* Gezi Planı */}
-          {tripData.itinerary && Array.isArray(tripData.itinerary) && tripData.itinerary.length > 0 && (
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Gezi Planı</ThemedText>
-              {tripData.itinerary.map((day: any, dayIndex: number) => (
-                <View key={dayIndex} style={styles.dayCard}>
-                  <ThemedText style={styles.dayTitle}>{day.day}</ThemedText>
-                  {day.plan && Array.isArray(day.plan) && day.plan.map((activity: any, actIndex: number) => (
-                    <View key={actIndex} style={styles.activityCard}>
-                      <ThemedText style={styles.activityTime}>{activity.time}</ThemedText>
-                      <ThemedText style={styles.activityName}>{activity.placeName}</ThemedText>
-                      <ThemedText style={styles.activityDetails}>{activity.placeDetails}</ThemedText>
-                      {activity.ticketPricing && (
-                        <ThemedText style={styles.infoItem}>Bilet: {activity.ticketPricing}</ThemedText>
-                      )}
-                      {activity.timeToTravel && (
-                        <ThemedText style={styles.infoItem}>Ulaşım Süresi: {activity.timeToTravel}</ThemedText>
-                      )}
+            // Eğer itinerary bir obje ve içinde hotelOptions varsa, onu kullan
+            if (tripData.itinerary && typeof tripData.itinerary === 'object' &&
+                tripData.itinerary.hotelOptions && Array.isArray(tripData.itinerary.hotelOptions)) {
+              hotelOptionsToUse = tripData.itinerary.hotelOptions;
+              console.log('İtinerary içindeki hotelOptions kullanılıyor');
+            }
+
+            if (Array.isArray(hotelOptionsToUse) && hotelOptionsToUse.length > 0) {
+              return (
+                <View style={styles.section}>
+                  <ThemedText style={styles.sectionTitle}>Konaklama Seçenekleri</ThemedText>
+                  {hotelOptionsToUse.map((hotel: any, index: number) => (
+                    <View key={index} style={styles.card}>
+                      <ThemedText style={styles.hotelName}>{hotel.hotelName}</ThemedText>
+                      <ThemedText style={styles.infoItem}>{hotel.hotelAddress}</ThemedText>
+                      <ThemedText style={styles.infoItem}>Fiyat: {hotel.priceRange || hotel.price || 'Belirtilmemiş'}</ThemedText>
+                      <ThemedText style={styles.infoItem}>Değerlendirme: {hotel.rating}</ThemedText>
+                      <ThemedText style={styles.description}>{hotel.description}</ThemedText>
                     </View>
                   ))}
                 </View>
-              ))}
-            </View>
-          )}
+              );
+            }
+            return null;
+          })()}
+
+          {/* Gezi Planı */}
+          {(() => {
+            // İtinerary'yi kontrol et ve doğru formatı bul
+            let itineraryToUse = null;
+
+            if (tripData.itinerary) {
+              // Direkt array ise kullan
+              if (Array.isArray(tripData.itinerary)) {
+                itineraryToUse = tripData.itinerary;
+                console.log('İtinerary array olarak kullanılıyor');
+              }
+              // Obje içinde itinerary array'i varsa onu kullan
+              else if (typeof tripData.itinerary === 'object' &&
+                       tripData.itinerary.itinerary &&
+                       Array.isArray(tripData.itinerary.itinerary)) {
+                itineraryToUse = tripData.itinerary.itinerary;
+                console.log('İtinerary objesi içindeki itinerary array kullanılıyor');
+              }
+            }
+
+            if (itineraryToUse && itineraryToUse.length > 0) {
+              return (
+                <View style={styles.section}>
+                  <ThemedText style={styles.sectionTitle}>Gezi Planı</ThemedText>
+                  {itineraryToUse.map((day: any, dayIndex: number) => (
+                    <View key={dayIndex} style={styles.dayCard}>
+                      <ThemedText style={styles.dayTitle}>{day.day}</ThemedText>
+                      {day.plan && Array.isArray(day.plan) && day.plan.map((activity: any, actIndex: number) => (
+                        <View key={actIndex} style={styles.activityCard}>
+                          <ThemedText style={styles.activityTime}>{activity.time}</ThemedText>
+                          <ThemedText style={styles.activityName}>{activity.placeName}</ThemedText>
+                          <ThemedText style={styles.activityDetails}>{activity.placeDetails}</ThemedText>
+                          {activity.ticketPricing && (
+                            <ThemedText style={styles.infoItem}>Bilet: {activity.ticketPricing}</ThemedText>
+                          )}
+                          {activity.timeToTravel && (
+                            <ThemedText style={styles.infoItem}>Ulaşım Süresi: {activity.timeToTravel}</ThemedText>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              );
+            }
+            return null;
+          })()}
 
           {/* Vize Bilgileri */}
           {tripData && tripData.visaInfo && typeof tripData.visaInfo === 'object' && (
@@ -251,12 +322,36 @@ export default function TripDetailsScreen() {
             </View>
           )}
 
+          {/* Temel Seyahat Bilgileri */}
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Seyahat Bilgileri</ThemedText>
+            <View style={styles.card}>
+              <ThemedText style={styles.infoItem}>Destinasyon: {tripData.destination}</ThemedText>
+              {tripData.startDate && <ThemedText style={styles.infoItem}>Başlangıç Tarihi: {tripData.startDate}</ThemedText>}
+              {tripData.duration && <ThemedText style={styles.infoItem}>Süre: {tripData.duration} gün</ThemedText>}
+              {tripData.budget && <ThemedText style={styles.infoItem}>Bütçe: {tripData.budget}</ThemedText>}
+              {tripData.groupType && <ThemedText style={styles.infoItem}>Grup Tipi: {tripData.groupType}</ThemedText>}
+              {tripData.numberOfPeople && <ThemedText style={styles.infoItem}>Kişi Sayısı: {tripData.numberOfPeople}</ThemedText>}
+              {tripData.bestTimeToVisit && <ThemedText style={styles.infoItem}>En İyi Ziyaret Zamanı: {tripData.bestTimeToVisit}</ThemedText>}
+            </View>
+          </View>
+
           {/* AI yanıtı düzgün parse edilememişse ham yanıtı göster */}
           {tripData.rawResponse && (
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Seyahat Planı</ThemedText>
               <View style={styles.card}>
                 <ThemedText style={styles.rawResponse}>{tripData.rawResponse}</ThemedText>
+              </View>
+            </View>
+          )}
+
+          {/* İtinerary string olarak kalmışsa göster */}
+          {tripData.itinerary && typeof tripData.itinerary === 'string' && tripData.itinerary !== '' && (
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Seyahat Planı (JSON)</ThemedText>
+              <View style={styles.card}>
+                <ThemedText style={styles.rawResponse}>{tripData.itinerary}</ThemedText>
               </View>
             </View>
           )}
