@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform, FlatList } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -11,15 +11,44 @@ import { useAuth } from '@clerk/clerk-expo';
 export default function TripDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [tripData, setTripData] = useState<Partial<TravelPlan>>(DEFAULT_TRAVEL_PLAN);
+  const [userPlans, setUserPlans] = useState<Partial<TravelPlan>[]>([]);
+  const [showPlansList, setShowPlansList] = useState(true); // True to show list, false to show details
   const router = useRouter();
   const params = useLocalSearchParams();
   const { userId } = useAuth();
   const planId = params.id as string | undefined;
 
+  // Belirli bir planı seçmek için
+  const selectPlan = (plan: Partial<TravelPlan>) => {
+    // İtinerary alanını parse et
+    if (plan.itinerary && typeof plan.itinerary === 'string') {
+      try {
+        const parsedItinerary = safeParseJSON(plan.itinerary);
+        if (parsedItinerary) {
+          console.log('Seçilen plan itinerary başarıyla parse edildi');
+          plan.itinerary = parsedItinerary;
+        }
+      } catch (parseError) {
+        console.error('Seçilen plan itinerary parse hatası:', parseError);
+      }
+    }
+
+    setTripData(plan);
+    setShowPlansList(false); // Detay görünümüne geç
+
+    // URL'i güncelle ama sayfayı yeniden yükleme
+    if (plan.id) {
+      router.setParams({ id: plan.id });
+    }
+  };
+
   useEffect(() => {
     const fetchTripData = async () => {
       try {
         setLoading(true);
+
+        // Önce kullanıcının tüm planlarını çekelim
+        await fetchAllUserPlans();
 
         if (planId) {
           // Belirli bir plan ID'si varsa, onu Firebase'den çekelim
@@ -45,14 +74,14 @@ export default function TripDetailsScreen() {
             }
 
             setTripData(plan);
+            setShowPlansList(false); // Detay görünümünü göster
           } else {
             console.error('Plan bulunamadı:', planId);
-            // Kullanıcının planlarına düşelim
-            await loadUserPlans();
+            setShowPlansList(true); // Liste görünümüne dön
           }
         } else {
-          // Plan ID yoksa kullanıcının planlarını çekelim
-          await loadUserPlans();
+          // Plan ID yoksa sadece liste görünümünü göster
+          setShowPlansList(true);
         }
       } catch (error) {
         console.error('Veri çekme hatası:', error);
@@ -62,68 +91,38 @@ export default function TripDetailsScreen() {
       }
     };
 
-    // Kullanıcının planlarını çeken yardımcı fonksiyon
-    const loadUserPlans = async () => {
-      // Sabit test dataları - kullanıcı ID olmayan durumda kullan
-      // Sadece test amaçlı, gerçek uygulamanın akışında bu silinecek
-      const testTravelPlan = {
-        ...DEFAULT_TRAVEL_PLAN,
-        destination: "Paris",
-        destinationInfo: {
-          name: "Paris",
-          country: "Fransa",
-          bestTimeToVisit: "Nisan-Ekim arası",
-          language: "Fransızca",
-          timezone: "GMT+1",
-          currency: "Euro (EUR)"
-        },
-        tripSummary: {
-          duration: "7 gün",
-          travelers: "2 kişi",
-          budget: "Orta"
-        }
-      };
-
+    // Tüm kullanıcı planlarını çeken fonksiyon
+    const fetchAllUserPlans = async () => {
       if (userId) {
-        console.log('Kullanıcının seyahat planları çekiliyor...');
+        console.log('Kullanıcının tüm seyahat planları çekiliyor...');
         try {
-          const userPlans = await FirebaseService.TravelPlan.getUserTravelPlans(userId);
+          const plans = await FirebaseService.TravelPlan.getUserTravelPlans(userId);
 
-          if (userPlans && userPlans.length > 0) {
-            console.log('Kullanıcının seyahat planları başarıyla alındı');
-            // En son oluşturulan planı alalım
-            const latestPlan = userPlans[0];
-
-            // İtinerary alanını parse et
-            if (latestPlan.itinerary && typeof latestPlan.itinerary === 'string') {
-              try {
-                const parsedItinerary = safeParseJSON(latestPlan.itinerary);
-                if (parsedItinerary) {
-                  console.log('Kullanıcı planı itinerary başarıyla parse edildi');
-                  latestPlan.itinerary = parsedItinerary;
-                } else {
-                  console.error('Kullanıcı planı itinerary parse edilemedi');
-                }
-              } catch (parseError) {
-                console.error('Kullanıcı planı itinerary parse hatası:', parseError);
-              }
-            }
-
-            setTripData(latestPlan);
-            return;
+          if (plans && plans.length > 0) {
+            console.log(`${plans.length} seyahat planı bulundu.`);
+            setUserPlans(plans);
+          } else {
+            console.log('Kullanıcı için plan bulunamadı');
+            setUserPlans([]);
           }
         } catch (error) {
-          console.error('Plan çekme hatası:', error);
+          console.error('Planları çekme hatası:', error);
+          setUserPlans([]);
         }
+      } else {
+        console.log('Kullanıcı ID bulunamadı');
+        setUserPlans([]);
       }
-
-      console.log('Kullanıcı ID bulunamadı veya planları yoktu, örnek veri gösteriliyor');
-      // Kullanıcı yoksa veya planları yoksa örnek test planını göster
-      setTripData(testTravelPlan);
     };
 
     fetchTripData();
   }, [userId, planId]);
+
+  // Plan listesine geri dönmek için
+  const handleBackToList = () => {
+    setShowPlansList(true);
+    router.setParams({ id: '' }); // URL'den ID'yi kaldır
+  };
 
   if (loading) {
     return (
@@ -134,12 +133,88 @@ export default function TripDetailsScreen() {
     );
   }
 
+  // Eğer liste görünümü aktifse, kullanıcının planlarını listele
+  if (showPlansList) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
+          </TouchableOpacity>
+          <ThemedText style={styles.title}>Seyahat Planlarım</ThemedText>
+        </View>
+
+        {userPlans.length > 0 ? (
+          <FlatList
+            data={userPlans}
+            keyExtractor={(item) => item.id || Math.random().toString()}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.planCard}
+                onPress={() => selectPlan(item)}
+              >
+                <View style={styles.planCardContent}>
+                  <ThemedText style={styles.planDestination}>{item.destination || 'İsimsiz Destinasyon'}</ThemedText>
+                  <View style={styles.planDetails}>
+                    {item.startDate && (
+                      <View style={styles.planDetailItem}>
+                        <MaterialCommunityIcons name="calendar" size={16} color="#4c669f" />
+                        <ThemedText style={styles.planDetailText}>{item.startDate}</ThemedText>
+                      </View>
+                    )}
+                    {item.duration && (
+                      <View style={styles.planDetailItem}>
+                        <MaterialCommunityIcons name="clock-outline" size={16} color="#4c669f" />
+                        <ThemedText style={styles.planDetailText}>{item.duration} gün</ThemedText>
+                      </View>
+                    )}
+                    {item.budget && (
+                      <View style={styles.planDetailItem}>
+                        <MaterialCommunityIcons name="wallet-outline" size={16} color="#4c669f" />
+                        <ThemedText style={styles.planDetailText}>{item.budget}</ThemedText>
+                      </View>
+                    )}
+                    {item.groupType && (
+                      <View style={styles.planDetailItem}>
+                        <MaterialCommunityIcons name="account-group-outline" size={16} color="#4c669f" />
+                        <ThemedText style={styles.planDetailText}>{item.groupType}</ThemedText>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={24} color="#4c669f" />
+              </TouchableOpacity>
+            )}
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="map-search-outline" size={80} color="#4c669f" />
+            <ThemedText style={styles.emptyText}>
+              Henüz seyahat planınız bulunmuyor.
+            </ThemedText>
+            <TouchableOpacity
+              style={styles.createButton}
+              onPress={() => router.push('/')}
+            >
+              <ThemedText style={styles.createButtonText}>Yeni Plan Oluştur</ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // Detay görünümü - seçilen planın detaylarını göster
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={handleBackToList}
         >
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
@@ -512,6 +587,72 @@ const styles = StyleSheet.create({
   },
   rawResponse: {
     color: '#ccc',
+    fontFamily: 'SpaceMono',
+  },
+  // Plan listesi stilleri
+  listContent: {
+    padding: 16,
+    paddingTop: 0,
+  },
+  planCard: {
+    backgroundColor: '#111',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  planCardContent: {
+    flex: 1,
+  },
+  planDestination: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 8,
+    fontFamily: 'SpaceMono',
+  },
+  planDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  planDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+    marginBottom: 4,
+  },
+  planDetailText: {
+    color: '#ccc',
+    marginLeft: 4,
+    fontSize: 14,
+    fontFamily: 'SpaceMono',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#ccc',
+    textAlign: 'center',
+    marginBottom: 24,
+    fontFamily: 'SpaceMono',
+  },
+  createButton: {
+    backgroundColor: '#4c669f',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  createButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
     fontFamily: 'SpaceMono',
   },
 });
