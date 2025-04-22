@@ -1,6 +1,8 @@
 // Weather API Service
 
-const API_KEY = 'NRZST2X7EPA8LCP8BDHB2XGYY';
+import Constants from 'expo-constants';
+
+const API_KEY = Constants.expoConfig?.extra?.weatherApiKey || '';
 
 export interface WeatherData {
   date: string;
