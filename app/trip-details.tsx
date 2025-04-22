@@ -42,86 +42,136 @@ export default function TripDetailsScreen() {
     }
   };
 
-  useEffect(() => {
-    const fetchTripData = async () => {
-      try {
-        setLoading(true);
+  // Sayfa yüklenirken veya yenilenirken çağrılan fonksiyon
+  const loadData = async () => {
+    console.log('loadData çağrıldı, planId:', planId);
+    try {
+      setLoading(true);
 
-        // Önce kullanıcının tüm planlarını çekelim
-        await fetchAllUserPlans();
+      // Önce kullanıcının tüm planlarını çekelim
+      if (userId) {
+        console.log('Kullanıcının tüm seyahat planları çekiliyor...');
+        const plans = await FirebaseService.TravelPlan.getUserTravelPlans(userId);
 
-        if (planId) {
-          // Belirli bir plan ID'si varsa, onu Firebase'den çekelim
-          console.log('Firebase\'den belirli seyahat planı çekiliyor, ID:', planId);
-          const plan = await FirebaseService.TravelPlan.getTravelPlanById(planId);
-
-          if (plan && Object.keys(plan).length > 0) {
-            console.log('Plan başarıyla çekildi');
-
-            // İtinerary alanını parse et
+        if (plans && plans.length > 0) {
+          console.log(`${plans.length} seyahat planı bulundu.`);
+          // Her planın itinerary alanını parse et
+          const parsedPlans = plans.map(plan => {
             if (plan.itinerary && typeof plan.itinerary === 'string') {
               try {
                 const parsedItinerary = safeParseJSON(plan.itinerary);
                 if (parsedItinerary) {
-                  console.log('İtinerary başarıyla parse edildi');
                   plan.itinerary = parsedItinerary;
-                } else {
-                  console.error('İtinerary parse edilemedi');
                 }
-              } catch (parseError) {
-                console.error('İtinerary parse hatası:', parseError);
+              } catch (error) {
+                console.error('Plan parse hatası:', error);
               }
             }
+            return plan;
+          });
 
-            setTripData(plan);
-            setShowPlansList(false); // Detay görünümünü göster
+          setUserPlans(parsedPlans);
+
+          // Eğer belirli bir plan ID'si varsa, o planı göster
+          if (planId) {
+            const selectedPlan = parsedPlans.find(p => p.id === planId);
+            if (selectedPlan) {
+              console.log('Plan bulundu ve seçildi:', planId);
+              setTripData(selectedPlan);
+              setShowPlansList(false);
+              return; // Fonksiyondan çık
+            } else {
+              // Planlar içinde bulunamadıysa, Firebase'den direkt çekmeyi dene
+              await loadSinglePlan(planId);
+            }
           } else {
-            console.error('Plan bulunamadı:', planId);
-            setShowPlansList(true); // Liste görünümüne dön
+            // Plan ID yoksa liste görünümünü göster
+            setShowPlansList(true);
           }
         } else {
-          // Plan ID yoksa sadece liste görünümünü göster
-          setShowPlansList(true);
-        }
-      } catch (error) {
-        console.error('Veri çekme hatası:', error);
-        setTripData(DEFAULT_TRAVEL_PLAN);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Tüm kullanıcı planlarını çeken fonksiyon
-    const fetchAllUserPlans = async () => {
-      if (userId) {
-        console.log('Kullanıcının tüm seyahat planları çekiliyor...');
-        try {
-          const plans = await FirebaseService.TravelPlan.getUserTravelPlans(userId);
-
-          if (plans && plans.length > 0) {
-            console.log(`${plans.length} seyahat planı bulundu.`);
-            setUserPlans(plans);
-          } else {
-            console.log('Kullanıcı için plan bulunamadı');
-            setUserPlans([]);
-          }
-        } catch (error) {
-          console.error('Planları çekme hatası:', error);
+          console.log('Kullanıcı için plan bulunamadı');
           setUserPlans([]);
+          setShowPlansList(true);
+
+          // Yine de belirli bir plan ID'si varsa, onu yüklemeyi dene
+          if (planId) {
+            await loadSinglePlan(planId);
+          }
         }
       } else {
         console.log('Kullanıcı ID bulunamadı');
         setUserPlans([]);
-      }
-    };
+        setShowPlansList(true);
 
-    fetchTripData();
+        // Kullanıcı yoksa bile belirli bir plan ID'si varsa, onu yüklemeyi dene
+        if (planId) {
+          await loadSinglePlan(planId);
+        }
+      }
+    } catch (error) {
+      console.error('Veri yükleme hatası:', error);
+      setUserPlans([]);
+      setTripData(DEFAULT_TRAVEL_PLAN);
+      setShowPlansList(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Tek bir planı ID'ye göre yükle
+  const loadSinglePlan = async (id: string) => {
+    try {
+      console.log('Firebase\'den belirli seyahat planı çekiliyor, ID:', id);
+      const plan = await FirebaseService.TravelPlan.getTravelPlanById(id);
+
+      if (plan && Object.keys(plan).length > 0) {
+        console.log('Plan başarıyla çekildi');
+
+        // İtinerary alanını parse et
+        if (plan.itinerary && typeof plan.itinerary === 'string') {
+          try {
+            const parsedItinerary = safeParseJSON(plan.itinerary);
+            if (parsedItinerary) {
+              console.log('İtinerary başarıyla parse edildi');
+              plan.itinerary = parsedItinerary;
+            } else {
+              console.error('İtinerary parse edilemedi');
+            }
+          } catch (parseError) {
+            console.error('İtinerary parse hatası:', parseError);
+          }
+        }
+
+        setTripData(plan);
+        setShowPlansList(false); // Detay görünümünü göster
+        return true;
+      } else {
+        console.error('Plan bulunamadı:', id);
+        setShowPlansList(true); // Liste görünümüne dön
+        return false;
+      }
+    } catch (error) {
+      console.error('Plan yükleme hatası:', error);
+      setShowPlansList(true);
+      return false;
+    }
+  };
+
+  // Component mount olduğunda veya userId/planId değiştiğinde veriyi yükle
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, planId]);
 
   // Plan listesine geri dönmek için
   const handleBackToList = () => {
     setShowPlansList(true);
     router.setParams({ id: '' }); // URL'den ID'yi kaldır
+  };
+
+  // Sayfayı manuel olarak yenilemek için
+  const handleRefresh = () => {
+    loadData();
   };
 
   if (loading) {
@@ -145,6 +195,12 @@ export default function TripDetailsScreen() {
             <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
           </TouchableOpacity>
           <ThemedText style={styles.title}>Seyahat Planlarım</ThemedText>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={handleRefresh}
+          >
+            <MaterialCommunityIcons name="refresh" size={24} color="#4c669f" />
+          </TouchableOpacity>
         </View>
 
         {userPlans.length > 0 ? (
@@ -219,6 +275,12 @@ export default function TripDetailsScreen() {
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.title}>Seyahat Planı</ThemedText>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={handleRefresh}
+        >
+          <MaterialCommunityIcons name="refresh" size={24} color="#4c669f" />
+        </TouchableOpacity>
       </View>
 
       {tripData ? (
@@ -457,11 +519,16 @@ const styles = StyleSheet.create({
   backButton: {
     marginRight: 16,
   },
+  refreshButton: {
+    marginLeft: 'auto',
+    padding: 8,
+  },
   title: {
     fontSize: 28,
     fontWeight: '700',
     color: '#fff',
     fontFamily: 'SpaceMono',
+    flex: 1,
   },
   content: {
     padding: 16,
