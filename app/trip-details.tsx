@@ -7,12 +7,16 @@ import { TravelPlan, DEFAULT_TRAVEL_PLAN } from './types/travel';
 import { safeParseJSON } from './types/travel';
 import { FirebaseService } from './services/firebase.service';
 import { useAuth } from '@clerk/clerk-expo';
+import { getWeatherForecast, WeatherData } from './services/weather.service';
+import WeatherCard from './components/WeatherCard';
 
 export default function TripDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [tripData, setTripData] = useState<Partial<TravelPlan>>(DEFAULT_TRAVEL_PLAN);
   const [userPlans, setUserPlans] = useState<Partial<TravelPlan>[]>([]);
   const [showPlansList, setShowPlansList] = useState(true); // True to show list, false to show details
+  const [weatherData, setWeatherData] = useState<WeatherData[] | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
   const router = useRouter();
   const params = useLocalSearchParams();
   const { userId } = useAuth();
@@ -36,9 +40,137 @@ export default function TripDetailsScreen() {
     setTripData(plan);
     setShowPlansList(false); // Detay görünümüne geç
 
+    // Hava durumu verilerini getir
+    fetchWeatherData(plan);
+
     // URL'i güncelle ama sayfayı yeniden yükleme
     if (plan.id) {
       router.setParams({ id: plan.id });
+    }
+  };
+
+  // Hava durumu verilerini getir
+  const fetchWeatherData = async (plan: Partial<TravelPlan>) => {
+    if (!plan.destination) return;
+
+    setWeatherLoading(true);
+    try {
+      // Destinasyon bilgisini al
+      const destination = plan.destination;
+
+      // Tarih bilgisini al (plan.startDate veya bugünün tarihi)
+      let tripDate: Date;
+      if (plan.startDate) {
+        // startDate formatı "DD/MM/YYYY" olarak kabul edilir
+        const [day, month, year] = plan.startDate.split('/').map(Number);
+        tripDate = new Date(year, month - 1, day); // Ay 0-11 arasında olduğu için -1
+      } else {
+        tripDate = new Date(); // Bugünün tarihi
+      }
+
+      // Tarih geçerli değilse bugünün tarihini kullan
+      if (isNaN(tripDate.getTime())) {
+        tripDate = new Date();
+      }
+
+      // Plan verilerini debug için logla
+      console.log('Plan verileri:', {
+        destination: plan.destination,
+        startDate: plan.startDate,
+        duration: plan.duration,
+        days: plan.days,
+        tripSummary: plan.tripSummary ? {
+          duration: plan.tripSummary.duration,
+          travelers: plan.tripSummary.travelers,
+          budget: plan.tripSummary.budget
+        } : null,
+        itineraryType: typeof plan.itinerary
+      });
+
+      // Konaklama süresi (gün sayısı)
+      let durationDays = 1;
+
+      // duration değerini kontrol et (sayı veya string olabilir)
+      if (plan.duration) {
+        if (typeof plan.duration === 'number') {
+          durationDays = plan.duration;
+        } else if (typeof plan.duration === 'string') {
+          // "3 days" gibi string'den sayıyı çıkar
+          const durationStr = plan.duration as string;
+          const durationMatch = durationStr.match(/\d+/);
+          if (durationMatch) {
+            durationDays = parseInt(durationMatch[0], 10);
+          }
+        }
+      }
+
+      // Eğer duration'dan gün sayısı çıkarılamadıysa days alanını kontrol et
+      if (durationDays === 1 && plan.days) {
+        if (typeof plan.days === 'number') {
+          durationDays = plan.days;
+        } else if (typeof plan.days === 'string') {
+          const daysStr = plan.days as string;
+          const daysMatch = daysStr.match(/\d+/);
+          if (daysMatch) {
+            durationDays = parseInt(daysMatch[0], 10);
+          }
+        }
+      }
+
+      // tripSummary içindeki duration bilgisini kontrol et
+      if (durationDays === 1 && plan.tripSummary && plan.tripSummary.duration) {
+        const durationStr = plan.tripSummary.duration as string;
+        const durationMatch = durationStr.match(/\d+/);
+        if (durationMatch) {
+          durationDays = parseInt(durationMatch[0], 10);
+        }
+      }
+
+      // Hala 1 gün ise, itinerary içindeki gün sayısını kontrol et
+      if (durationDays === 1 && plan.itinerary) {
+        if (typeof plan.itinerary === 'object' && Array.isArray(plan.itinerary)) {
+          durationDays = Math.max(1, plan.itinerary.length);
+        } else if (typeof plan.itinerary === 'object' && plan.itinerary.itinerary && Array.isArray(plan.itinerary.itinerary)) {
+          durationDays = Math.max(1, plan.itinerary.itinerary.length);
+        } else if (typeof plan.itinerary === 'string') {
+          // JSON string olarak saklanmış itinerary'yi parse etmeyi dene
+          try {
+            const parsedItinerary = safeParseJSON(plan.itinerary);
+            if (parsedItinerary) {
+              if (Array.isArray(parsedItinerary)) {
+                durationDays = Math.max(1, parsedItinerary.length);
+              } else if (parsedItinerary.itinerary && Array.isArray(parsedItinerary.itinerary)) {
+                durationDays = Math.max(1, parsedItinerary.itinerary.length);
+              }
+            }
+          } catch (error) {
+            console.error('Itinerary parse hatası:', error);
+          }
+        }
+      }
+
+      console.log('Tespit edilen konaklama süresi:', durationDays, 'gün');
+
+      // En az 1, en fazla 15 gün olacak şekilde sınırla
+      durationDays = Math.max(1, Math.min(15, durationDays));
+
+      console.log(`Hava durumu getiriliyor: ${destination}, Tarih: ${tripDate.toISOString().split('T')[0]}, Süre: ${durationDays} gün`);
+
+      // Hava durumu verilerini getir
+      const forecast = await getWeatherForecast(destination, tripDate, durationDays);
+
+      if (forecast && forecast.length > 0) {
+        setWeatherData(forecast);
+        console.log(`${forecast.length} günlük hava durumu verileri başarıyla alındı`);
+      } else {
+        console.warn('Hava durumu verileri alınamadı');
+        setWeatherData(null);
+      }
+    } catch (error) {
+      console.error('Hava durumu verileri getirme hatası:', error);
+      setWeatherData(null);
+    } finally {
+      setWeatherLoading(false);
     }
   };
 
@@ -79,6 +211,7 @@ export default function TripDetailsScreen() {
               console.log('Plan bulundu ve seçildi:', planId);
               setTripData(selectedPlan);
               setShowPlansList(false);
+              fetchWeatherData(selectedPlan); // Hava durumu verilerini getir
               return; // Fonksiyondan çık
             } else {
               // Planlar içinde bulunamadıysa, Firebase'den direkt çekmeyi dene
@@ -144,6 +277,7 @@ export default function TripDetailsScreen() {
 
         setTripData(plan);
         setShowPlansList(false); // Detay görünümünü göster
+        fetchWeatherData(plan); // Hava durumu verilerini getir
         return true;
       } else {
         console.error('Plan bulunamadı:', id);
@@ -172,6 +306,9 @@ export default function TripDetailsScreen() {
   // Sayfayı manuel olarak yenilemek için
   const handleRefresh = () => {
     loadData();
+    if (!showPlansList && tripData) {
+      fetchWeatherData(tripData);
+    }
   };
 
   if (loading) {
@@ -473,6 +610,22 @@ export default function TripDetailsScreen() {
             </View>
           </View>
 
+          {/* Hava Durumu */}
+          {weatherLoading ? (
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Hava Durumu</ThemedText>
+              <View style={[styles.card, styles.weatherLoadingContainer]}>
+                <ActivityIndicator size="small" color="#4c669f" />
+                <ThemedText style={styles.weatherLoadingText}>Hava durumu bilgileri yükleniyor...</ThemedText>
+              </View>
+            </View>
+          ) : weatherData ? (
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Hava Durumu</ThemedText>
+              <WeatherCard weatherData={weatherData} />
+            </View>
+          ) : null}
+
           {/* AI yanıtı düzgün parse edilememişse ham yanıtı göster */}
           {tripData.rawResponse && (
             <View style={styles.section}>
@@ -654,6 +807,16 @@ const styles = StyleSheet.create({
   },
   rawResponse: {
     color: '#ccc',
+    fontFamily: 'SpaceMono',
+  },
+  weatherLoadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  weatherLoadingText: {
+    color: '#ccc',
+    marginTop: 8,
     fontFamily: 'SpaceMono',
   },
   // Plan listesi stilleri
