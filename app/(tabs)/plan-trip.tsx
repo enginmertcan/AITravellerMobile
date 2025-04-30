@@ -16,6 +16,9 @@ import { searchPlaces, getPlaceDetails, type Place as PlaceType } from '@/app/se
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 // AsyncStorage kaldırıldı
 
+// Firebase servisindeki formatTravelPlanForWeb fonksiyonunu kullan
+// Bu fonksiyon artık kaldırıldı, doğrudan Firebase servisini kullanıyoruz
+
 interface Country {
   name: {
     common: string;
@@ -81,9 +84,9 @@ export default function PlanTripScreen() {
 
   const filterResidenceCountries = (text: string) => {
     setCountrySearchText(text);
-    
+
     if (text.trim().length >= 3) {
-      const filtered = countries.filter(country => 
+      const filtered = countries.filter(country =>
         country.name.common.toLowerCase().includes(text.toLowerCase())
       );
       setFilteredResidenceCountries(filtered);
@@ -92,12 +95,12 @@ export default function PlanTripScreen() {
       setShowResidenceResults(false);
     }
   };
-  
+
   const filterCitizenshipCountries = (text: string) => {
     setCitizenshipSearchText(text);
-    
+
     if (text.trim().length >= 3) {
-      const filtered = countries.filter(country => 
+      const filtered = countries.filter(country =>
         country.name.common.toLowerCase().includes(text.toLowerCase())
       );
       setFilteredCitizenshipCountries(filtered);
@@ -106,13 +109,13 @@ export default function PlanTripScreen() {
       setShowCitizenshipResults(false);
     }
   };
-  
+
   const selectResidenceCountry = (country: Country) => {
     setFormState({ ...formState, residenceCountry: country.name.common });
     setCountrySearchText(country.name.common);
     setShowResidenceResults(false);
   };
-  
+
   const selectCitizenshipCountry = (country: Country) => {
     setFormState({ ...formState, citizenship: country.name.common });
     setCitizenshipSearchText(country.name.common);
@@ -162,7 +165,8 @@ export default function PlanTripScreen() {
   }, [searchQuery, isDomestic]);
 
 
-  
+
+
   const handlePlanTrip = async () => {
     if (!isSignedIn) {
       Alert.alert('Giriş Gerekli', 'Lütfen önce giriş yapın.');
@@ -192,11 +196,11 @@ export default function PlanTripScreen() {
     }
 
     setIsLoading(true);
-    
+
     try {
       // Kullanıcı ID'sini kullan
       const userIdStr = userId || '';
-      
+
       // Form verilerini hazırla
       const travelFormData = {
         city: formState.city,
@@ -210,19 +214,22 @@ export default function PlanTripScreen() {
         isDomestic: isDomestic,
         userId: userIdStr,
       };
-      
+
       console.log('Seyahat planı oluşturuluyor...', travelFormData);
-      
+
       // AI servisini çağır - createTravelPlan metodu
       const travelPlan = await chatSession.createTravelPlan(travelFormData);
-      
+
       // Sadece konsol için
       console.log('Oluşturulan seyahat planı:', JSON.stringify(travelPlan, null, 2));
-      
+
+      // Web uyumluluğu için veri formatını düzenle
+      const formattedPlan = FirebaseService.TravelPlan.formatTravelPlanForWeb(travelPlan);
+
       // Firebase'e kaydet
       let travelPlanId = '';
       try {
-        travelPlanId = await FirebaseService.TravelPlan.createTravelPlan(travelPlan);
+        travelPlanId = await FirebaseService.TravelPlan.createTravelPlan(formattedPlan);
         console.log("Seyahat planı Firebase'e kaydedildi, ID:", travelPlanId);
       } catch (error) {
         console.error('Firebase kaydetme hatası:', error);
@@ -233,9 +240,9 @@ export default function PlanTripScreen() {
         );
         return; // Hata durumunda işlemi sonlandır
       }
-      
+
       console.log('Seyahat planı oluşturuldu ve kaydedildi');
-      
+
       // Kullanıcıyı detay sayfasına yönlendir (plan ID ile)
       if (travelPlanId) {
         router.push(`/trip-details?id=${travelPlanId}`);
@@ -265,14 +272,14 @@ export default function PlanTripScreen() {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
     }
-    
+
     if (date) {
       // Güncellenen tarihi kaydet
       setSelectedDate(date);
       setFormState({ ...formState, startDate: date });
     }
   };
-  
+
   const renderDatePicker = () => {
     if (Platform.OS === 'ios') {
       // iOS için her zaman göster
@@ -299,7 +306,7 @@ export default function PlanTripScreen() {
         />
       );
     }
-    
+
     return null;
   };
 
@@ -459,14 +466,14 @@ export default function PlanTripScreen() {
               </ThemedText>
             </View>
             {Platform.OS === 'ios' && (
-              <TouchableOpacity 
-                onPress={() => setShowDatePicker(!showDatePicker)} 
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(!showDatePicker)}
                 style={{ padding: 8 }}
               >
-                <MaterialCommunityIcons 
-                  name={showDatePicker ? "chevron-up" : "chevron-down"} 
-                  size={24} 
-                  color="#666" 
+                <MaterialCommunityIcons
+                  name={showDatePicker ? "chevron-up" : "chevron-down"}
+                  size={24}
+                  color="#666"
                 />
               </TouchableOpacity>
             )}
@@ -573,7 +580,7 @@ export default function PlanTripScreen() {
               <View style={styles.searchablePickerContainer}>
                 <View style={styles.inputContainer}>
                   {formState.residenceCountry && countrySearchText === formState.residenceCountry && (
-                    <Image 
+                    <Image
                       source={{ uri: countries.find(c => c.name.common === formState.residenceCountry)?.flags.png }}
                       style={styles.selectedCountryFlag}
                     />
@@ -594,14 +601,14 @@ export default function PlanTripScreen() {
                       </TouchableOpacity>
                     ) : (
                       filteredResidenceCountries.map((country) => (
-                        <TouchableOpacity 
-                          key={country.cca2} 
+                        <TouchableOpacity
+                          key={country.cca2}
                           style={styles.countryResultItem}
                           onPress={() => selectResidenceCountry(country)}
                         >
-                          <Image 
-                            source={{ uri: country.flags.png }} 
-                            style={styles.countryFlag} 
+                          <Image
+                            source={{ uri: country.flags.png }}
+                            style={styles.countryFlag}
                           />
                           <ThemedText style={styles.countryName}>
                             {country.name.common}
@@ -625,7 +632,7 @@ export default function PlanTripScreen() {
               <View style={styles.searchablePickerContainer}>
                 <View style={styles.inputContainer}>
                   {formState.citizenship && citizenshipSearchText === formState.citizenship && (
-                    <Image 
+                    <Image
                       source={{ uri: countries.find(c => c.name.common === formState.citizenship)?.flags.png }}
                       style={styles.selectedCountryFlag}
                     />
@@ -646,14 +653,14 @@ export default function PlanTripScreen() {
                       </TouchableOpacity>
                     ) : (
                       filteredCitizenshipCountries.map((country) => (
-                        <TouchableOpacity 
-                          key={country.cca2} 
+                        <TouchableOpacity
+                          key={country.cca2}
                           style={styles.countryResultItem}
                           onPress={() => selectCitizenshipCountry(country)}
                         >
-                          <Image 
-                            source={{ uri: country.flags.png }} 
-                            style={styles.countryFlag} 
+                          <Image
+                            source={{ uri: country.flags.png }}
+                            style={styles.countryFlag}
                           />
                           <ThemedText style={styles.countryName}>
                             {country.name.common}
@@ -1019,4 +1026,4 @@ const styles = StyleSheet.create({
   clearButton: {
     padding: 4,
   },
-}); 
+});

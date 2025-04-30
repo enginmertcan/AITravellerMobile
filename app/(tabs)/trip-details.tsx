@@ -14,27 +14,148 @@ export default function TripDetailsScreen() {
   useEffect(() => {
     const fetchTripData = async () => {
       try {
-        // AsyncStorage'dan AI yanıtını alıyoruz
-        const aiResponse = await AsyncStorage.getItem('aiTripResponse');
-        
-        if (aiResponse) {
-          // JSON olarak parse etmeye çalışıyoruz
+        // URL'den id parametresini al
+        const tripId = params.id;
+
+        if (tripId) {
+          // Firebase'den veri çek
+          const { FirebaseService } = require('@/app/services/firebase.service');
           try {
-            // Son işaretçilerden temizleme (varsa ```json ve ``` işaretçilerini kaldırıyoruz)
-            const cleanedResponse = aiResponse
-              .replace(/```json/g, '')
-              .replace(/```/g, '')
-              .trim();
-              
-            const parsedData = JSON.parse(cleanedResponse);
-            setTripData(parsedData);
-          } catch (parseError) {
-            console.error('JSON parse hatası:', parseError);
-            // JSON olarak parse edilemiyorsa düz metin olarak gösteriyoruz
-            setTripData({ rawResponse: aiResponse });
+            console.log('Firebase\'den veri çekiliyor, ID:', tripId);
+            const tripData = await FirebaseService.TravelPlan.getTravelPlanById(tripId as string);
+
+            if (tripData) {
+              console.log('Firebase\'den veri çekildi:', tripData);
+
+              // Itinerary alanını parse et
+              if (tripData.itinerary && typeof tripData.itinerary === 'string') {
+                try {
+                  const parsedItinerary = JSON.parse(tripData.itinerary);
+
+                  // Web formatındaki itinerary'yi mobil formata dönüştür
+                  if (parsedItinerary.itinerary && Array.isArray(parsedItinerary.itinerary)) {
+                    tripData.itinerary = parsedItinerary.itinerary;
+                  }
+
+                  // hotelOptions alanını parse et
+                  if (parsedItinerary.hotelOptions && Array.isArray(parsedItinerary.hotelOptions)) {
+                    tripData.hotelOptions = parsedItinerary.hotelOptions;
+                  }
+                } catch (parseError) {
+                  console.error('Itinerary parse hatası:', parseError);
+                }
+              }
+
+              // hotelOptions alanını parse et
+              if (tripData.hotelOptions && typeof tripData.hotelOptions === 'string') {
+                try {
+                  tripData.hotelOptions = JSON.parse(tripData.hotelOptions);
+                } catch (parseError) {
+                  console.error('hotelOptions parse hatası:', parseError);
+                  tripData.hotelOptions = [];
+                }
+              }
+
+              // visaInfo alanını parse et
+              if (tripData.visaInfo && typeof tripData.visaInfo === 'string') {
+                try {
+                  tripData.visaInfo = JSON.parse(tripData.visaInfo);
+                } catch (parseError) {
+                  console.error('visaInfo parse hatası:', parseError);
+                }
+              }
+
+              // culturalDifferences alanını parse et
+              if (tripData.culturalDifferences && typeof tripData.culturalDifferences === 'string') {
+                try {
+                  tripData.culturalDifferences = JSON.parse(tripData.culturalDifferences);
+                } catch (parseError) {
+                  console.error('culturalDifferences parse hatası:', parseError);
+                }
+              }
+
+              // localTips alanını parse et
+              if (tripData.localTips && typeof tripData.localTips === 'string') {
+                try {
+                  tripData.localTips = JSON.parse(tripData.localTips);
+                } catch (parseError) {
+                  console.error('localTips parse hatası:', parseError);
+                }
+              }
+
+              setTripData(tripData);
+            } else {
+              console.error('Firebase\'de veri bulunamadı');
+
+              // Firebase'de veri bulunamazsa AsyncStorage'dan veri çekmeyi dene
+              const aiResponse = await AsyncStorage.getItem('aiTripResponse');
+
+              if (aiResponse) {
+                try {
+                  // Son işaretçilerden temizleme (varsa ```json ve ``` işaretçilerini kaldırıyoruz)
+                  const cleanedResponse = aiResponse
+                    .replace(/```json/g, '')
+                    .replace(/```/g, '')
+                    .trim();
+
+                  const parsedData = JSON.parse(cleanedResponse);
+                  setTripData(parsedData);
+                } catch (parseError) {
+                  console.error('JSON parse hatası:', parseError);
+                  // JSON olarak parse edilemiyorsa düz metin olarak gösteriyoruz
+                  setTripData({ rawResponse: aiResponse });
+                }
+              } else {
+                console.error('AI yanıtı bulunamadı');
+              }
+            }
+          } catch (firebaseError) {
+            console.error('Firebase veri çekme hatası:', firebaseError);
+
+            // Firebase'den veri çekme hatası durumunda AsyncStorage'dan veri çekmeyi dene
+            const aiResponse = await AsyncStorage.getItem('aiTripResponse');
+
+            if (aiResponse) {
+              try {
+                // Son işaretçilerden temizleme (varsa ```json ve ``` işaretçilerini kaldırıyoruz)
+                const cleanedResponse = aiResponse
+                  .replace(/```json/g, '')
+                  .replace(/```/g, '')
+                  .trim();
+
+                const parsedData = JSON.parse(cleanedResponse);
+                setTripData(parsedData);
+              } catch (parseError) {
+                console.error('JSON parse hatası:', parseError);
+                // JSON olarak parse edilemiyorsa düz metin olarak gösteriyoruz
+                setTripData({ rawResponse: aiResponse });
+              }
+            } else {
+              console.error('AI yanıtı bulunamadı');
+            }
           }
         } else {
-          console.error('AI yanıtı bulunamadı');
+          // ID yoksa AsyncStorage'dan veri çekmeyi dene
+          const aiResponse = await AsyncStorage.getItem('aiTripResponse');
+
+          if (aiResponse) {
+            try {
+              // Son işaretçilerden temizleme (varsa ```json ve ``` işaretçilerini kaldırıyoruz)
+              const cleanedResponse = aiResponse
+                .replace(/```json/g, '')
+                .replace(/```/g, '')
+                .trim();
+
+              const parsedData = JSON.parse(cleanedResponse);
+              setTripData(parsedData);
+            } catch (parseError) {
+              console.error('JSON parse hatası:', parseError);
+              // JSON olarak parse edilemiyorsa düz metin olarak gösteriyoruz
+              setTripData({ rawResponse: aiResponse });
+            }
+          } else {
+            console.error('AI yanıtı bulunamadı');
+          }
         }
       } catch (error) {
         console.error('Veri çekme hatası:', error);
@@ -58,13 +179,28 @@ export default function TripDetailsScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => router.back()}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            try {
+              // Önce router.back() fonksiyonunu deneyin
+              router.back();
+            } catch (error) {
+              console.error('router.back() hatası:', error);
+              // Hata durumunda ana sayfaya yönlendirin
+              router.push('/');
+            }
+          }}
         >
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.title}>Seyahat Planı</ThemedText>
+        <TouchableOpacity
+          style={styles.homeButton}
+          onPress={() => router.push('/')}
+        >
+          <MaterialCommunityIcons name="home" size={24} color="#fff" />
+        </TouchableOpacity>
       </View>
 
       {tripData ? (
@@ -222,6 +358,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: 16,
+  },
+  homeButton: {
+    marginLeft: 'auto',
+    padding: 8,
   },
   title: {
     fontSize: 28,

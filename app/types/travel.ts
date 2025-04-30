@@ -1,3 +1,50 @@
+export interface GeoCoordinates {
+  latitude: number;
+  longitude: number;
+}
+
+export interface Activity {
+  time?: string;
+  name?: string;
+  placeName?: string;
+  title?: string;
+  description?: string;
+  placeDetails?: string;
+  imageUrl?: string;
+  placeImageUrl?: string;
+  geoCoordinates?: GeoCoordinates;
+  timeEstimate?: string;
+  timeToSpend?: string;
+  timeToTravel?: string;
+  ticketPricing?: string;
+  cost?: string;
+  tips?: string[];
+  warnings?: string[];
+  alternatives?: string[];
+}
+
+export interface DayPlan {
+  day: string;
+  theme?: string;
+  activities?: Activity[];
+  plan?: Activity[];
+}
+
+export interface Hotel {
+  hotelName: string;
+  hotelAddress: string;
+  priceRange?: string;
+  price?: string;
+  imageUrl?: string;
+  hotelImageUrl?: string;
+  geoCoordinates?: GeoCoordinates;
+  rating?: number;
+  description: string;
+  bestTimeToVisit?: string;
+  features?: string[];
+  surroundings?: string;
+}
+
 export interface TravelPlan {
   // Temel bilgiler
   id?: string;                // Firebase document ID
@@ -7,7 +54,7 @@ export interface TravelPlan {
   // Temel seyahat bilgileri
   startDate: string;           // Başlangıç tarihi
   endDate?: string;            // Bitiş tarihi (opsiyonel)
-  duration: number;            // Seyahat süresi (gün)
+  duration: string;            // Seyahat süresi (gün) - Web uyumluluğu için string
   days?: number;               // Alternatif süre gösterimi
 
   // Ülke ve konum bilgileri
@@ -57,13 +104,16 @@ export interface TravelPlan {
     currency: string;
   };
 
-  // Gezi planı ve otel bilgileri - JSON.stringify edilmiş olabilir veya JSON nesnesi
-  itinerary?: string | any;     // Seyahat programı (günlük plan)
-  hotelOptions?: any[] | any;    // Otel seçenekleri listesi
+  // Gezi planı ve otel bilgileri - Web uyumluluğu için
+  itinerary: { [key: string]: DayPlan | Activity[] } | string;  // Web uyumluluğu için nesne veya string
+  hotelOptions: Hotel[] | string;  // Web uyumluluğu için dizi veya string
 
   // Kültürel bilgiler ve yerel ipuçları
-  culturalDifferences?: any;     // Kültürel farklılıklar
-  localTips?: any;               // Yerel ipuçları
+  culturalDifferences?: string;
+  lifestyleDifferences?: string;
+  foodCultureDifferences?: string;
+  socialNormsDifferences?: string;
+  localTips?: any;
 
   // Seyahat özeti
   tripSummary?: {
@@ -73,12 +123,10 @@ export interface TravelPlan {
   };
 
   // Vize bilgileri
-  visaInfo?: {
-    visaRequirement: string;
-    visaApplicationProcess: string;
-    requiredDocuments: string[];
-    visaFee?: string;
-  };
+  visaInfo?: VisaInfo;
+  visaRequirements?: string;
+  visaApplicationProcess?: string;
+  visaFees?: string;
 
   // Diğer yardımcı bilgiler
   travelDocumentChecklist?: string | string[];
@@ -86,6 +134,24 @@ export interface TravelPlan {
   emergencyContacts?: string | string[];
   currencyAndPayment?: string;
   communicationInfo?: string;
+  healthcareInfo?: string;
+}
+
+export interface VisaInfo {
+  visaRequirement: string;
+  visaApplicationProcess: string;
+  requiredDocuments: string[];
+  visaFee: string;
+  visaProcessingTime: string;
+  visaApplicationCenters: string;
+  passportRequirements: string;
+  passportValidityRequirements: string;
+  importantNotes: string;
+  emergencyContacts: {
+    ambulance: string;
+    police: string;
+    jandarma: string;
+  };
 }
 
 // Yardımcı fonksiyonlar
@@ -131,7 +197,7 @@ export const DEFAULT_TRAVEL_PLAN: TravelPlan = {
   id: '',
   destination: '',
   startDate: '',
-  duration: 0,
+  duration: '', // Web uyumluluğu için string
   budget: '',
   residenceCountry: '',
   citizenship: '',
@@ -152,22 +218,45 @@ export const DEFAULT_TRAVEL_PLAN: TravelPlan = {
     timezone: '',
     currency: ''
   },
-  // Boş diziler ve nesneler
-  itinerary: '',
+  // Web uyumluluğu için boş nesne
+  itinerary: {},
   hotelOptions: [],
+  // Kültürel farklılıklar
+  culturalDifferences: '',
+  lifestyleDifferences: '',
+  foodCultureDifferences: '',
+  socialNormsDifferences: '',
+  // Seyahat özeti
   tripSummary: {
     duration: '',
     travelers: '',
     budget: ''
   },
+  // Vize bilgileri
   visaInfo: {
     visaRequirement: '',
     visaApplicationProcess: '',
-    requiredDocuments: []
+    requiredDocuments: [],
+    visaFee: '',
+    visaProcessingTime: '',
+    visaApplicationCenters: '',
+    passportRequirements: '',
+    passportValidityRequirements: '',
+    importantNotes: '',
+    emergencyContacts: {
+      ambulance: '',
+      police: '',
+      jandarma: ''
+    }
   },
+  visaRequirements: '',
+  visaApplicationProcess: '',
+  visaFees: '',
+  // Diğer yardımcı bilgiler
   travelDocumentChecklist: [],
   localTransportationGuide: '',
   emergencyContacts: [],
   currencyAndPayment: '',
-  communicationInfo: ''
+  communicationInfo: '',
+  healthcareInfo: ''
 };

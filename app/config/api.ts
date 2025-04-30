@@ -4,6 +4,7 @@
 export const API_CONFIG = {
   GOOGLE_MAPS: 'AIzaSyCP-WHzK8XQXT_ThNQ5g5oNVXqNMtZ4cOg',
   GEMINI: 'AIzaSyA7U8nOp60TreFZ5g9CJ3zloEFheLHkOes',
+  OPENAI: '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',
   OPENWEATHER: '825ea120647b5af2d604e6c801967453',
   VISUAL_CROSSING: 'NRZST2X7EPA8LCP8BDHB2XGYY',
   RESEND: 're_QAjLr3Yj_Cd9JY7XuLSsxnTvi9yiJa9ZH',
@@ -15,6 +16,7 @@ export const API_ENDPOINTS = {
   OPENWEATHER: 'https://api.openweathermap.org/data/2.5',
   VISUAL_CROSSING: 'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services',
   RESEND: 'https://api.resend.com',
+  OPENAI: 'https://api.openai.com/v1',
 };
 
 const apiConfig = {
