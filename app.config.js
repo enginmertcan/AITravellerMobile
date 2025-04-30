@@ -42,6 +42,8 @@ module.exports = {
   extra: {
     firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
     clerkPublishableKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    weatherApiKey: process.env.EXPO_PUBLIC_WEATHER_API_KEY,
+    openaiApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
     eas: {
       projectId: "your-project-id"
     }
