@@ -237,7 +237,7 @@ export const TravelPlanService = {
       }
     });
 
-    // startDate formatını kontrol et ve DD/MM/YYYY formatına dönüştür
+    // startDate formatını kontrol et ve web uygulaması için uygun formata dönüştür
     if (formattedPlan.startDate) {
       try {
         let date: Date;
@@ -269,28 +269,37 @@ export const TravelPlanService = {
 
         // Geçerli bir tarih mi kontrol et
         if (!isNaN(date.getTime())) {
-          const day = date.getDate().toString().padStart(2, '0');
-          const month = (date.getMonth() + 1).toString().padStart(2, '0');
-          const year = date.getFullYear();
-          formattedPlan.startDate = `${day}/${month}/${year}`;
-          console.log('Tarih formatı düzenlendi:', formattedPlan.startDate);
+          // Web uygulaması için Türkçe tarih formatı (30 Nisan 2025)
+          const options: Intl.DateTimeFormatOptions = {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          };
+
+          // Türkçe tarih formatı oluştur
+          formattedPlan.startDate = date.toLocaleDateString('tr-TR', options);
+          console.log('Tarih formatı düzenlendi (Türkçe format):', formattedPlan.startDate);
         } else {
           console.warn('Geçersiz tarih:', formattedPlan.startDate);
           // Geçersiz tarih ise bugünün tarihini kullan
           const today = new Date();
-          const day = today.getDate().toString().padStart(2, '0');
-          const month = (today.getMonth() + 1).toString().padStart(2, '0');
-          const year = today.getFullYear();
-          formattedPlan.startDate = `${day}/${month}/${year}`;
+          const options: Intl.DateTimeFormatOptions = {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          };
+          formattedPlan.startDate = today.toLocaleDateString('tr-TR', options);
         }
       } catch (error) {
         console.error('Tarih dönüştürme hatası:', error);
         // Hata durumunda bugünün tarihini kullan
         const today = new Date();
-        const day = today.getDate().toString().padStart(2, '0');
-        const month = (today.getMonth() + 1).toString().padStart(2, '0');
-        const year = today.getFullYear();
-        formattedPlan.startDate = `${day}/${month}/${year}`;
+        const options: Intl.DateTimeFormatOptions = {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        };
+        formattedPlan.startDate = today.toLocaleDateString('tr-TR', options);
       }
     }
 
@@ -379,7 +388,7 @@ export const TravelPlanService = {
         destination: "Bükreş, Romanya",
         duration: "3 days", // Web uyumluluğu için string
         days: 3,
-        startDate: "04/04/2025",
+        startDate: "4 Nisan 2025",
         country: "Romanya",
         citizenship: "Turkey",
         residenceCountry: "Turkey",

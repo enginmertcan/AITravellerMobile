@@ -50,7 +50,7 @@ export default function PlanTripScreen() {
   }>({
     city: '',
     startDate: new Date(),
-    days: 7,
+    days: 3,
     budget: '',
     companion: '',
     residenceCountry: '',
