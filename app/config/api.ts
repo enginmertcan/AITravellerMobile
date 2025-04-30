@@ -4,13 +4,11 @@
 import Constants from 'expo-constants';
 
 export const API_CONFIG = {
-  GOOGLE_MAPS: 'AIzaSyCP-WHzK8XQXT_ThNQ5g5oNVXqNMtZ4cOg',
-  GEMINI: 'AIzaSyA7U8nOp60TreFZ5g9CJ3zloEFheLHkOes',
-  OPENWEATHER: '825ea120647b5af2d604e6c801967453',
-  VISUAL_CROSSING: Constants.expoConfig?.extra?.weatherApiKey || 'NRZST2X7EPA8LCP8BDHB2XGYY',
+  GOOGLE_MAPS: Constants.expoConfig?.extra?.googleMapsApiKey || '',
+  OPENWEATHER: Constants.expoConfig?.extra?.openWeatherApiKey || '',
+  VISUAL_CROSSING: Constants.expoConfig?.extra?.weatherApiKey || '',
   OPENAI: Constants.expoConfig?.extra?.openaiApiKey || '',
-  RESEND: 're_QAjLr3Yj_Cd9JY7XuLSsxnTvi9yiJa9ZH',
-  MONGODB_URI: 'mongodb+srv://enginmertcan:1q2w3e4r5t@cluster0.l82nk.mongodb.net/ai-traveller?retryWrites=true&w=majority',
+  RESEND: Constants.expoConfig?.extra?.resendApiKey || '',
 };
 
 export const API_ENDPOINTS = {

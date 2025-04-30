@@ -44,6 +44,9 @@ module.exports = {
     clerkPublishableKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
     weatherApiKey: process.env.EXPO_PUBLIC_WEATHER_API_KEY,
     openaiApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
+    googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+    openWeatherApiKey: process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY,
+    resendApiKey: process.env.EXPO_PUBLIC_RESEND_API_KEY,
     eas: {
       projectId: "your-project-id"
     }
