@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Plat
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { TravelPlan, DEFAULT_TRAVEL_PLAN } from './types/travel';
+import { TravelPlan, DEFAULT_TRAVEL_PLAN, Hotel } from './types/travel';
 import { safeParseJSON } from './types/travel';
 import { FirebaseService } from './services/firebase.service';
 import { useAuth } from '@clerk/clerk-expo';
@@ -64,14 +64,21 @@ export default function TripDetailsScreen() {
         // startDate formatı "DD/MM/YYYY" olarak kabul edilir
         const [day, month, year] = plan.startDate.split('/').map(Number);
         tripDate = new Date(year, month - 1, day); // Ay 0-11 arasında olduğu için -1
+
+        // Tarih geçerli değilse bugünün tarihini kullan
+        if (isNaN(tripDate.getTime())) {
+          console.warn('Geçersiz tarih formatı:', plan.startDate);
+          tripDate = new Date();
+        }
       } else {
         tripDate = new Date(); // Bugünün tarihi
       }
 
-      // Tarih geçerli değilse bugünün tarihini kullan
-      if (isNaN(tripDate.getTime())) {
-        tripDate = new Date();
-      }
+      console.log('Tarih bilgisi:', {
+        startDate: plan.startDate,
+        parsedDate: tripDate.toISOString(),
+        isValid: !isNaN(tripDate.getTime())
+      });
 
       // Plan verilerini debug için logla
       console.log('Plan verileri:', {
@@ -469,7 +476,8 @@ export default function TripDetailsScreen() {
             // Eğer itinerary bir obje ve içinde hotelOptions varsa, onu kullan
             if (tripData.itinerary && typeof tripData.itinerary === 'object' &&
                 tripData.itinerary.hotelOptions && Array.isArray(tripData.itinerary.hotelOptions)) {
-              hotelOptionsToUse = tripData.itinerary.hotelOptions;
+              // Tip dönüşümü yaparak hotelOptions'ı kullan
+              hotelOptionsToUse = tripData.itinerary.hotelOptions as unknown as Hotel[];
               console.log('İtinerary içindeki hotelOptions kullanılıyor');
             }
 
@@ -551,6 +559,7 @@ export default function TripDetailsScreen() {
                 {tripData.visaInfo.visaApplicationProcess && (
                   <ThemedText style={styles.infoItem}>Vize Başvuru Süreci: {tripData.visaInfo.visaApplicationProcess}</ThemedText>
                 )}
+                {/* requiredDocuments kontrolü - null veya undefined olabilir */}
                 {tripData.visaInfo.requiredDocuments && Array.isArray(tripData.visaInfo.requiredDocuments) && tripData.visaInfo.requiredDocuments.length > 0 ? (
                   <>
                     <ThemedText style={styles.subTitle}>Gerekli Belgeler:</ThemedText>
@@ -563,6 +572,25 @@ export default function TripDetailsScreen() {
                 )}
                 {tripData.visaInfo.visaFee && (
                   <ThemedText style={styles.infoItem}>Vize Ücreti: {tripData.visaInfo.visaFee}</ThemedText>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Alternatif Vize Bilgileri - visaInfo objesi yoksa ama ayrı alanlar varsa */}
+          {(!tripData.visaInfo || typeof tripData.visaInfo !== 'object') &&
+           (tripData.visaRequirements || tripData.visaApplicationProcess || tripData.visaFees) && (
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Vize ve Pasaport Bilgileri</ThemedText>
+              <View style={styles.card}>
+                {tripData.visaRequirements && (
+                  <ThemedText style={styles.infoItem}>Vize Gerekliliği: {tripData.visaRequirements}</ThemedText>
+                )}
+                {tripData.visaApplicationProcess && (
+                  <ThemedText style={styles.infoItem}>Vize Başvuru Süreci: {tripData.visaApplicationProcess}</ThemedText>
+                )}
+                {tripData.visaFees && (
+                  <ThemedText style={styles.infoItem}>Vize Ücreti: {tripData.visaFees}</ThemedText>
                 )}
               </View>
             </View>

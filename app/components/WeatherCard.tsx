@@ -31,12 +31,56 @@ const weatherIconMap: { [key: string]: string } = {
 };
 
 export default function WeatherCard({ weatherData }: WeatherCardProps) {
+  // Hava durumu verilerini kontrol et ve benzersiz günleri filtrele
+  const uniqueWeatherData = React.useMemo(() => {
+    if (!weatherData || weatherData.length === 0) return [];
+
+    // Tarih bazında benzersiz günleri filtrele
+    const uniqueDates = new Map<string, WeatherData>();
+    weatherData.forEach(day => {
+      // Tarih formatını normalize et - DD/MM/YYYY formatını kullan
+      let dateKey = day.date;
+
+      // Eğer bu tarih daha önce eklenmemişse ekle
+      if (!uniqueDates.has(dateKey)) {
+        uniqueDates.set(dateKey, day);
+      }
+    });
+
+    // Map'ten array'e çevir ve tarihe göre sırala
+    return Array.from(uniqueDates.values()).sort((a, b) => {
+      // DD/MM/YYYY formatını Date objesine çevir
+      const [dayA, monthA, yearA] = a.date.split('/').map(Number);
+      const [dayB, monthB, yearB] = b.date.split('/').map(Number);
+
+      const dateA = new Date(yearA, monthA - 1, dayA);
+      const dateB = new Date(yearB, monthB - 1, dayB);
+
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [weatherData]);
+
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
-  const selectedDay = weatherData[selectedDayIndex];
+  const selectedDay = uniqueWeatherData[selectedDayIndex] || weatherData[0];
 
   // Format date
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // Tarih formatını kontrol et (YYYY-MM-DD veya DD/MM/YYYY)
+    let date;
+    if (dateString.includes('/')) {
+      // DD/MM/YYYY formatı
+      const [day, month, year] = dateString.split('/').map(Number);
+      date = new Date(year, month - 1, day); // Ay 0-11 arasında olduğu için -1
+    } else {
+      // YYYY-MM-DD formatı (API'den gelen)
+      date = new Date(dateString);
+    }
+
+    // Geçerli bir tarih mi kontrol et
+    if (isNaN(date.getTime())) {
+      return "Geçersiz Tarih";
+    }
+
     return date.toLocaleDateString('tr-TR', {
       weekday: 'long',
       year: 'numeric',
@@ -47,7 +91,22 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
 
   // Format short date (for day selector)
   const formatShortDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // Tarih formatını kontrol et (YYYY-MM-DD veya DD/MM/YYYY)
+    let date;
+    if (dateString.includes('/')) {
+      // DD/MM/YYYY formatı
+      const [day, month, year] = dateString.split('/').map(Number);
+      date = new Date(year, month - 1, day); // Ay 0-11 arasında olduğu için -1
+    } else {
+      // YYYY-MM-DD formatı (API'den gelen)
+      date = new Date(dateString);
+    }
+
+    // Geçerli bir tarih mi kontrol et
+    if (isNaN(date.getTime())) {
+      return "Geçersiz Tarih";
+    }
+
     return date.toLocaleDateString('tr-TR', {
       weekday: 'short',
       day: 'numeric',
@@ -68,7 +127,7 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
         style={styles.daySelector}
         contentContainerStyle={styles.daySelectorContent}
       >
-        {weatherData.map((day, index) => (
+        {uniqueWeatherData.map((day, index) => (
           <TouchableOpacity
             key={day.date}
             style={[styles.dayButton, index === selectedDayIndex && styles.selectedDayButton]}

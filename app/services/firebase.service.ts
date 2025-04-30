@@ -237,6 +237,63 @@ export const TravelPlanService = {
       }
     });
 
+    // startDate formatını kontrol et ve DD/MM/YYYY formatına dönüştür
+    if (formattedPlan.startDate) {
+      try {
+        let date: Date;
+
+        // String ise parse et
+        if (typeof formattedPlan.startDate === 'string') {
+          // ISO formatı (2023-04-30T14:52:18.000Z)
+          if (formattedPlan.startDate.includes('T')) {
+            date = new Date(formattedPlan.startDate);
+          }
+          // Zaten DD/MM/YYYY formatındaysa
+          else if (formattedPlan.startDate.includes('/')) {
+            const [day, month, year] = formattedPlan.startDate.split('/').map(Number);
+            date = new Date(year, month - 1, day);
+          }
+          // Diğer string formatları
+          else {
+            date = new Date(formattedPlan.startDate);
+          }
+        }
+        // Date objesi ise direkt kullan
+        else if (typeof formattedPlan.startDate === 'object' && formattedPlan.startDate !== null && 'getTime' in formattedPlan.startDate) {
+          date = formattedPlan.startDate as Date;
+        }
+        // Diğer durumlar için bugünün tarihini kullan
+        else {
+          date = new Date();
+        }
+
+        // Geçerli bir tarih mi kontrol et
+        if (!isNaN(date.getTime())) {
+          const day = date.getDate().toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const year = date.getFullYear();
+          formattedPlan.startDate = `${day}/${month}/${year}`;
+          console.log('Tarih formatı düzenlendi:', formattedPlan.startDate);
+        } else {
+          console.warn('Geçersiz tarih:', formattedPlan.startDate);
+          // Geçersiz tarih ise bugünün tarihini kullan
+          const today = new Date();
+          const day = today.getDate().toString().padStart(2, '0');
+          const month = (today.getMonth() + 1).toString().padStart(2, '0');
+          const year = today.getFullYear();
+          formattedPlan.startDate = `${day}/${month}/${year}`;
+        }
+      } catch (error) {
+        console.error('Tarih dönüştürme hatası:', error);
+        // Hata durumunda bugünün tarihini kullan
+        const today = new Date();
+        const day = today.getDate().toString().padStart(2, '0');
+        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+        const year = today.getFullYear();
+        formattedPlan.startDate = `${day}/${month}/${year}`;
+      }
+    }
+
     // Veri formatını kontrol et - web uygulamasının beklediği formatta olduğundan emin ol
     console.log('Web uyumluluğu için veri formatı düzenlendi:', Object.keys(formattedPlan));
 

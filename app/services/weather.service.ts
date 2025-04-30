@@ -18,7 +18,7 @@ export interface WeatherData {
 
 // Yedek hava durumu verisi
 const fallbackWeatherData: WeatherData = {
-  date: new Date().toISOString(),
+  date: formatDateToDDMMYYYY(new Date()), // Web uyumluluğu için DD/MM/YYYY formatında
   temperature: 20,
   feelsLike: 20,
   description: "Hava durumu verisi alınamadı",
@@ -28,6 +28,14 @@ const fallbackWeatherData: WeatherData = {
   precipitationProbability: 0,
   uvIndex: 5
 };
+
+// Tarihi DD/MM/YYYY formatına dönüştüren yardımcı fonksiyon
+function formatDateToDDMMYYYY(date: Date): string {
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
 
 // Konum adını formatlama fonksiyonu
 function formatLocation(location: string): string {
@@ -85,6 +93,12 @@ export async function getWeatherForecast(location: string, startDate: Date, days
       return [fallbackWeatherData];
     }
 
+    // Tarih geçerli mi kontrol et
+    if (isNaN(startDate.getTime())) {
+      console.warn('Invalid date provided:', startDate);
+      startDate = new Date(); // Geçersiz tarih ise bugünün tarihini kullan
+    }
+
     // Tarih aralığını hesapla
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + Math.min(days, 15) - 1); // API en fazla 15 gün destekliyor
@@ -92,7 +106,7 @@ export async function getWeatherForecast(location: string, startDate: Date, days
     const formattedStartDate = startDate.toISOString().split('T')[0];
     const formattedEndDate = endDate.toISOString().split('T')[0];
 
-    console.log(`Fetching weather for ${formattedLocation} from ${formattedStartDate} to ${formattedEndDate}`);
+    console.log(`Fetching weather for ${formattedLocation} from ${formattedStartDate} to ${formattedEndDate} (${days} days)`);
 
     // API çağrısını yap - tarih aralığı için
     const response = await fetch(
@@ -119,18 +133,30 @@ export async function getWeatherForecast(location: string, startDate: Date, days
       return [fallbackWeatherData];
     }
 
-    // Veriyi dönüştür
-    return data.days.map((day: any) => ({
-      date: day.datetime,
-      temperature: day.temp ?? 20,
-      feelsLike: day.feelslike ?? day.temp ?? 20,
-      description: day.conditions ?? "Parçalı Bulutlu",
-      icon: getWeatherIcon(day.icon),
-      humidity: day.humidity ?? 50,
-      windSpeed: day.windspeed ?? 5,
-      precipitationProbability: day.precipprob ?? 0,
-      uvIndex: day.uvindex ?? 5
-    }));
+    // Veriyi dönüştür ve tarihi formatla
+    const weatherData = data.days.map((day: any, index: number) => {
+      // Tarihi hesapla (startDate + index gün)
+      const dayDate = new Date(startDate);
+      dayDate.setDate(startDate.getDate() + index);
+
+      // Tarihi DD/MM/YYYY formatına dönüştür (web uyumluluğu için)
+      const formattedDate = `${dayDate.getDate().toString().padStart(2, '0')}/${(dayDate.getMonth() + 1).toString().padStart(2, '0')}/${dayDate.getFullYear()}`;
+
+      return {
+        date: formattedDate, // Web uyumluluğu için DD/MM/YYYY formatında
+        temperature: day.temp ?? 20,
+        feelsLike: day.feelslike ?? day.temp ?? 20,
+        description: day.conditions ?? "Parçalı Bulutlu",
+        icon: getWeatherIcon(day.icon),
+        humidity: day.humidity ?? 50,
+        windSpeed: day.windspeed ?? 5,
+        precipitationProbability: day.precipprob ?? 0,
+        uvIndex: day.uvindex ?? 5
+      };
+    });
+
+    console.log(`${weatherData.length} günlük hava durumu verileri alındı`);
+    return weatherData;
 
   } catch (error) {
     console.error('Error fetching weather data:', error);
