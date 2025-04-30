@@ -206,28 +206,28 @@ export default function TripDetailsScreen() {
       {tripData ? (
         <View style={styles.content}>
           {/* Destinasyon Bilgileri */}
-          {tripData.destinationInfo && (
+          {tripData.destinationInfo && typeof tripData.destinationInfo === 'object' && (
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Destinasyon Bilgileri</ThemedText>
               <View style={styles.card}>
-                <ThemedText style={styles.destinationName}>{tripData.destinationInfo.name}</ThemedText>
-                <ThemedText style={styles.infoItem}>Ülke: {tripData.destinationInfo.country}</ThemedText>
-                <ThemedText style={styles.infoItem}>En İyi Ziyaret Zamanı: {tripData.destinationInfo.bestTimeToVisit}</ThemedText>
-                <ThemedText style={styles.infoItem}>Dil: {tripData.destinationInfo.language}</ThemedText>
-                <ThemedText style={styles.infoItem}>Saat Dilimi: {tripData.destinationInfo.timezone}</ThemedText>
-                <ThemedText style={styles.infoItem}>Para Birimi: {tripData.destinationInfo.currency}</ThemedText>
+                <ThemedText style={styles.destinationName}>{tripData.destinationInfo.name || 'Belirtilmemiş'}</ThemedText>
+                <ThemedText style={styles.infoItem}>Ülke: {tripData.destinationInfo.country || 'Belirtilmemiş'}</ThemedText>
+                <ThemedText style={styles.infoItem}>En İyi Ziyaret Zamanı: {tripData.destinationInfo.bestTimeToVisit || 'Belirtilmemiş'}</ThemedText>
+                <ThemedText style={styles.infoItem}>Dil: {tripData.destinationInfo.language || 'Belirtilmemiş'}</ThemedText>
+                <ThemedText style={styles.infoItem}>Saat Dilimi: {tripData.destinationInfo.timezone || 'Belirtilmemiş'}</ThemedText>
+                <ThemedText style={styles.infoItem}>Para Birimi: {tripData.destinationInfo.currency || 'Belirtilmemiş'}</ThemedText>
               </View>
             </View>
           )}
 
           {/* Seyahat Özeti */}
-          {tripData.tripSummary && (
+          {tripData.tripSummary && typeof tripData.tripSummary === 'object' && (
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Seyahat Özeti</ThemedText>
               <View style={styles.card}>
-                <ThemedText style={styles.infoItem}>Süre: {tripData.tripSummary.duration} gün</ThemedText>
-                <ThemedText style={styles.infoItem}>Seyahat Edenler: {tripData.tripSummary.travelers}</ThemedText>
-                <ThemedText style={styles.infoItem}>Bütçe: {tripData.tripSummary.budget}</ThemedText>
+                <ThemedText style={styles.infoItem}>Süre: {tripData.tripSummary.duration || 'Belirtilmemiş'}</ThemedText>
+                <ThemedText style={styles.infoItem}>Seyahat Edenler: {tripData.tripSummary.travelers || 'Belirtilmemiş'}</ThemedText>
+                <ThemedText style={styles.infoItem}>Bütçe: {tripData.tripSummary.budget || 'Belirtilmemiş'}</ThemedText>
               </View>
             </View>
           )}
@@ -274,13 +274,13 @@ export default function TripDetailsScreen() {
           )}
 
           {/* Vize Bilgileri */}
-          {tripData.visaInfo && (
+          {tripData.visaInfo && typeof tripData.visaInfo === 'object' && (
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Vize ve Pasaport Bilgileri</ThemedText>
               <View style={styles.card}>
-                <ThemedText style={styles.infoItem}>Vize Gerekliliği: {tripData.visaInfo.visaRequirement}</ThemedText>
-                <ThemedText style={styles.infoItem}>Vize Başvuru Süreci: {tripData.visaInfo.visaApplicationProcess}</ThemedText>
-                {tripData.visaInfo.requiredDocuments && (
+                <ThemedText style={styles.infoItem}>Vize Gerekliliği: {tripData.visaInfo.visaRequirement || 'Belirtilmemiş'}</ThemedText>
+                <ThemedText style={styles.infoItem}>Vize Başvuru Süreci: {tripData.visaInfo.visaApplicationProcess || 'Belirtilmemiş'}</ThemedText>
+                {tripData.visaInfo.requiredDocuments && Array.isArray(tripData.visaInfo.requiredDocuments) && tripData.visaInfo.requiredDocuments.length > 0 && (
                   <>
                     <ThemedText style={styles.subTitle}>Gerekli Belgeler:</ThemedText>
                     {tripData.visaInfo.requiredDocuments.map((doc: string, index: number) => (
@@ -296,7 +296,7 @@ export default function TripDetailsScreen() {
           )}
 
           {/* Kültürel Farklılıklar */}
-          {tripData.culturalDifferences && (
+          {tripData.culturalDifferences && typeof tripData.culturalDifferences === 'object' && (
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Kültürel Farklılıklar</ThemedText>
               <View style={styles.card}>
@@ -310,7 +310,7 @@ export default function TripDetailsScreen() {
           )}
 
           {/* Yerel İpuçları */}
-          {tripData.localTips && (
+          {tripData.localTips && typeof tripData.localTips === 'object' && (
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Yerel İpuçları</ThemedText>
               <View style={styles.card}>

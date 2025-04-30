@@ -20,12 +20,14 @@ export interface PlaceDetails {
 export const searchPlaces = async (query: string, isDomestic: boolean = true): Promise<Place[]> => {
   try {
     console.log('Searching places with query:', query, 'isDomestic:', isDomestic);
-    
+
     // Google Places API for both domestic and international cities
     const baseUrl = `${API_ENDPOINTS.GOOGLE_MAPS}/maps/api/place/autocomplete/json`;
+    const apiKey = API_CONFIG.GOOGLE_MAPS || 'AIzaSyCP-WHzK8XQXT_ThNQ5g5oNVXqNMtZ4cOg';
+    console.log('Using Google Maps API Key:', apiKey);
     const params = new URLSearchParams({
       input: query,
-      key: API_CONFIG.GOOGLE_MAPS,
+      key: apiKey,
       types: '(cities)',
       language: 'tr'
     });
@@ -38,7 +40,7 @@ export const searchPlaces = async (query: string, isDomestic: boolean = true): P
     const response = await fetch(`${baseUrl}?${params}`);
     const responseText = await response.clone().text();
     console.log('Google Places API Response:', responseText);
-    
+
     const data = await response.json();
     console.log('Google Places API Data:', data);
 
@@ -62,12 +64,14 @@ export const searchPlaces = async (query: string, isDomestic: boolean = true): P
 export const getPlaceDetails = async (placeId: string, isDomestic: boolean = true): Promise<PlaceDetails | null> => {
   try {
     console.log('Getting place details for:', placeId, 'isDomestic:', isDomestic);
-    
+
     // Google Places API for both domestic and international cities
     const baseUrl = `${API_ENDPOINTS.GOOGLE_MAPS}/maps/api/place/details/json`;
+    const apiKey = API_CONFIG.GOOGLE_MAPS || 'AIzaSyCP-WHzK8XQXT_ThNQ5g5oNVXqNMtZ4cOg';
+    console.log('Using Google Maps API Key for details:', apiKey);
     const params = new URLSearchParams({
       place_id: placeId,
-      key: API_CONFIG.GOOGLE_MAPS,
+      key: apiKey,
       language: 'tr',
       fields: 'formatted_address,geometry,address_components'
     });
@@ -75,7 +79,7 @@ export const getPlaceDetails = async (placeId: string, isDomestic: boolean = tru
     const response = await fetch(`${baseUrl}?${params}`);
     const responseText = await response.clone().text();
     console.log('Google Places Details API Response:', responseText);
-    
+
     const data = await response.json();
     console.log('Google Places Details API Data:', data);
 
@@ -100,7 +104,7 @@ export const getPlaceDetails = async (placeId: string, isDomestic: boolean = tru
     console.error('Error getting place details:', error);
     return null;
   }
-}; 
+};
 
 // JSX component for Expo Router
 export function PlacesServiceComponent() {
