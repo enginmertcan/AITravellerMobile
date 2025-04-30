@@ -559,8 +559,11 @@ export default function TripDetailsScreen() {
                 {tripData.visaInfo.visaApplicationProcess && (
                   <ThemedText style={styles.infoItem}>Vize Başvuru Süreci: {tripData.visaInfo.visaApplicationProcess}</ThemedText>
                 )}
-                {/* requiredDocuments kontrolü - null veya undefined olabilir */}
-                {tripData.visaInfo.requiredDocuments && Array.isArray(tripData.visaInfo.requiredDocuments) && tripData.visaInfo.requiredDocuments.length > 0 ? (
+                {/* Güvenli kontrol - requiredDocuments var mı, array mi ve içinde eleman var mı? */}
+                {tripData.visaInfo &&
+                 tripData.visaInfo.requiredDocuments &&
+                 Array.isArray(tripData.visaInfo.requiredDocuments) &&
+                 tripData.visaInfo.requiredDocuments.length > 0 ? (
                   <>
                     <ThemedText style={styles.subTitle}>Gerekli Belgeler:</ThemedText>
                     {tripData.visaInfo.requiredDocuments.map((doc: string, index: number) => (
@@ -568,7 +571,7 @@ export default function TripDetailsScreen() {
                     ))}
                   </>
                 ) : (
-                  <ThemedText style={styles.infoItem}>Vize belgeleri bilgisi yok</ThemedText>
+                  <ThemedText style={styles.infoItem}>Gerekli belgeler belirtilmemiş</ThemedText>
                 )}
                 {tripData.visaInfo.visaFee && (
                   <ThemedText style={styles.infoItem}>Vize Ücreti: {tripData.visaInfo.visaFee}</ThemedText>

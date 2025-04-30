@@ -280,14 +280,22 @@ export default function TripDetailsScreen() {
               <View style={styles.card}>
                 <ThemedText style={styles.infoItem}>Vize Gerekliliği: {tripData.visaInfo.visaRequirement || 'Belirtilmemiş'}</ThemedText>
                 <ThemedText style={styles.infoItem}>Vize Başvuru Süreci: {tripData.visaInfo.visaApplicationProcess || 'Belirtilmemiş'}</ThemedText>
-                {tripData.visaInfo.requiredDocuments && Array.isArray(tripData.visaInfo.requiredDocuments) && tripData.visaInfo.requiredDocuments.length > 0 && (
+
+                {/* Güvenli kontrol - requiredDocuments var mı, array mi ve içinde eleman var mı? */}
+                {tripData.visaInfo &&
+                 tripData.visaInfo.requiredDocuments &&
+                 Array.isArray(tripData.visaInfo.requiredDocuments) &&
+                 tripData.visaInfo.requiredDocuments.length > 0 ? (
                   <>
                     <ThemedText style={styles.subTitle}>Gerekli Belgeler:</ThemedText>
                     {tripData.visaInfo.requiredDocuments.map((doc: string, index: number) => (
                       <ThemedText key={index} style={styles.listItem}>• {doc}</ThemedText>
                     ))}
                   </>
+                ) : (
+                  <ThemedText style={styles.infoItem}>Gerekli belgeler belirtilmemiş</ThemedText>
                 )}
+
                 {tripData.visaInfo.visaFee && (
                   <ThemedText style={styles.infoItem}>Vize Ücreti: {tripData.visaInfo.visaFee}</ThemedText>
                 )}
