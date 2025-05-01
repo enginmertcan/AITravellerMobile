@@ -3,10 +3,46 @@ import { ThemedText } from '@/components/ThemedText';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { FirebaseService } from '@/app/services/firebase.service';
 
 export default function ProfileScreen() {
   const { signOut } = useAuth();
   const { user } = useUser();
+  const [travelPlansCount, setTravelPlansCount] = useState(0);
+  const [countriesCount, setCountriesCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Kullanıcının seyahat planlarını ve ziyaret ettiği ülkeleri getir
+  useEffect(() => {
+    const fetchTravelPlans = async () => {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+        const plans = await FirebaseService.TravelPlan.getUserTravelPlans(user.id);
+
+        // Seyahat planı sayısını ayarla
+        setTravelPlansCount(plans.length);
+
+        // Ziyaret edilen benzersiz ülkeleri hesapla
+        const uniqueCountries = new Set();
+        plans.forEach(plan => {
+          if (plan.country) {
+            uniqueCountries.add(plan.country);
+          }
+        });
+
+        setCountriesCount(uniqueCountries.size);
+      } catch (error) {
+        console.error('Seyahat planları alınırken hata oluştu:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTravelPlans();
+  }, [user]);
 
   const menuItems = [
     {
@@ -52,13 +88,20 @@ export default function ProfileScreen() {
             </View>
           </View>
           <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <ThemedText style={styles.statNumber}>0</ThemedText>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => router.push('/trip-details')}
+            >
+              <ThemedText style={styles.statNumber}>
+                {loading ? '...' : travelPlansCount}
+              </ThemedText>
               <ThemedText style={styles.statLabel}>Seyahatler</ThemedText>
-            </View>
+            </TouchableOpacity>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <ThemedText style={styles.statNumber}>0</ThemedText>
+              <ThemedText style={styles.statNumber}>
+                {loading ? '...' : countriesCount}
+              </ThemedText>
               <ThemedText style={styles.statLabel}>Ülkeler</ThemedText>
             </View>
           </View>
@@ -171,6 +214,7 @@ const styles = StyleSheet.create({
   statItem: {
     alignItems: 'center',
     flex: 1,
+    padding: 10, // Tıklama alanını genişlet
   },
   statNumber: {
     fontSize: 24,
