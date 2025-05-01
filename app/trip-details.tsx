@@ -300,7 +300,13 @@ export default function TripDetailsScreen() {
 
   // Component mount olduğunda veya userId/planId değiştiğinde veriyi yükle
   useEffect(() => {
-    loadData();
+    // Immediate function to allow async/await
+    const fetchData = async () => {
+      console.log('useEffect triggered, loading data...');
+      await loadData();
+    };
+
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, planId]);
 
