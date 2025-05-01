@@ -8,7 +8,7 @@ import { useState } from 'react';
 export default function VerifyEmailScreen() {
   const { signUp, setActive } = useSignUp();
   const { email } = useLocalSearchParams();
-  
+
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +26,10 @@ export default function VerifyEmailScreen() {
       });
 
       await setActive({ session: completeSignUp.createdSessionId });
-      router.replace('/(tabs)');
+      // Navigasyon işlemini setTimeout içinde yaparak, bileşenin monte edilmesini bekleyelim
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 0);
     } catch (err: any) {
       Alert.alert(
         'Hata',
@@ -50,7 +53,7 @@ export default function VerifyEmailScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
@@ -167,4 +170,4 @@ const styles = StyleSheet.create({
     color: '#4c669f',
     fontSize: 16,
   },
-}); 
+});

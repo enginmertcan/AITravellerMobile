@@ -2,7 +2,7 @@ import { StyleSheet, View, TouchableOpacity, TextInput, Alert, KeyboardAvoidingV
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSignIn, useAuth } from '@clerk/clerk-expo';
-import { router } from 'expo-router';
+import { router, Redirect } from 'expo-router';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
@@ -14,15 +14,15 @@ export default function SignInScreen() {
   useWarmUpBrowser();
   const { isSignedIn } = useAuth();
   const { signIn, setActive } = useSignIn();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Kullanıcı zaten giriş yapmışsa, tabs'a yönlendir
   if (isSignedIn) {
-    router.replace('/(tabs)');
-    return null;
+    return <Redirect href="/(tabs)" />;
   }
 
   const onSignInWithGoogle = async () => {
@@ -38,10 +38,13 @@ export default function SignInScreen() {
       );
 
       const { createdSessionId } = await completeSignIn.refresh();
-      
+
       if (createdSessionId) {
         await setActive({ session: createdSessionId });
-        router.replace('/(tabs)');
+        // Navigasyon işlemini setTimeout içinde yaparak, bileşenin monte edilmesini bekleyelim
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 0);
       }
     } catch (err) {
       Alert.alert('Hata', 'Google ile giriş yapılırken bir hata oluştu.');
@@ -62,7 +65,10 @@ export default function SignInScreen() {
       });
 
       await setActive({ session: completeSignIn.createdSessionId });
-      router.replace('/(tabs)');
+      // Navigasyon işlemini setTimeout içinde yaparak, bileşenin monte edilmesini bekleyelim
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 0);
     } catch (err: any) {
       Alert.alert(
         'Hata',
@@ -74,11 +80,11 @@ export default function SignInScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >

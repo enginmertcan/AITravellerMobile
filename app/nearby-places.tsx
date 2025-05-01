@@ -18,13 +18,15 @@ import * as NearbyPlacesService from './services/nearby-places.service';
 import { NearbyPlace, LocationData } from './services/nearby-places.service';
 
 const PLACE_TYPES = [
-  { id: 'tourist_attraction', name: 'Turistik Yerler', icon: 'camera' },
-  { id: 'restaurant', name: 'Restoranlar', icon: 'food-fork-drink' },
-  { id: 'museum', name: 'Müzeler', icon: 'bank' },
-  { id: 'shopping_mall', name: 'Alışveriş', icon: 'shopping' },
-  { id: 'point_of_interest', name: 'İlgi Çekici Yerler', icon: 'map-marker' },
-  { id: 'park', name: 'Parklar', icon: 'tree' },
-  { id: 'cafe', name: 'Kafeler', icon: 'coffee' },
+  { id: 'tourist_attraction', name: 'Turistik Yerler', icon: 'camera', keywords: ['turist', 'gezi', 'görülecek'] },
+  { id: 'restaurant', name: 'Restoranlar', icon: 'food-fork-drink', keywords: ['yemek', 'restoran', 'lokanta'] },
+  { id: 'museum', name: 'Müzeler', icon: 'bank', keywords: ['müze', 'sergi', 'kültür'] },
+  { id: 'shopping_mall', name: 'Alışveriş', icon: 'shopping', keywords: ['avm', 'mağaza', 'market'] },
+  { id: 'hotel', name: 'Oteller', icon: 'bed', keywords: ['otel', 'konaklama', 'pansiyon'] },
+  { id: 'park', name: 'Parklar', icon: 'tree', keywords: ['park', 'bahçe', 'yeşil alan'] },
+  { id: 'cafe', name: 'Kafeler', icon: 'coffee', keywords: ['kafe', 'kahve', 'çay'] },
+  { id: 'bar', name: 'Barlar', icon: 'glass-cocktail', keywords: ['bar', 'pub', 'gece hayatı'] },
+  { id: 'bakery', name: 'Fırınlar', icon: 'bread-slice', keywords: ['fırın', 'pastane', 'ekmek'] },
 ];
 
 export default function NearbyPlacesScreen() {
@@ -66,14 +68,20 @@ export default function NearbyPlacesScreen() {
         case 'shopping_mall':
           nearbyPlaces = await NearbyPlacesService.getNearbyShoppingMalls();
           break;
-        case 'point_of_interest':
-          nearbyPlaces = await NearbyPlacesService.getNearbyPointsOfInterest();
+        case 'hotel':
+          nearbyPlaces = await NearbyPlacesService.getNearbyHotels();
           break;
         case 'park':
           nearbyPlaces = await NearbyPlacesService.getNearbyParks();
           break;
         case 'cafe':
           nearbyPlaces = await NearbyPlacesService.getNearbyCafes();
+          break;
+        case 'bar':
+          nearbyPlaces = await NearbyPlacesService.getNearbyBars();
+          break;
+        case 'bakery':
+          nearbyPlaces = await NearbyPlacesService.getNearbyBakeries();
           break;
         default:
           // Diğer türler için genel fonksiyonu kullan
@@ -277,12 +285,25 @@ export default function NearbyPlacesScreen() {
                   <ThemedText style={styles.placeName}>{place.name}</ThemedText>
                   <ThemedText style={styles.placeAddress}>{place.vicinity}</ThemedText>
 
-                  {place.rating && (
-                    <View style={styles.ratingContainer}>
-                      <MaterialCommunityIcons name="star" size={16} color="#FFD700" />
-                      <ThemedText style={styles.ratingText}>{place.rating}</ThemedText>
-                    </View>
-                  )}
+                  <View style={styles.detailsContainer}>
+                    {place.rating ? (
+                      <View style={styles.ratingContainer}>
+                        <MaterialCommunityIcons name="star" size={16} color="#FFD700" />
+                        <ThemedText style={styles.ratingText}>{place.rating.toFixed(1)}</ThemedText>
+                      </View>
+                    ) : null}
+
+                    {place.distance ? (
+                      <View style={styles.distanceContainer}>
+                        <MaterialCommunityIcons name="map-marker-distance" size={16} color="#4c669f" />
+                        <ThemedText style={styles.distanceText}>
+                          {place.distance < 1000
+                            ? `${Math.round(place.distance)} m`
+                            : `${(place.distance / 1000).toFixed(1)} km`}
+                        </ThemedText>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
 
                 <TouchableOpacity
@@ -456,11 +477,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontFamily: 'SpaceMono',
   },
+  detailsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: 12,
   },
   ratingText: {
+    fontSize: 14,
+    color: '#ccc',
+    marginLeft: 4,
+    fontFamily: 'SpaceMono',
+  },
+  distanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  distanceText: {
     fontSize: 14,
     color: '#ccc',
     marginLeft: 4,

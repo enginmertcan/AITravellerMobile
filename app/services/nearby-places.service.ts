@@ -2,18 +2,31 @@ import * as Location from 'expo-location';
 import { DEFAULT_SEARCH_RADIUS } from './config';
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
 
+// Yer türlerine göre filtreleme için anahtar kelimeler
+const TYPE_KEYWORDS = {
+  'tourist_attraction': ['turist', 'gezi', 'görülecek', 'anıt', 'heykel', 'müze', 'tarihi'],
+  'restaurant': ['yemek', 'restoran', 'lokanta', 'food', 'dinner'],
+  'museum': ['müze', 'sergi', 'kültür', 'sanat', 'tarih', 'museum'],
+  'shopping_mall': ['avm', 'mağaza', 'market', 'alışveriş', 'shopping'],
+  'lodging': ['otel', 'hotel', 'konaklama', 'pansiyon', 'motel'],
+  'park': ['park', 'bahçe', 'yeşil alan', 'garden'],
+  'cafe': ['kafe', 'kahve', 'çay', 'coffee', 'cafe'],
+  'bar': ['bar', 'pub', 'gece hayatı', 'içki', 'nightlife'],
+  'bakery': ['fırın', 'pastane', 'ekmek', 'bakery', 'pasta'],
+};
+
 export interface NearbyPlace {
   id: string;
   name: string;
   vicinity: string;
-  distance?: number;
-  rating?: number;
-  types?: string[];
-  photos?: string[];
+  distance?: number;  // Kullanıcı konumuna olan mesafe (metre cinsinden)
+  rating?: number;    // Yer puanı (5 üzerinden)
+  types?: string[];   // Yer türleri
+  photos?: string[];  // Fotoğraf URL'leri
   geometry: {
     location: {
-      lat: number;
-      lng: number;
+      lat: number;    // Enlem
+      lng: number;    // Boylam
     }
   };
 }
@@ -23,6 +36,75 @@ export interface LocationData {
   longitude: number;
   accuracy?: number;
 }
+
+/**
+ * İki nokta arasındaki mesafeyi hesaplar (Haversine formülü)
+ * @param lat1 Başlangıç noktası enlemi
+ * @param lon1 Başlangıç noktası boylamı
+ * @param lat2 Bitiş noktası enlemi
+ * @param lon2 Bitiş noktası boylamı
+ * @returns Metre cinsinden mesafe
+ */
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371e3; // Dünya'nın yarıçapı (metre)
+  const φ1 = lat1 * Math.PI / 180; // φ, λ radyan cinsinden
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // metre cinsinden
+};
+
+/**
+ * Yerleri puan ve mesafeye göre sıralar
+ * @param places Sıralanacak yerler listesi
+ * @returns Sıralanmış yerler listesi
+ */
+const sortPlaces = (places: NearbyPlace[]): NearbyPlace[] => {
+  return places.sort((a, b) => {
+    // Önce puanı yüksek olanlar
+    if (b.rating !== a.rating) {
+      return b.rating - a.rating;
+    }
+
+    // Puanlar eşitse, yakın olanlar
+    return (a.distance || 0) - (b.distance || 0);
+  });
+};
+
+/**
+ * Google Places API'den gelen sonuçları belirli bir türe göre filtreler
+ * @param places API'den gelen yerler listesi
+ * @param type Filtrelenecek yer türü
+ * @returns Filtrelenmiş yerler listesi
+ */
+const filterPlacesByType = (places: any[], type: string): any[] => {
+  // Eğer tür için anahtar kelimeler tanımlanmamışsa, tüm sonuçları döndür
+  if (!TYPE_KEYWORDS[type]) {
+    return places;
+  }
+
+  // Belirli türdeki yerleri filtrele
+  return places.filter(place => {
+    // Yer türlerini kontrol et
+    if (place.types && place.types.includes(type)) {
+      return true;
+    }
+
+    // Yer adında veya adresinde anahtar kelimeleri ara
+    const keywords = TYPE_KEYWORDS[type];
+    const nameAndVicinity = `${place.name} ${place.vicinity || ''}`.toLowerCase();
+
+    return keywords.some(keyword =>
+      nameAndVicinity.includes(keyword.toLowerCase())
+    );
+  });
+};
 
 /**
  * Kullanıcının mevcut konumunu alır
@@ -88,18 +170,31 @@ export const getNearbyPlaces = async (
       }
     }
 
+    // Sonuçları filtrele ve dönüştür
+    const filteredResults = filterPlacesByType(data.results, type);
+
     // Sonuçları dönüştür
-    return data.results.map((place: any) => ({
+    const mappedResults = filteredResults.map((place: any) => ({
       id: place.place_id,
       name: place.name,
       vicinity: place.vicinity,
-      rating: place.rating,
+      rating: place.rating || 0,
       types: place.types,
       photos: place.photos ? place.photos.map((photo: any) =>
         `${API_ENDPOINTS.GOOGLE_PLACES}/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${apiKey}`
       ) : [],
       geometry: place.geometry,
+      // Kullanıcı konumuna olan mesafeyi hesapla (metre cinsinden)
+      distance: calculateDistance(
+        location.latitude,
+        location.longitude,
+        place.geometry.location.lat,
+        place.geometry.location.lng
+      )
     }));
+
+    // Sonuçları sırala: Önce puan, sonra mesafe
+    return sortPlaces(mappedResults);
   } catch (error) {
     console.error('Yakın yerler alınamadı:', error);
     throw error;
@@ -200,6 +295,45 @@ export const getNearbyCafes = async (): Promise<NearbyPlace[]> => {
     return getNearbyPlaces(location, 2000, 'cafe');
   } catch (error) {
     console.error('Yakın kafeler alınamadı:', error);
+    throw error;
+  }
+};
+
+/**
+ * Kullanıcının mevcut konumuna göre yakın otelleri getirir
+ */
+export const getNearbyHotels = async (): Promise<NearbyPlace[]> => {
+  try {
+    const location = await getCurrentLocation();
+    return getNearbyPlaces(location, 3000, 'lodging');
+  } catch (error) {
+    console.error('Yakın oteller alınamadı:', error);
+    throw error;
+  }
+};
+
+/**
+ * Kullanıcının mevcut konumuna göre yakın barları getirir
+ */
+export const getNearbyBars = async (): Promise<NearbyPlace[]> => {
+  try {
+    const location = await getCurrentLocation();
+    return getNearbyPlaces(location, 2000, 'bar');
+  } catch (error) {
+    console.error('Yakın barlar alınamadı:', error);
+    throw error;
+  }
+};
+
+/**
+ * Kullanıcının mevcut konumuna göre yakın fırınları getirir
+ */
+export const getNearbyBakeries = async (): Promise<NearbyPlace[]> => {
+  try {
+    const location = await getCurrentLocation();
+    return getNearbyPlaces(location, 2000, 'bakery');
+  } catch (error) {
+    console.error('Yakın fırınlar alınamadı:', error);
     throw error;
   }
 };

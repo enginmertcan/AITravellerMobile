@@ -2,14 +2,14 @@ import { StyleSheet, View, TouchableOpacity, TextInput, Alert, KeyboardAvoidingV
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSignUp, useAuth } from '@clerk/clerk-expo';
-import { router } from 'expo-router';
+import { router, Redirect } from 'expo-router';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SignUpScreen() {
   const { isSignedIn } = useAuth();
   const { signUp, setActive } = useSignUp();
-  
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -17,9 +17,9 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Kullanıcı zaten giriş yapmışsa, tabs'a yönlendir
   if (isSignedIn) {
-    router.replace('/(tabs)');
-    return null;
+    return <Redirect href="/(tabs)" />;
   }
 
   const onSignUp = async () => {
@@ -57,11 +57,11 @@ export default function SignUpScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
