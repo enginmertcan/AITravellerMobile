@@ -175,16 +175,38 @@ export default function NearbyPlacesScreen() {
 
   // Yerleri sırala
   const sortPlaces = (option: SortOption) => {
+    if (!places || places.length === 0) {
+      console.log('Sıralanacak yer bulunamadı.');
+      return;
+    }
+
+    console.log(`${places.length} yer ${option} kriterine göre sıralanıyor...`);
+
     const sortedPlaces = [...places];
 
     if (option === SortOption.RATING) {
       // Yıldıza göre sırala (yüksekten düşüğe)
-      sortedPlaces.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      sortedPlaces.sort((a, b) => {
+        // Önce puanı olmayan yerleri en sona koy
+        if (!a.rating && b.rating) return 1;
+        if (a.rating && !b.rating) return -1;
+
+        // İki yerin de puanı varsa, yüksekten düşüğe sırala
+        return (b.rating || 0) - (a.rating || 0);
+      });
     } else if (option === SortOption.DISTANCE) {
       // Uzaklığa göre sırala (yakından uzağa)
-      sortedPlaces.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+      sortedPlaces.sort((a, b) => {
+        // Önce mesafesi olmayan yerleri en sona koy
+        if (!a.distance && b.distance) return 1;
+        if (a.distance && !b.distance) return -1;
+
+        // İki yerin de mesafesi varsa, yakından uzağa sırala
+        return (a.distance || 0) - (b.distance || 0);
+      });
     }
 
+    console.log('Sıralama tamamlandı.');
     setPlaces(sortedPlaces);
   };
 

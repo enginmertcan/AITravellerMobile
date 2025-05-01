@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { DEFAULT_SEARCH_RADIUS } from './config';
+import { DEFAULT_SEARCH_RADIUS, MAX_SEARCH_RADIUS, MAX_API_RETRIES } from './config';
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
 
 // Yer türlerine göre filtreleme için anahtar kelimeler
@@ -143,29 +143,88 @@ export const getCurrentLocation = async (): Promise<LocationData> => {
 export const getNearbyPlaces = async (
   location: LocationData,
   radius: number = DEFAULT_SEARCH_RADIUS,
-  type: string = 'tourist_attraction'
+  type: string = 'tourist_attraction',
+  retryCount: number = 0
 ): Promise<NearbyPlace[]> => {
   try {
     const apiKey = API_CONFIG.GOOGLE_PLACES;
-    console.log('Using Google Places API Key:', apiKey);
+    console.log('Using Google Places API Key:', apiKey ? 'API key exists' : 'API key is empty');
+
+    // API anahtarı kontrolü
+    if (!apiKey || apiKey.trim() === '') {
+      console.error('Google Places API anahtarı bulunamadı veya boş!');
+      throw new Error('API anahtarı eksik. Lütfen .env dosyasını kontrol edin.');
+    }
+
+    // Kullanılacak arama yarıçapı
+    const currentRadius = retryCount > 0 ? Math.min(radius * (retryCount + 1), MAX_SEARCH_RADIUS) : radius;
+
+    console.log(`Arama yarıçapı: ${currentRadius} metre (${currentRadius/1000} km), Deneme: ${retryCount + 1}/${MAX_API_RETRIES + 1}`);
 
     // API URL oluştur
-    const url = `${API_ENDPOINTS.GOOGLE_PLACES}/nearbysearch/json?location=${location.latitude},${location.longitude}&radius=${radius}&type=${type}&key=${apiKey}`;
+    const url = `${API_ENDPOINTS.GOOGLE_PLACES}/nearbysearch/json?location=${location.latitude},${location.longitude}&radius=${currentRadius}&type=${type}&key=${apiKey}`;
+
+    console.log('API isteği yapılıyor:', url.replace(apiKey, 'API_KEY_HIDDEN'));
 
     // API isteği yap
     const response = await fetch(url);
+
+    if (!response.ok) {
+      console.error('API yanıtı başarısız:', response.status, response.statusText);
+
+      // Yeniden deneme kontrolü
+      if (retryCount < MAX_API_RETRIES) {
+        console.log(`API isteği başarısız oldu. Yeniden deneniyor (${retryCount + 1}/${MAX_API_RETRIES})...`);
+        return getNearbyPlaces(location, radius, type, retryCount + 1);
+      }
+
+      throw new Error(`API yanıtı başarısız: ${response.status} ${response.statusText}`);
+    }
+
     const data = await response.json();
 
     // API yanıtını kontrol et
-    console.log('Google Places API yanıtı:', JSON.stringify(data, null, 2));
+    console.log('Google Places API yanıtı alındı. Status:', data.status);
+
+    // Detaylı hata ayıklama için
+    if (data.results && data.results.length > 0) {
+      console.log(`${data.results.length} sonuç bulundu.`);
+    } else {
+      console.log('Sonuç bulunamadı.');
+
+      // Sonuç bulunamadıysa ve yeniden deneme hakkımız varsa, arama yarıçapını artırarak tekrar deneyelim
+      if (retryCount < MAX_API_RETRIES) {
+        console.log(`Sonuç bulunamadı. Arama yarıçapı artırılarak yeniden deneniyor (${retryCount + 1}/${MAX_API_RETRIES})...`);
+        return getNearbyPlaces(location, radius, type, retryCount + 1);
+      }
+    }
 
     if (data.status !== 'OK') {
       // ZERO_RESULTS durumunda daha açıklayıcı hata mesajı
       if (data.status === 'ZERO_RESULTS') {
         console.error('Google Places API: Belirtilen konumun etrafında bu türde yer bulunamadı.');
+
+        // Yeniden deneme kontrolü
+        if (retryCount < MAX_API_RETRIES) {
+          console.log(`Sonuç bulunamadı. Arama yarıçapı artırılarak yeniden deneniyor (${retryCount + 1}/${MAX_API_RETRIES})...`);
+          return getNearbyPlaces(location, radius, type, retryCount + 1);
+        }
+
         throw new Error(`Belirtilen konumun etrafında ${type} türünde yer bulunamadı.`);
       } else {
         console.error('Google Places API hatası:', data.status, data.error_message);
+
+        // Yeniden deneme kontrolü (sadece belirli hata kodları için)
+        if (retryCount < MAX_API_RETRIES &&
+            (data.status === 'OVER_QUERY_LIMIT' || data.status === 'UNKNOWN_ERROR')) {
+          console.log(`API hatası oluştu. Yeniden deneniyor (${retryCount + 1}/${MAX_API_RETRIES})...`);
+
+          // Kısa bir bekleme süresi ekleyelim
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          return getNearbyPlaces(location, radius, type, retryCount + 1);
+        }
+
         throw new Error(`API hatası: ${data.status}${data.error_message ? ' - ' + data.error_message : ''}`);
       }
     }
