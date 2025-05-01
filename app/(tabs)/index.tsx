@@ -104,7 +104,7 @@ export default function HomeScreen() {
   ];
 
   return (
-    <ScrollView 
+    <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
       refreshControl={
@@ -124,14 +124,14 @@ export default function HomeScreen() {
 
       <View style={styles.content}>
         <TouchableOpacity style={styles.searchBar}>
-          <MaterialCommunityIcons 
-            name="magnify" 
-            size={22} 
-            color="#666" 
+          <MaterialCommunityIcons
+            name="magnify"
+            size={22}
+            color="#666"
           />
           <ThemedText style={styles.searchText}>Nereyi keşfetmek istersin?</ThemedText>
         </TouchableOpacity>
-        
+
         {/* Seyahat Planları Listesi */}
         <View style={styles.travelPlansContainer}>
           <View style={styles.travelPlansHeader}>
@@ -140,18 +140,18 @@ export default function HomeScreen() {
               <ThemedText style={styles.seeAllText}>Yeni Ekle</ThemedText>
             </TouchableOpacity>
           </View>
-          
+
           {loading ? (
             <ActivityIndicator size="large" color="#4c669f" style={styles.loader} />
           ) : travelPlans.length > 0 ? (
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
               style={styles.travelPlansScroll}
             >
               {travelPlans.map((plan, index) => (
-                <TouchableOpacity 
-                  key={plan.id || index} 
+                <TouchableOpacity
+                  key={plan.id || index}
                   style={styles.travelPlanCard}
                   onPress={() => router.push(`/trip-details?id=${plan.id}`)}
                 >
@@ -174,7 +174,7 @@ export default function HomeScreen() {
             <View style={styles.noPlansContainer}>
               <MaterialCommunityIcons name="map-search" size={50} color="#ccc" />
               <ThemedText style={styles.noPlansText}>Henüz seyahat planı yok</ThemedText>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.createPlanButton}
                 onPress={() => router.push('/(tabs)/ai-planner')}
               >
@@ -209,6 +209,15 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={index}
                 style={styles.featureCard}
+                onPress={() => {
+                  // Yakın Yerler özelliği için özel yönlendirme
+                  if (feature.title === 'Yakın Yerler') {
+                    router.push('/nearby-places');
+                  } else {
+                    // Diğer özellikler için henüz bir sayfa yok, ileride eklenebilir
+                    console.log(`${feature.title} özelliği tıklandı`);
+                  }
+                }}
               >
                 <View style={[styles.iconContainer, { backgroundColor: feature.color + '15' }]}>
                   <MaterialCommunityIcons name={feature.icon} size={24} color={feature.color} />

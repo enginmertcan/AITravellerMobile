@@ -559,20 +559,70 @@ export default function TripDetailsScreen() {
                 {tripData.visaInfo.visaApplicationProcess && (
                   <ThemedText style={styles.infoItem}>Vize Başvuru Süreci: {tripData.visaInfo.visaApplicationProcess}</ThemedText>
                 )}
+
                 {/* Güvenli kontrol - requiredDocuments var mı, array mi ve içinde eleman var mı? */}
-                {tripData.visaInfo &&
-                 tripData.visaInfo.requiredDocuments &&
-                 Array.isArray(tripData.visaInfo.requiredDocuments) &&
-                 tripData.visaInfo.requiredDocuments.length > 0 ? (
-                  <>
-                    <ThemedText style={styles.subTitle}>Gerekli Belgeler:</ThemedText>
-                    {tripData.visaInfo.requiredDocuments.map((doc: string, index: number) => (
-                      <ThemedText key={index} style={styles.listItem}><ThemedText>{"\u2022"}</ThemedText> {doc}</ThemedText>
-                    ))}
-                  </>
-                ) : (
-                  <ThemedText style={styles.infoItem}>Gerekli belgeler belirtilmemiş</ThemedText>
-                )}
+                {(() => {
+                  try {
+                    // Önce requiredDocuments'ın varlığını kontrol et
+                    if (!tripData.visaInfo.requiredDocuments) {
+                      return <ThemedText style={styles.infoItem}>Gerekli belgeler belirtilmemiş</ThemedText>;
+                    }
+
+                    // Array olup olmadığını kontrol et
+                    if (!Array.isArray(tripData.visaInfo.requiredDocuments)) {
+                      // String ise ve JSON olabilir mi diye kontrol et
+                      if (typeof tripData.visaInfo.requiredDocuments === 'string') {
+                        try {
+                          const parsedDocs = JSON.parse(tripData.visaInfo.requiredDocuments as string);
+                          if (Array.isArray(parsedDocs) && parsedDocs.length > 0) {
+                            return (
+                              <>
+                                <ThemedText style={styles.subTitle}>Gerekli Belgeler:</ThemedText>
+                                {parsedDocs.map((doc: string, index: number) => (
+                                  <ThemedText key={index} style={styles.listItem}>
+                                    <ThemedText style={styles.bulletPoint}>•</ThemedText> {doc}
+                                  </ThemedText>
+                                ))}
+                              </>
+                            );
+                          }
+                        } catch (e) {
+                          // JSON parse hatası, string olarak göster
+                          return (
+                            <>
+                              <ThemedText style={styles.subTitle}>Gerekli Belgeler:</ThemedText>
+                              <ThemedText style={styles.listItem}>
+                                <ThemedText style={styles.bulletPoint}>•</ThemedText> {tripData.visaInfo.requiredDocuments}
+                              </ThemedText>
+                            </>
+                          );
+                        }
+                      }
+                      return <ThemedText style={styles.infoItem}>Gerekli belgeler belirtilmemiş</ThemedText>;
+                    }
+
+                    // Array ve içinde eleman var mı kontrol et
+                    if (tripData.visaInfo.requiredDocuments.length === 0) {
+                      return <ThemedText style={styles.infoItem}>Gerekli belgeler belirtilmemiş</ThemedText>;
+                    }
+
+                    // Tüm kontroller geçildi, belgeleri listele
+                    return (
+                      <>
+                        <ThemedText style={styles.subTitle}>Gerekli Belgeler:</ThemedText>
+                        {tripData.visaInfo.requiredDocuments.map((doc: string, index: number) => (
+                          <ThemedText key={index} style={styles.listItem}>
+                            <ThemedText style={styles.bulletPoint}>•</ThemedText> {doc}
+                          </ThemedText>
+                        ))}
+                      </>
+                    );
+                  } catch (error) {
+                    console.error('Vize belgeleri gösterilirken hata:', error);
+                    return <ThemedText style={styles.infoItem}>Gerekli belgeler yüklenirken hata oluştu</ThemedText>;
+                  }
+                })()}
+
                 {tripData.visaInfo.visaFee && (
                   <ThemedText style={styles.infoItem}>Vize Ücreti: {tripData.visaInfo.visaFee}</ThemedText>
                 )}
@@ -699,13 +749,37 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 60 : 30,
     flexDirection: 'row',
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(76, 102, 159, 0.2)',
+    paddingBottom: 16,
+    marginBottom: 8,
+  },
+  bulletPoint: {
+    color: '#4c669f',
+    marginRight: 6,
+    fontSize: 16,
   },
   backButton: {
     marginRight: 16,
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.2)',
   },
   refreshButton: {
     marginLeft: 'auto',
-    padding: 8,
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.2)',
   },
   title: {
     fontSize: 28,
@@ -715,98 +789,141 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
+    padding: 20,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 12,
+    marginBottom: 16,
     fontFamily: 'SpaceMono',
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4c669f',
   },
   card: {
     backgroundColor: '#111',
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.1)',
   },
   dayCard: {
     backgroundColor: '#111',
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.1)',
   },
   dayTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#4c669f',
-    marginBottom: 12,
+    marginBottom: 16,
     fontFamily: 'SpaceMono',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(76, 102, 159, 0.2)',
+    paddingBottom: 8,
   },
   activityCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: 'rgba(26, 26, 26, 0.8)',
     borderRadius: 12,
-    padding: 12,
+    padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   activityTime: {
     color: '#4c669f',
-    fontWeight: '600',
-    marginBottom: 4,
+    fontWeight: '700',
+    marginBottom: 6,
     fontFamily: 'SpaceMono',
+    fontSize: 14,
   },
   activityName: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#fff',
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 6,
     fontFamily: 'SpaceMono',
   },
   activityDetails: {
     color: '#999',
-    marginBottom: 8,
+    marginBottom: 10,
     fontFamily: 'SpaceMono',
+    lineHeight: 20,
   },
   destinationName: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 12,
+    marginBottom: 16,
     fontFamily: 'SpaceMono',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    paddingBottom: 8,
   },
   hotelName: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 10,
     fontFamily: 'SpaceMono',
   },
   infoItem: {
     color: '#ccc',
-    marginBottom: 8,
+    marginBottom: 10,
     fontFamily: 'SpaceMono',
+    lineHeight: 20,
+    fontSize: 15,
   },
   description: {
     color: '#999',
-    marginTop: 8,
+    marginTop: 10,
     fontFamily: 'SpaceMono',
+    lineHeight: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    padding: 10,
+    borderRadius: 8,
   },
   subTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#fff',
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: 16,
+    marginBottom: 10,
     fontFamily: 'SpaceMono',
   },
   listItem: {
     color: '#ccc',
-    marginBottom: 4,
+    marginBottom: 6,
     marginLeft: 8,
     fontFamily: 'SpaceMono',
+    lineHeight: 20,
+    fontSize: 15,
   },
   loadingContainer: {
     flex: 1,
