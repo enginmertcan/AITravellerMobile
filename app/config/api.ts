@@ -4,8 +4,8 @@
 import Constants from 'expo-constants';
 
 export const API_CONFIG = {
-  GOOGLE_MAPS: Constants.expoConfig?.extra?.googleMapsApiKey || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyCP-WHzK8XQXT_ThNQ5g5oNVXqNMtZ4cOg',
-  GOOGLE_PLACES: Constants.expoConfig?.extra?.googlePlacesApiKey || process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyCuywyLDcnyRENGnIHnit-ym2rhQBnXMJw',
+  GOOGLE_MAPS: Constants.expoConfig?.extra?.googleMapsApiKey || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+  GOOGLE_PLACES: Constants.expoConfig?.extra?.googlePlacesApiKey || process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '',
   OPENWEATHER: Constants.expoConfig?.extra?.openWeatherApiKey || process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || '',
   VISUAL_CROSSING: Constants.expoConfig?.extra?.weatherApiKey || process.env.EXPO_PUBLIC_WEATHER_API_KEY || '',
   OPENAI: Constants.expoConfig?.extra?.openaiApiKey || process.env.EXPO_PUBLIC_OPENAI_API_KEY || '',

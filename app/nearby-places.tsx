@@ -8,7 +8,8 @@ import {
   Platform,
   Image,
   RefreshControl,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -16,6 +17,17 @@ import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as NearbyPlacesService from './services/nearby-places.service';
 import { NearbyPlace, LocationData } from './services/nearby-places.service';
+
+// Sıralama seçenekleri için enum
+enum SortOption {
+  RATING = 'rating',
+  DISTANCE = 'distance',
+}
+
+const SORT_OPTIONS = [
+  { id: SortOption.RATING, name: 'Yıldıza Göre', icon: 'star' },
+  { id: SortOption.DISTANCE, name: 'Uzaklığa Göre', icon: 'map-marker-distance' },
+];
 
 const PLACE_TYPES = [
   { id: 'tourist_attraction', name: 'Turistik Yerler', icon: 'camera', keywords: ['turist', 'gezi', 'görülecek'] },
@@ -36,6 +48,8 @@ export default function NearbyPlacesScreen() {
   const [places, setPlaces] = useState<NearbyPlace[]>([]);
   const [selectedType, setSelectedType] = useState('tourist_attraction');
   const [mapVisible, setMapVisible] = useState(false);
+  const [sortOption, setSortOption] = useState<SortOption>(SortOption.RATING);
+  const [sortModalVisible, setSortModalVisible] = useState(false);
   const router = useRouter();
 
   // Kullanıcı konumunu ve yakın yerleri yükle
@@ -92,7 +106,11 @@ export default function NearbyPlacesScreen() {
           );
       }
 
+      // Yerleri ayarla ve mevcut sıralama seçeneğine göre sırala
       setPlaces(nearbyPlaces);
+
+      // Yeni yerler yüklendikten sonra mevcut sıralama seçeneğine göre sırala
+      setTimeout(() => sortPlaces(sortOption), 0);
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
 
@@ -148,6 +166,28 @@ export default function NearbyPlacesScreen() {
     setMapVisible(!mapVisible);
   };
 
+  // Sıralama seçeneğini değiştir
+  const handleSortChange = (option: SortOption) => {
+    setSortOption(option);
+    setSortModalVisible(false);
+    sortPlaces(option);
+  };
+
+  // Yerleri sırala
+  const sortPlaces = (option: SortOption) => {
+    const sortedPlaces = [...places];
+
+    if (option === SortOption.RATING) {
+      // Yıldıza göre sırala (yüksekten düşüğe)
+      sortedPlaces.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (option === SortOption.DISTANCE) {
+      // Uzaklığa göre sırala (yakından uzağa)
+      sortedPlaces.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+    }
+
+    setPlaces(sortedPlaces);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -158,8 +198,20 @@ export default function NearbyPlacesScreen() {
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.title}>Yakın Yerler</ThemedText>
+
         <TouchableOpacity
-          style={styles.mapToggleButton}
+          style={styles.headerButton}
+          onPress={() => setSortModalVisible(true)}
+        >
+          <MaterialCommunityIcons
+            name="sort"
+            size={24}
+            color="#4c669f"
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.headerButton}
           onPress={toggleMapView}
         >
           <MaterialCommunityIcons
@@ -169,6 +221,54 @@ export default function NearbyPlacesScreen() {
           />
         </TouchableOpacity>
       </View>
+
+      {/* Sıralama Seçenekleri Modalı */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={sortModalVisible}
+        onRequestClose={() => setSortModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSortModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Sıralama Seçenekleri</ThemedText>
+              <TouchableOpacity onPress={() => setSortModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {SORT_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.sortOption,
+                  sortOption === option.id && styles.selectedSortOption
+                ]}
+                onPress={() => handleSortChange(option.id as SortOption)}
+              >
+                <MaterialCommunityIcons
+                  name={option.icon}
+                  size={24}
+                  color={sortOption === option.id ? "#fff" : "#4c669f"}
+                />
+                <ThemedText
+                  style={[
+                    styles.sortOptionText,
+                    sortOption === option.id && styles.selectedSortOptionText
+                  ]}
+                >
+                  {option.name}
+                </ThemedText>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <View style={styles.typeSelector}>
         <ScrollView
@@ -203,9 +303,22 @@ export default function NearbyPlacesScreen() {
         </ScrollView>
       </View>
 
-      <ThemedText style={styles.sectionTitle}>
-        {getPlaceTypeTitle()} {userLocation ? '(Yakınınızda)' : ''}
-      </ThemedText>
+      <View style={styles.sectionHeader}>
+        <ThemedText style={styles.sectionTitle}>
+          {getPlaceTypeTitle()} {userLocation ? '(Yakınınızda)' : ''}
+        </ThemedText>
+
+        <View style={styles.sortIndicator}>
+          <MaterialCommunityIcons
+            name={sortOption === SortOption.RATING ? 'star' : 'map-marker-distance'}
+            size={16}
+            color="#4c669f"
+          />
+          <ThemedText style={styles.sortIndicatorText}>
+            {sortOption === SortOption.RATING ? 'Yıldıza Göre' : 'Uzaklığa Göre'}
+          </ThemedText>
+        </View>
+      </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -360,8 +473,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(76, 102, 159, 0.2)',
   },
-  mapToggleButton: {
-    marginLeft: 'auto',
+  headerButton: {
+    marginLeft: 10,
     backgroundColor: 'rgba(76, 102, 159, 0.1)',
     width: 40,
     height: 40,
@@ -370,6 +483,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(76, 102, 159, 0.2)',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#111',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.3)',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(76, 102, 159, 0.2)',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+  },
+  sortOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    marginBottom: 10,
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.2)',
+  },
+  selectedSortOption: {
+    backgroundColor: '#4c669f',
+    borderColor: '#4c669f',
+  },
+  sortOptionText: {
+    fontSize: 16,
+    color: '#4c669f',
+    marginLeft: 15,
+    fontFamily: 'SpaceMono',
+  },
+  selectedSortOptionText: {
+    color: '#fff',
   },
   title: {
     fontSize: 28,
@@ -409,13 +573,35 @@ const styles = StyleSheet.create({
   selectedTypeButtonText: {
     color: '#fff',
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 16,
     fontFamily: 'SpaceMono',
-    paddingHorizontal: 20,
+    flex: 1,
+  },
+  sortIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.2)',
+  },
+  sortIndicatorText: {
+    fontSize: 12,
+    color: '#4c669f',
+    marginLeft: 5,
+    fontFamily: 'SpaceMono',
   },
   content: {
     flex: 1,
