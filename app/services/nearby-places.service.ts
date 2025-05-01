@@ -2,17 +2,44 @@ import * as Location from 'expo-location';
 import { DEFAULT_SEARCH_RADIUS, MAX_SEARCH_RADIUS, MAX_API_RETRIES } from './config';
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
 
-// Yer türlerine göre filtreleme için anahtar kelimeler
+// Yer türlerine göre filtreleme için anahtar kelimeler ve ilişkili Google Places API türleri
 const TYPE_KEYWORDS = {
-  'tourist_attraction': ['turist', 'gezi', 'görülecek', 'anıt', 'heykel', 'müze', 'tarihi'],
-  'restaurant': ['yemek', 'restoran', 'lokanta', 'food', 'dinner'],
-  'museum': ['müze', 'sergi', 'kültür', 'sanat', 'tarih', 'museum'],
-  'shopping_mall': ['avm', 'mağaza', 'market', 'alışveriş', 'shopping'],
-  'lodging': ['otel', 'hotel', 'konaklama', 'pansiyon', 'motel'],
-  'park': ['park', 'bahçe', 'yeşil alan', 'garden'],
-  'cafe': ['kafe', 'kahve', 'çay', 'coffee', 'cafe'],
-  'bar': ['bar', 'pub', 'gece hayatı', 'içki', 'nightlife'],
-  'bakery': ['fırın', 'pastane', 'ekmek', 'bakery', 'pasta'],
+  'tourist_attraction': {
+    keywords: ['turist', 'gezi', 'görülecek', 'anıt', 'heykel', 'tarihi', 'landmark', 'attraction'],
+    relatedTypes: ['tourist_attraction', 'point_of_interest', 'landmark', 'monument']
+  },
+  'restaurant': {
+    keywords: ['yemek', 'restoran', 'lokanta', 'food', 'dinner', 'restaurant', 'eatery'],
+    relatedTypes: ['restaurant', 'food', 'meal_takeaway', 'meal_delivery']
+  },
+  'museum': {
+    keywords: ['müze', 'sergi', 'kültür', 'sanat', 'tarih', 'museum', 'exhibition', 'gallery'],
+    relatedTypes: ['museum', 'art_gallery']
+  },
+  'shopping_mall': {
+    keywords: ['avm', 'mağaza', 'market', 'alışveriş', 'shopping', 'mall'],
+    relatedTypes: ['shopping_mall', 'department_store', 'store', 'supermarket']
+  },
+  'lodging': {
+    keywords: ['otel', 'hotel', 'konaklama', 'pansiyon', 'motel', 'lodging', 'accommodation'],
+    relatedTypes: ['lodging', 'hotel', 'motel']
+  },
+  'park': {
+    keywords: ['park', 'bahçe', 'yeşil alan', 'garden', 'nature'],
+    relatedTypes: ['park', 'campground', 'natural_feature']
+  },
+  'cafe': {
+    keywords: ['kafe', 'kahve', 'çay', 'coffee', 'cafe', 'tea'],
+    relatedTypes: ['cafe', 'bakery', 'coffee_shop']
+  },
+  'bar': {
+    keywords: ['bar', 'pub', 'gece hayatı', 'içki', 'nightlife', 'alcohol', 'beer', 'wine'],
+    relatedTypes: ['bar', 'night_club', 'liquor_store']
+  },
+  'bakery': {
+    keywords: ['fırın', 'pastane', 'ekmek', 'bakery', 'pasta', 'bread', 'cake'],
+    relatedTypes: ['bakery', 'food', 'store']
+  },
 };
 
 export interface NearbyPlace {
@@ -84,26 +111,45 @@ const sortPlaces = (places: NearbyPlace[]): NearbyPlace[] => {
  * @returns Filtrelenmiş yerler listesi
  */
 const filterPlacesByType = (places: any[], type: string): any[] => {
-  // Eğer tür için anahtar kelimeler tanımlanmamışsa, tüm sonuçları döndür
-  if (!TYPE_KEYWORDS[type]) {
-    return places;
+  // Eğer hiç yer yoksa, boş dizi döndür
+  if (!places || places.length === 0) {
+    console.log('Filtrelenecek yer bulunamadı.');
+    return [];
   }
 
-  // Belirli türdeki yerleri filtrele
-  return places.filter(place => {
-    // Yer türlerini kontrol et
-    if (place.types && place.types.includes(type)) {
-      return true;
-    }
+  console.log(`Filtreleme başlıyor: ${places.length} yer ${type} türüne göre filtreleniyor...`);
 
-    // Yer adında veya adresinde anahtar kelimeleri ara
-    const keywords = TYPE_KEYWORDS[type];
-    const nameAndVicinity = `${place.name} ${place.vicinity || ''}`.toLowerCase();
+  // ÇOK SIKI FİLTRELEME - SADECE TAM EŞLEŞEN TÜRLERİ KABUL ET
+  // Doğrudan tür eşleşmesi olan yerleri bul (en güvenilir)
+  const exactMatches = places.filter(place =>
+    place.types && Array.isArray(place.types) && place.types.includes(type)
+  );
 
-    return keywords.some(keyword =>
-      nameAndVicinity.includes(keyword.toLowerCase())
+  // Eğer doğrudan eşleşen yerler varsa, sadece onları döndür
+  if (exactMatches.length > 0) {
+    console.log(`Doğrudan tür eşleşmesi olan ${exactMatches.length} yer bulundu.`);
+    return exactMatches;
+  }
+
+  // Doğrudan eşleşme yoksa, ilişkili türleri kontrol et
+  if (TYPE_KEYWORDS[type]) {
+    const { relatedTypes } = TYPE_KEYWORDS[type];
+
+    const relatedMatches = places.filter(place =>
+      place.types &&
+      Array.isArray(place.types) &&
+      place.types.some(t => relatedTypes.includes(t))
     );
-  });
+
+    if (relatedMatches.length > 0) {
+      console.log(`İlişkili tür eşleşmesi olan ${relatedMatches.length} yer bulundu.`);
+      return relatedMatches;
+    }
+  }
+
+  // Hiçbir eşleşme bulunamadıysa, boş dizi döndür
+  console.log(`${type} türünde yer bulunamadı.`);
+  return [];
 };
 
 /**
@@ -115,13 +161,37 @@ export const getCurrentLocation = async (): Promise<LocationData> => {
     const { status } = await Location.requestForegroundPermissionsAsync();
 
     if (status !== 'granted') {
-      throw new Error('Konum izni verilmedi');
+      console.error('Konum izni verilmedi. Status:', status);
+      throw new Error('Konum izni verilmedi. Yakın yerleri görebilmek için konum izni vermeniz gerekiyor.');
     }
 
-    // Mevcut konumu al
+    // Konum servislerinin açık olup olmadığını kontrol et
+    const isLocationServicesEnabled = await Location.hasServicesEnabledAsync();
+
+    if (!isLocationServicesEnabled) {
+      console.error('Konum servisleri kapalı.');
+      throw new Error('Konum servisleri kapalı. Lütfen cihazınızın konum servislerini açın.');
+    }
+
+    console.log('Konum alınıyor...');
+
+    // Mevcut konumu al (daha uzun timeout ile)
     const location = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
+      timeInterval: 5000,  // 5 saniye
+      mayShowUserSettingsDialog: true  // Gerekirse kullanıcıya ayarlar dialogu göster
     });
+
+    if (!location || !location.coords) {
+      console.error('Geçerli konum bilgisi alınamadı.');
+      throw new Error('Geçerli konum bilgisi alınamadı. Lütfen tekrar deneyin.');
+    }
+
+    console.log('Konum başarıyla alındı:',
+      location.coords.latitude.toFixed(6),
+      location.coords.longitude.toFixed(6),
+      'Doğruluk:', location.coords.accuracy ? `${location.coords.accuracy.toFixed(0)}m` : 'bilinmiyor'
+    );
 
     return {
       latitude: location.coords.latitude,
@@ -130,6 +200,18 @@ export const getCurrentLocation = async (): Promise<LocationData> => {
     };
   } catch (error) {
     console.error('Konum alınamadı:', error);
+
+    // Daha açıklayıcı hata mesajları
+    if (error instanceof Error) {
+      if (error.message.includes('Location request failed')) {
+        throw new Error('Konum alınamadı. Lütfen konum servislerinin açık olduğundan emin olun.');
+      } else if (error.message.includes('Location timed out')) {
+        throw new Error('Konum alınırken zaman aşımı oluştu. Lütfen tekrar deneyin.');
+      } else if (error.message.includes('Location provider is unavailable')) {
+        throw new Error('Konum sağlayıcısı kullanılamıyor. Lütfen cihazınızın konum ayarlarını kontrol edin.');
+      }
+    }
+
     throw error;
   }
 };
@@ -147,13 +229,28 @@ export const getNearbyPlaces = async (
   retryCount: number = 0
 ): Promise<NearbyPlace[]> => {
   try {
+    // API anahtarını al
     const apiKey = API_CONFIG.GOOGLE_PLACES;
-    console.log('Using Google Places API Key:', apiKey ? 'API key exists' : 'API key is empty');
+
+    // API anahtarı durumunu kontrol et (güvenlik için tam anahtarı loglamıyoruz)
+    if (apiKey) {
+      console.log(`Google Places API anahtarı bulundu (${apiKey.substring(0, 5)}...${apiKey.substring(apiKey.length - 4)})`);
+    } else {
+      console.log('Google Places API anahtarı bulunamadı!');
+    }
 
     // API anahtarı kontrolü
     if (!apiKey || apiKey.trim() === '') {
       console.error('Google Places API anahtarı bulunamadı veya boş!');
+      console.error('Çevre değişkenleri doğru yüklenmiş mi kontrol edin.');
+      console.error('EXPO_PUBLIC_GOOGLE_PLACES_API_KEY çevre değişkeni tanımlanmış olmalıdır.');
       throw new Error('API anahtarı eksik. Lütfen .env dosyasını kontrol edin.');
+    }
+
+    // Alternatif API anahtarı kontrolü (geçici çözüm)
+    if (apiKey === 'undefined' || apiKey === 'null') {
+      console.error('API anahtarı geçersiz bir değer içeriyor:', apiKey);
+      throw new Error('API anahtarı geçersiz. Lütfen .env dosyasını kontrol edin.');
     }
 
     // Kullanılacak arama yarıçapı
@@ -162,7 +259,27 @@ export const getNearbyPlaces = async (
     console.log(`Arama yarıçapı: ${currentRadius} metre (${currentRadius/1000} km), Deneme: ${retryCount + 1}/${MAX_API_RETRIES + 1}`);
 
     // API URL oluştur
-    const url = `${API_ENDPOINTS.GOOGLE_PLACES}/nearbysearch/json?location=${location.latitude},${location.longitude}&radius=${currentRadius}&type=${type}&key=${apiKey}`;
+    // Daha iyi sonuçlar için rankby ve radius parametrelerini optimize edelim
+    let url;
+
+    // Tür bilgisini al
+    const typeInfo = TYPE_KEYWORDS[type];
+
+    // Turistik yerler ve müzeler için prominence (önem sırası) daha iyi sonuç verir
+    if (type === 'tourist_attraction' || type === 'point_of_interest' || type === 'museum') {
+      url = `${API_ENDPOINTS.GOOGLE_PLACES}/nearbysearch/json?location=${location.latitude},${location.longitude}&radius=${currentRadius}&type=${type}&rankby=prominence&key=${apiKey}`;
+    }
+    // Restoranlar, kafeler ve barlar için mesafe önemli
+    else if (type === 'restaurant' || type === 'cafe' || type === 'bar' || type === 'bakery') {
+      // Mesafeye göre sıralama yapıldığında, keyword parametresi gerekli
+      const keyword = typeInfo ? typeInfo.keywords[0] : type;
+      url = `${API_ENDPOINTS.GOOGLE_PLACES}/nearbysearch/json?location=${location.latitude},${location.longitude}&rankby=distance&type=${type}&keyword=${keyword}&key=${apiKey}`;
+    }
+    // Diğer tüm türler için hem radius hem de keyword kullan
+    else {
+      const keyword = typeInfo ? typeInfo.keywords[0] : type;
+      url = `${API_ENDPOINTS.GOOGLE_PLACES}/nearbysearch/json?location=${location.latitude},${location.longitude}&radius=${currentRadius}&type=${type}&keyword=${keyword}&key=${apiKey}`;
+    }
 
     console.log('API isteği yapılıyor:', url.replace(apiKey, 'API_KEY_HIDDEN'));
 

@@ -34,7 +34,7 @@ const PLACE_TYPES = [
   { id: 'restaurant', name: 'Restoranlar', icon: 'food-fork-drink', keywords: ['yemek', 'restoran', 'lokanta'] },
   { id: 'museum', name: 'Müzeler', icon: 'bank', keywords: ['müze', 'sergi', 'kültür'] },
   { id: 'shopping_mall', name: 'Alışveriş', icon: 'shopping', keywords: ['avm', 'mağaza', 'market'] },
-  { id: 'hotel', name: 'Oteller', icon: 'bed', keywords: ['otel', 'konaklama', 'pansiyon'] },
+  { id: 'lodging', name: 'Oteller', icon: 'bed', keywords: ['otel', 'konaklama', 'pansiyon'] },
   { id: 'park', name: 'Parklar', icon: 'tree', keywords: ['park', 'bahçe', 'yeşil alan'] },
   { id: 'cafe', name: 'Kafeler', icon: 'coffee', keywords: ['kafe', 'kahve', 'çay'] },
   { id: 'bar', name: 'Barlar', icon: 'glass-cocktail', keywords: ['bar', 'pub', 'gece hayatı'] },
@@ -50,111 +50,190 @@ export default function NearbyPlacesScreen() {
   const [mapVisible, setMapVisible] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>(SortOption.RATING);
   const [sortModalVisible, setSortModalVisible] = useState(false);
+  const [lastLoadedType, setLastLoadedType] = useState<string | null>(null); // Son yüklenen kategori
   const router = useRouter();
 
-  // Kullanıcı konumunu ve yakın yerleri yükle
+  // Uygulama başladığında kullanıcı konumunu yükle
   useEffect(() => {
-    loadUserLocationAndPlaces();
-  }, [selectedType]);
-
-  const loadUserLocationAndPlaces = async () => {
-    try {
-      setLoading(true);
-
-      // Kullanıcı konumunu al
-      const location = await NearbyPlacesService.getCurrentLocation();
-      setUserLocation(location);
-
-      // Seçilen türe göre yakın yerleri al
-      let nearbyPlaces;
-
-      // Seçilen türe göre uygun fonksiyonu çağır
-      switch (selectedType) {
-        case 'tourist_attraction':
-          nearbyPlaces = await NearbyPlacesService.getNearbyTouristAttractions();
-          break;
-        case 'restaurant':
-          nearbyPlaces = await NearbyPlacesService.getNearbyRestaurants();
-          break;
-        case 'museum':
-          nearbyPlaces = await NearbyPlacesService.getNearbyMuseums();
-          break;
-        case 'shopping_mall':
-          nearbyPlaces = await NearbyPlacesService.getNearbyShoppingMalls();
-          break;
-        case 'hotel':
-          nearbyPlaces = await NearbyPlacesService.getNearbyHotels();
-          break;
-        case 'park':
-          nearbyPlaces = await NearbyPlacesService.getNearbyParks();
-          break;
-        case 'cafe':
-          nearbyPlaces = await NearbyPlacesService.getNearbyCafes();
-          break;
-        case 'bar':
-          nearbyPlaces = await NearbyPlacesService.getNearbyBars();
-          break;
-        case 'bakery':
-          nearbyPlaces = await NearbyPlacesService.getNearbyBakeries();
-          break;
-        default:
-          // Diğer türler için genel fonksiyonu kullan
-          nearbyPlaces = await NearbyPlacesService.getNearbyPlaces(
-            location,
-            5000, // Daha geniş bir arama yarıçapı kullan
-            selectedType
-          );
+    const loadUserLocation = async () => {
+      try {
+        console.log('Kullanıcı konumu alınıyor...');
+        const location = await NearbyPlacesService.getCurrentLocation();
+        console.log('Kullanıcı konumu alındı:', location.latitude.toFixed(6), location.longitude.toFixed(6));
+        setUserLocation(location);
+      } catch (error) {
+        console.error('Konum alınamadı:', error);
+        handleLoadError(error);
       }
+    };
 
-      // Yerleri ayarla ve mevcut sıralama seçeneğine göre sırala
-      setPlaces(nearbyPlaces);
+    loadUserLocation();
+  }, []);
 
-      // Yeni yerler yüklendikten sonra mevcut sıralama seçeneğine göre sırala
-      setTimeout(() => sortPlaces(sortOption), 0);
-    } catch (error) {
-      console.error('Veri yükleme hatası:', error);
+  // Sadece konum bilgisi alındığında ilk yüklemeyi yap
+  useEffect(() => {
+    // Konum bilgisi varsa ve daha önce hiç yükleme yapılmadıysa
+    if (userLocation && !lastLoadedType) {
+      console.log('Konum alındı, ilk kez yerler yükleniyor...');
+      handleTypeSelect(selectedType);
+    }
+  }, [userLocation]);
 
-      // Hata mesajını daha açıklayıcı hale getir
-      let errorMessage = 'Konum bilgisi veya yakın yerler alınamadı.';
+  // Tüm yer türleri için ilişkili türler ve anahtar kelimeler service dosyasında tanımlanmıştır
 
-      // Hata türüne göre özel mesajlar
-      if (error instanceof Error) {
-        if (error.message.includes('Konum izni verilmedi')) {
-          errorMessage = 'Konum izni verilmedi. Yakın yerleri görebilmek için konum izni vermeniz gerekiyor.';
-        } else if (error.message.includes('türünde yer bulunamadı')) {
-          errorMessage = `Yakınınızda ${getPlaceTypeTitle().toLowerCase()} bulunamadı. Başka bir kategori seçmeyi veya arama yarıçapını artırmayı deneyebilirsiniz.`;
-        } else if (error.message.includes('API hatası')) {
-          errorMessage = 'Google Places API ile iletişim kurulurken bir sorun oluştu. Lütfen internet bağlantınızı kontrol edin.';
+  // Hata işleme
+  const handleLoadError = (error: any) => {
+    console.error('Veri yükleme hatası:', error);
+
+    // Hata mesajını daha açıklayıcı hale getir
+    let errorMessage = 'Konum bilgisi veya yakın yerler alınamadı.';
+
+    // Hata türüne göre özel mesajlar
+    if (error instanceof Error) {
+      if (error.message.includes('Konum izni verilmedi')) {
+        errorMessage = 'Konum izni verilmedi. Yakın yerleri görebilmek için konum izni vermeniz gerekiyor.';
+      } else if (error.message.includes('türünde yer bulunamadı')) {
+        errorMessage = `Yakınınızda ${getPlaceTypeTitle().toLowerCase()} bulunamadı. Başka bir kategori seçmeyi veya arama yarıçapını artırmayı deneyebilirsiniz.`;
+      } else if (error.message.includes('API hatası')) {
+        errorMessage = 'Google Places API ile iletişim kurulurken bir sorun oluştu. Lütfen internet bağlantınızı kontrol edin.';
+      }
+    }
+
+    Alert.alert(
+      'Hata',
+      errorMessage,
+      [
+        {
+          text: 'Tekrar Dene',
+          onPress: () => {
+            // Mevcut seçili kategoriyi kullanarak yeniden yükleme yap
+            handleTypeSelect(selectedType);
+          }
+        },
+        {
+          text: 'Tamam',
+          style: 'cancel'
+        }
+      ]
+    );
+  };
+
+  // loadPlacesForSelectedType fonksiyonu artık kullanılmıyor
+  // Tüm işlemler handleTypeSelect fonksiyonuna taşındı
+
+  const onRefresh = () => {
+    setRefreshing(true);
+
+    // Mevcut seçili kategoriyi kullanarak yeniden yükleme yap
+    handleTypeSelect(selectedType);
+  };
+
+  const handleTypeSelect = async (type: string) => {
+    console.log(`Yer türü seçildi: ${type}`);
+
+    // Yükleme durumunu aktifleştir
+    setLoading(true);
+
+    // Önce places state'ini temizle - bu çok önemli!
+    setPlaces([]);
+
+    // Seçilen türü güncelle
+    setSelectedType(type);
+
+    // Son yüklenen kategoriyi sıfırla
+    setLastLoadedType(null);
+
+    // useEffect'i beklemeden doğrudan yükleme yap
+    try {
+      // Kullanıcı konumu kontrolü
+      if (!userLocation) {
+        console.log('Kullanıcı konumu bulunamadı, konum alınmaya çalışılıyor...');
+        try {
+          const location = await NearbyPlacesService.getCurrentLocation();
+          setUserLocation(location);
+          console.log('Kullanıcı konumu alındı:', location.latitude.toFixed(6), location.longitude.toFixed(6));
+        } catch (error) {
+          console.error('Konum alınamadı:', error);
+          setLoading(false);
+          Alert.alert('Hata', 'Kullanıcı konumu bulunamadı. Lütfen konum izinlerini kontrol edin.');
+          return;
         }
       }
 
-      Alert.alert(
-        'Hata',
-        errorMessage,
-        [
-          {
-            text: 'Tekrar Dene',
-            onPress: () => loadUserLocationAndPlaces()
-          },
-          {
-            text: 'Tamam',
-            style: 'cancel'
+      // Seçilen türe göre doğrudan API çağrısı yap
+      let nearbyPlaces;
+
+      try {
+        switch (type) {
+          case 'tourist_attraction':
+            nearbyPlaces = await NearbyPlacesService.getNearbyTouristAttractions();
+            break;
+          case 'restaurant':
+            nearbyPlaces = await NearbyPlacesService.getNearbyRestaurants();
+            break;
+          case 'museum':
+            nearbyPlaces = await NearbyPlacesService.getNearbyMuseums();
+            break;
+          case 'shopping_mall':
+            nearbyPlaces = await NearbyPlacesService.getNearbyShoppingMalls();
+            break;
+          case 'lodging':
+            nearbyPlaces = await NearbyPlacesService.getNearbyHotels();
+            break;
+          case 'park':
+            nearbyPlaces = await NearbyPlacesService.getNearbyParks();
+            break;
+          case 'cafe':
+            nearbyPlaces = await NearbyPlacesService.getNearbyCafes();
+            break;
+          case 'bar':
+            nearbyPlaces = await NearbyPlacesService.getNearbyBars();
+            break;
+          case 'bakery':
+            nearbyPlaces = await NearbyPlacesService.getNearbyBakeries();
+            break;
+          default:
+            // Diğer tüm türler için genel fonksiyonu kullan
+            nearbyPlaces = await NearbyPlacesService.getNearbyPlaces(
+              userLocation!,
+              5000,
+              type
+            );
+        }
+
+        // Son yüklenen kategoriyi güncelle
+        setLastLoadedType(type);
+
+        if (nearbyPlaces && nearbyPlaces.length > 0) {
+          console.log(`${type} türünde ${nearbyPlaces.length} yer bulundu.`);
+
+          // Yerleri ayarla
+          setPlaces(nearbyPlaces);
+
+          // Sıralama uygula
+          if (sortOption) {
+            sortPlaces(sortOption, nearbyPlaces);
           }
-        ]
-      );
+        } else {
+          console.log(`${type} türünde yer bulunamadı.`);
+
+          // Kullanıcıya bilgi ver
+          Alert.alert(
+            'Bilgi',
+            `Yakınınızda ${PLACE_TYPES.find(t => t.id === type)?.name.toLowerCase() || type} bulunamadı.`,
+            [{ text: 'Tamam', style: 'default' }]
+          );
+        }
+      } catch (error) {
+        console.error(`${type} türünde yerler alınırken hata oluştu:`, error);
+        handleLoadError(error);
+      }
+    } catch (error) {
+      console.error('Yerler yüklenirken hata oluştu:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadUserLocationAndPlaces();
-  };
-
-  const handleTypeSelect = (type: string) => {
-    setSelectedType(type);
   };
 
   const getPlaceTypeTitle = () => {
@@ -174,15 +253,19 @@ export default function NearbyPlacesScreen() {
   };
 
   // Yerleri sırala
-  const sortPlaces = (option: SortOption) => {
-    if (!places || places.length === 0) {
+  const sortPlaces = (option: SortOption, placesToSort?: NearbyPlace[]) => {
+    // Sıralanacak yerleri belirle (parametre olarak gelen veya state'teki yerler)
+    const itemsToSort = placesToSort || places;
+
+    if (!itemsToSort || itemsToSort.length === 0) {
       console.log('Sıralanacak yer bulunamadı.');
       return;
     }
 
-    console.log(`${places.length} yer ${option} kriterine göre sıralanıyor...`);
+    console.log(`${itemsToSort.length} yer ${option} kriterine göre sıralanıyor...`);
 
-    const sortedPlaces = [...places];
+    // Orijinal diziyi değiştirmeden yeni bir kopya oluştur
+    const sortedPlaces = [...itemsToSort];
 
     if (option === SortOption.RATING) {
       // Yıldıza göre sırala (yüksekten düşüğe)
@@ -207,6 +290,8 @@ export default function NearbyPlacesScreen() {
     }
 
     console.log('Sıralama tamamlandı.');
+
+    // Sıralanmış yerleri state'e ayarla
     setPlaces(sortedPlaces);
   };
 
