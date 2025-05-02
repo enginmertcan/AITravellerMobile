@@ -329,18 +329,19 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 20 : 10,
+    paddingTop: Platform.OS === 'ios' ? 70 : 40,
     backgroundColor: '#000',
   },
   welcomeSection: {
     marginBottom: 20,
   },
   welcomeText: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     marginBottom: 8,
     color: '#fff',
     fontFamily: 'SpaceMono',
+    marginTop: 10,
   },
   welcomeSubtext: {
     fontSize: 15,

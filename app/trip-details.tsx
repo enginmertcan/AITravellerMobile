@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 30,
+    paddingTop: Platform.OS === 'ios' ? 70 : 40,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
@@ -788,12 +788,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(76, 102, 159, 0.2)',
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#fff',
     fontFamily: 'SpaceMono',
     flex: 1,
     marginHorizontal: 8,
+    marginTop: 10,
   },
   content: {
     padding: 20,

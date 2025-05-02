@@ -152,14 +152,15 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 30,
+    paddingTop: Platform.OS === 'ios' ? 70 : 40,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 24,
     fontFamily: 'SpaceMono',
+    marginTop: 10,
   },
   userInfoCard: {
     backgroundColor: '#111',

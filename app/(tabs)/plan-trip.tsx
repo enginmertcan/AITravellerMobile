@@ -767,14 +767,15 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingTop: Platform.OS === 'ios' ? 70 : 40,
   },
   title: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 8,
     fontFamily: 'SpaceMono',
+    marginTop: 10,
   },
   subtitle: {
     fontSize: 16,

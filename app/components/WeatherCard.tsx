@@ -177,7 +177,7 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
 
         <View style={styles.detailItem}>
           <MaterialCommunityIcons name="white-balance-sunny" size={20} color="#4c669f" />
-          <ThemedText style={styles.detailText}>UV İndeksi: {selectedDay.uvIndex}</ThemedText>
+          <ThemedText style={styles.detailText}>UV: {selectedDay.uvIndex}</ThemedText>
         </View>
       </View>
     </View>
@@ -197,6 +197,8 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderWidth: 1,
     borderColor: 'rgba(76, 102, 159, 0.1)',
+    width: '100%',
+    alignSelf: 'center',
   },
   daySelector: {
     marginBottom: 20,
@@ -263,7 +265,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   temperature: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '700',
     color: '#fff',
     fontFamily: 'SpaceMono',
@@ -297,6 +299,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
+    width: '100%',
   },
   detailItem: {
     flexDirection: 'row',
@@ -306,13 +309,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(76, 102, 159, 0.05)',
     borderRadius: 8,
     padding: 8,
+    paddingRight: 4,
     borderWidth: 1,
     borderColor: 'rgba(76, 102, 159, 0.1)',
   },
   detailText: {
     color: '#ccc',
     marginLeft: 8,
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'SpaceMono',
+    flexShrink: 1,
   },
 });
