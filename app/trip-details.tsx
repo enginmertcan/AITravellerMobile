@@ -344,7 +344,7 @@ export default function TripDetailsScreen() {
           >
             <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
           </TouchableOpacity>
-          <ThemedText style={styles.title}>Seyahat Planlarım</ThemedText>
+          <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">Seyahat Planlarım</ThemedText>
           <TouchableOpacity
             style={styles.refreshButton}
             onPress={handleRefresh}
@@ -364,30 +364,30 @@ export default function TripDetailsScreen() {
                 onPress={() => selectPlan(item)}
               >
                 <View style={styles.planCardContent}>
-                  <ThemedText style={styles.planDestination}>{item.destination || 'İsimsiz Destinasyon'}</ThemedText>
+                  <ThemedText style={styles.planDestination} numberOfLines={1} ellipsizeMode="tail">{item.destination || 'İsimsiz Destinasyon'}</ThemedText>
                   <View style={styles.planDetails}>
                     {item.startDate && (
                       <View style={styles.planDetailItem}>
                         <MaterialCommunityIcons name="calendar" size={16} color="#4c669f" />
-                        <ThemedText style={styles.planDetailText}>{item.startDate}</ThemedText>
+                        <ThemedText style={styles.planDetailText} numberOfLines={1} ellipsizeMode="tail">{item.startDate}</ThemedText>
                       </View>
                     )}
                     {item.duration && (
                       <View style={styles.planDetailItem}>
                         <MaterialCommunityIcons name="clock-outline" size={16} color="#4c669f" />
-                        <ThemedText style={styles.planDetailText}>{item.duration} gün</ThemedText>
+                        <ThemedText style={styles.planDetailText} numberOfLines={1} ellipsizeMode="tail">{item.duration} gün</ThemedText>
                       </View>
                     )}
                     {item.budget && (
                       <View style={styles.planDetailItem}>
                         <MaterialCommunityIcons name="wallet-outline" size={16} color="#4c669f" />
-                        <ThemedText style={styles.planDetailText}>{item.budget}</ThemedText>
+                        <ThemedText style={styles.planDetailText} numberOfLines={1} ellipsizeMode="tail">{item.budget}</ThemedText>
                       </View>
                     )}
                     {item.groupType && (
                       <View style={styles.planDetailItem}>
                         <MaterialCommunityIcons name="account-group-outline" size={16} color="#4c669f" />
-                        <ThemedText style={styles.planDetailText}>{item.groupType}</ThemedText>
+                        <ThemedText style={styles.planDetailText} numberOfLines={1} ellipsizeMode="tail">{item.groupType}</ThemedText>
                       </View>
                     )}
                   </View>
@@ -404,7 +404,7 @@ export default function TripDetailsScreen() {
             </ThemedText>
             <TouchableOpacity
               style={styles.createButton}
-              onPress={() => router.push('/')}
+              onPress={() => router.push('/(tabs)/ai-planner')}
             >
               <ThemedText style={styles.createButtonText}>Yeni Plan Oluştur</ThemedText>
             </TouchableOpacity>
@@ -424,7 +424,7 @@ export default function TripDetailsScreen() {
         >
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.title}>Seyahat Planı</ThemedText>
+        <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">Seyahat Planı</ThemedText>
         <TouchableOpacity
           style={styles.refreshButton}
           onPress={handleRefresh}
@@ -493,11 +493,11 @@ export default function TripDetailsScreen() {
                   <ThemedText style={styles.sectionTitle}>Konaklama Seçenekleri</ThemedText>
                   {hotelOptionsToUse.map((hotel: any, index: number) => (
                     <View key={index} style={styles.card}>
-                      <ThemedText style={styles.hotelName}>{hotel.hotelName}</ThemedText>
-                      <ThemedText style={styles.infoItem}>{hotel.hotelAddress}</ThemedText>
-                      <ThemedText style={styles.infoItem}>Fiyat: {hotel.priceRange || hotel.price || 'Belirtilmemiş'}</ThemedText>
-                      <ThemedText style={styles.infoItem}>Değerlendirme: {hotel.rating}</ThemedText>
-                      <ThemedText style={styles.description}>{hotel.description}</ThemedText>
+                      <ThemedText style={styles.hotelName} numberOfLines={1} ellipsizeMode="tail">{hotel.hotelName}</ThemedText>
+                      <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">{hotel.hotelAddress}</ThemedText>
+                      <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Fiyat: {hotel.priceRange || hotel.price || 'Belirtilmemiş'}</ThemedText>
+                      <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Değerlendirme: {hotel.rating}</ThemedText>
+                      <ThemedText style={styles.description} numberOfLines={4} ellipsizeMode="tail">{hotel.description}</ThemedText>
                     </View>
                   ))}
                 </View>
@@ -535,14 +535,14 @@ export default function TripDetailsScreen() {
                       <ThemedText style={styles.dayTitle}>{day.day}</ThemedText>
                       {day.plan && Array.isArray(day.plan) && day.plan.map((activity: any, actIndex: number) => (
                         <View key={actIndex} style={styles.activityCard}>
-                          <ThemedText style={styles.activityTime}>{activity.time}</ThemedText>
-                          <ThemedText style={styles.activityName}>{activity.placeName}</ThemedText>
-                          <ThemedText style={styles.activityDetails}>{activity.placeDetails}</ThemedText>
+                          <ThemedText style={styles.activityTime} numberOfLines={1} ellipsizeMode="tail">{activity.time}</ThemedText>
+                          <ThemedText style={styles.activityName} numberOfLines={1} ellipsizeMode="tail">{activity.placeName}</ThemedText>
+                          <ThemedText style={styles.activityDetails} numberOfLines={3} ellipsizeMode="tail">{activity.placeDetails}</ThemedText>
                           {activity.ticketPricing && (
-                            <ThemedText style={styles.infoItem}>Bilet: {activity.ticketPricing}</ThemedText>
+                            <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Bilet: {activity.ticketPricing}</ThemedText>
                           )}
                           {activity.timeToTravel && (
-                            <ThemedText style={styles.infoItem}>Ulaşım Süresi: {activity.timeToTravel}</ThemedText>
+                            <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Ulaşım Süresi: {activity.timeToTravel}</ThemedText>
                           )}
                         </View>
                       ))}
@@ -560,10 +560,10 @@ export default function TripDetailsScreen() {
               <ThemedText style={styles.sectionTitle}>Vize ve Pasaport Bilgileri</ThemedText>
               <View style={styles.card}>
                 {tripData.visaInfo.visaRequirement && (
-                  <ThemedText style={styles.infoItem}>Vize Gerekliliği: {tripData.visaInfo.visaRequirement}</ThemedText>
+                  <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">Vize Gerekliliği: {tripData.visaInfo.visaRequirement}</ThemedText>
                 )}
                 {tripData.visaInfo.visaApplicationProcess && (
-                  <ThemedText style={styles.infoItem}>Vize Başvuru Süreci: {tripData.visaInfo.visaApplicationProcess}</ThemedText>
+                  <ThemedText style={styles.infoItem} numberOfLines={3} ellipsizeMode="tail">Vize Başvuru Süreci: {tripData.visaInfo.visaApplicationProcess}</ThemedText>
                 )}
 
                 {/* Güvenli kontrol - requiredDocuments var mı, array mi ve içinde eleman var mı? */}
@@ -630,7 +630,7 @@ export default function TripDetailsScreen() {
                 })()}
 
                 {tripData.visaInfo.visaFee && (
-                  <ThemedText style={styles.infoItem}>Vize Ücreti: {tripData.visaInfo.visaFee}</ThemedText>
+                  <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Vize Ücreti: {tripData.visaInfo.visaFee}</ThemedText>
                 )}
               </View>
             </View>
@@ -643,13 +643,13 @@ export default function TripDetailsScreen() {
               <ThemedText style={styles.sectionTitle}>Vize ve Pasaport Bilgileri</ThemedText>
               <View style={styles.card}>
                 {tripData.visaRequirements && (
-                  <ThemedText style={styles.infoItem}>Vize Gerekliliği: {tripData.visaRequirements}</ThemedText>
+                  <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">Vize Gerekliliği: {tripData.visaRequirements}</ThemedText>
                 )}
                 {tripData.visaApplicationProcess && (
-                  <ThemedText style={styles.infoItem}>Vize Başvuru Süreci: {tripData.visaApplicationProcess}</ThemedText>
+                  <ThemedText style={styles.infoItem} numberOfLines={3} ellipsizeMode="tail">Vize Başvuru Süreci: {tripData.visaApplicationProcess}</ThemedText>
                 )}
                 {tripData.visaFees && (
-                  <ThemedText style={styles.infoItem}>Vize Ücreti: {tripData.visaFees}</ThemedText>
+                  <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Vize Ücreti: {tripData.visaFees}</ThemedText>
                 )}
               </View>
             </View>
@@ -661,7 +661,7 @@ export default function TripDetailsScreen() {
               <ThemedText style={styles.sectionTitle}>Kültürel Farklılıklar</ThemedText>
               <View style={styles.card}>
                 {Object.entries(tripData.culturalDifferences).map(([key, value]: [string, any]) => (
-                  <ThemedText key={key} style={styles.infoItem}>
+                  <ThemedText key={key} style={styles.infoItem} numberOfLines={3} ellipsizeMode="tail">
                     {value}
                   </ThemedText>
                 ))}
@@ -675,7 +675,7 @@ export default function TripDetailsScreen() {
               <ThemedText style={styles.sectionTitle}>Yerel İpuçları</ThemedText>
               <View style={styles.card}>
                 {Object.entries(tripData.localTips).map(([key, value]: [string, any]) => (
-                  <ThemedText key={key} style={styles.infoItem}>
+                  <ThemedText key={key} style={styles.infoItem} numberOfLines={3} ellipsizeMode="tail">
                     {value}
                   </ThemedText>
                 ))}
@@ -687,13 +687,13 @@ export default function TripDetailsScreen() {
           <View style={styles.section}>
             <ThemedText style={styles.sectionTitle}>Seyahat Bilgileri</ThemedText>
             <View style={styles.card}>
-              <ThemedText style={styles.infoItem}>Destinasyon: {tripData.destination}</ThemedText>
-              {tripData.startDate && <ThemedText style={styles.infoItem}>Başlangıç Tarihi: {tripData.startDate}</ThemedText>}
-              {tripData.duration && <ThemedText style={styles.infoItem}>Süre: {tripData.duration} gün</ThemedText>}
-              {tripData.budget && <ThemedText style={styles.infoItem}>Bütçe: {tripData.budget}</ThemedText>}
-              {tripData.groupType && <ThemedText style={styles.infoItem}>Grup Tipi: {tripData.groupType}</ThemedText>}
-              {tripData.numberOfPeople && <ThemedText style={styles.infoItem}>Kişi Sayısı: {tripData.numberOfPeople}</ThemedText>}
-              {tripData.bestTimeToVisit && <ThemedText style={styles.infoItem}>En İyi Ziyaret Zamanı: {tripData.bestTimeToVisit}</ThemedText>}
+              <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">Destinasyon: {tripData.destination}</ThemedText>
+              {tripData.startDate && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Başlangıç Tarihi: {tripData.startDate}</ThemedText>}
+              {tripData.duration && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Süre: {tripData.duration} gün</ThemedText>}
+              {tripData.budget && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Bütçe: {tripData.budget}</ThemedText>}
+              {tripData.groupType && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Grup Tipi: {tripData.groupType}</ThemedText>}
+              {tripData.numberOfPeople && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Kişi Sayısı: {tripData.numberOfPeople}</ThemedText>}
+              {tripData.bestTimeToVisit && <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">En İyi Ziyaret Zamanı: {tripData.bestTimeToVisit}</ThemedText>}
             </View>
           </View>
 
@@ -718,7 +718,7 @@ export default function TripDetailsScreen() {
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Seyahat Planı</ThemedText>
               <View style={styles.card}>
-                <ThemedText style={styles.rawResponse}>{tripData.rawResponse}</ThemedText>
+                <ThemedText style={styles.rawResponse} numberOfLines={10} ellipsizeMode="tail">{tripData.rawResponse}</ThemedText>
               </View>
             </View>
           )}
@@ -728,7 +728,7 @@ export default function TripDetailsScreen() {
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Seyahat Planı (JSON)</ThemedText>
               <View style={styles.card}>
-                <ThemedText style={styles.rawResponse}>{tripData.itinerary}</ThemedText>
+                <ThemedText style={styles.rawResponse} numberOfLines={10} ellipsizeMode="tail">{tripData.itinerary}</ThemedText>
               </View>
             </View>
           )}
@@ -788,11 +788,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(76, 102, 159, 0.2)',
   },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
     fontFamily: 'SpaceMono',
     flex: 1,
+    marginHorizontal: 8,
   },
   content: {
     padding: 20,
@@ -904,7 +905,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontFamily: 'SpaceMono',
     lineHeight: 20,
-    fontSize: 15,
+    fontSize: 14,
+    flexWrap: 'wrap',
   },
   description: {
     color: '#999',
@@ -914,6 +916,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.2)',
     padding: 10,
     borderRadius: 8,
+    fontSize: 13,
+    flexWrap: 'wrap',
   },
   subTitle: {
     fontSize: 18,
@@ -986,6 +990,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderLeftWidth: 3,
+    borderLeftColor: '#4c669f',
   },
   planCardContent: {
     flex: 1,
@@ -996,22 +1002,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 8,
     fontFamily: 'SpaceMono',
+    flexShrink: 1,
   },
   planDetails: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginTop: 4,
   },
   planDetailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 4,
+    marginRight: 12,
+    marginBottom: 6,
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   planDetailText: {
     color: '#ccc',
     marginLeft: 4,
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'SpaceMono',
+    flexShrink: 1,
   },
   emptyContainer: {
     flex: 1,
@@ -1032,6 +1045,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   createButtonText: {
     color: '#fff',
