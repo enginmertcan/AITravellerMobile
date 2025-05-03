@@ -848,8 +848,9 @@ export const TravelPlanService = {
         cleanPhotoInfo.activityName = "";
       }
 
-      // Yeni fotoğraf ID'si oluştur
-      const photoId = `photo_${new Date().getTime()}`;
+      // Yeni fotoğraf ID'si oluştur (eğer yoksa)
+      const photoId = cleanPhotoInfo.id || `photo_${new Date().getTime()}`;
+      cleanPhotoInfo.id = photoId;
 
       // Yeni fotoğrafı ekle - base64 verisiyle birlikte
       const newPhoto = {
@@ -860,7 +861,17 @@ export const TravelPlanService = {
         imageData: base64Image
       };
 
-      tripPhotos.push(newPhoto);
+      // Aynı ID'ye sahip bir fotoğraf var mı kontrol et
+      const existingPhotoIndex = tripPhotos.findIndex((p: any) => p.id === photoId);
+      if (existingPhotoIndex >= 0) {
+        // Varsa güncelle
+        tripPhotos[existingPhotoIndex] = newPhoto;
+        console.log(`Mevcut fotoğraf güncellendi: ${photoId}`);
+      } else {
+        // Yoksa ekle
+        tripPhotos.push(newPhoto);
+        console.log(`Yeni fotoğraf eklendi: ${photoId}`);
+      }
 
       // Web uyumluluğu için string'e dönüştür
       const tripPhotosString = JSON.stringify(tripPhotos);
@@ -873,6 +884,7 @@ export const TravelPlanService = {
       });
 
       console.log("Base64 resim başarıyla ana koleksiyona kaydedildi:", photoId);
+      console.log(`Toplam fotoğraf sayısı: ${tripPhotos.length}`);
       return true;
     } catch (error) {
       console.error("Base64 resim kaydetme hatası:", error);

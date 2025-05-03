@@ -40,34 +40,56 @@ export default function TripDetailsScreen() {
     }
 
     // Fotoğrafları parse et
-    if (plan.tripPhotos) {
-      const photos = parseTripPhotos(plan.tripPhotos);
+    try {
+      console.log('Fotoğraflar yükleniyor (selectPlan)...');
+      console.log('tripPhotos tipi:', typeof plan.tripPhotos);
 
-      // Fotoğraf referanslarını kontrol et ve gerekirse verileri getir
-      const updatedPhotos = await Promise.all(
-        photos.map(async (photo) => {
-          // Eğer fotoğrafın imageRef'i varsa ve imageData yoksa
-          if (photo.imageRef && !photo.imageData && !photo.imageUrl) {
-            try {
-              // Firestore'dan fotoğraf verisini getir
-              const photoDoc = await FirebaseService.TravelPlan.getPhotoById(photo.imageRef);
-              if (photoDoc && photoDoc.imageData) {
-                return {
-                  ...photo,
-                  imageData: photoDoc.imageData
-                };
+      if (plan.tripPhotos) {
+        // Fotoğrafları parse et
+        const photos = parseTripPhotos(plan.tripPhotos);
+        console.log(`Parse edilen fotoğraf sayısı: ${photos.length}`);
+
+        if (photos.length > 0) {
+          // Fotoğraf referanslarını kontrol et ve gerekirse verileri getir
+          const updatedPhotos = await Promise.all(
+            photos.map(async (photo) => {
+              // Eğer fotoğrafın imageRef'i varsa ve imageData yoksa
+              if (photo.imageRef && !photo.imageData && !photo.imageUrl) {
+                try {
+                  console.log(`Referans ile fotoğraf getiriliyor: ${photo.imageRef}`);
+                  // Firestore'dan fotoğraf verisini getir
+                  const photoDoc = await FirebaseService.TravelPlan.getPhotoById(photo.imageRef);
+                  if (photoDoc && photoDoc.imageData) {
+                    console.log(`Fotoğraf verisi başarıyla getirildi: ${photo.id}`);
+                    return {
+                      ...photo,
+                      imageData: photoDoc.imageData
+                    };
+                  }
+                } catch (error) {
+                  console.error('Fotoğraf verisi getirme hatası:', error);
+                }
+              } else if (photo.imageData) {
+                console.log(`Fotoğraf zaten base64 verisi içeriyor: ${photo.id}`);
+              } else if (photo.imageUrl) {
+                console.log(`Fotoğraf URL içeriyor: ${photo.id}`);
               }
-            } catch (error) {
-              console.error('Fotoğraf verisi getirme hatası:', error);
-            }
-          }
-          return photo;
-        })
-      );
+              return photo;
+            })
+          );
 
-      setTripPhotos(updatedPhotos);
-      console.log(`${updatedPhotos.length} fotoğraf yüklendi`);
-    } else {
+          setTripPhotos(updatedPhotos);
+          console.log(`${updatedPhotos.length} fotoğraf yüklendi (selectPlan)`);
+        } else {
+          console.log('Parse edilen fotoğraf bulunamadı (selectPlan)');
+          setTripPhotos([]);
+        }
+      } else {
+        console.log('Plan içinde tripPhotos alanı bulunamadı (selectPlan)');
+        setTripPhotos([]);
+      }
+    } catch (error) {
+      console.error('Fotoğraf yükleme hatası (selectPlan):', error);
       setTripPhotos([]);
     }
 
@@ -85,10 +107,14 @@ export default function TripDetailsScreen() {
 
   // Hava durumu verilerini getir
   const fetchWeatherData = async (plan: Partial<TravelPlan>) => {
-    if (!plan.destination) return;
+    if (!plan.destination) {
+      console.log('Hava durumu getirilemedi: Destinasyon bilgisi yok');
+      return;
+    }
 
     setWeatherLoading(true);
     try {
+      console.log('Hava durumu verileri getiriliyor...');
       // Destinasyon bilgisini al
       const destination = plan.destination;
 
@@ -296,14 +322,26 @@ export default function TripDetailsScreen() {
   const loadSinglePlan = async (id: string) => {
     try {
       console.log('Firebase\'den belirli seyahat planı çekiliyor, ID:', id);
+      console.log('Mevcut fotoğraf sayısı:', tripPhotos.length);
+
+      // Yükleme durumunu aktif et
+      setLoading(true);
+
+      // Önce mevcut fotoğrafları temizle
+      setTripPhotos([]);
+
+      // Plan verilerini getir
+      console.log('Firebase.TravelPlan.getTravelPlanById çağrılıyor...');
       const plan = await FirebaseService.TravelPlan.getTravelPlanById(id);
+      console.log('Plan verileri alındı, içerik kontrolü yapılıyor...');
 
       if (plan && Object.keys(plan).length > 0) {
-        console.log('Plan başarıyla çekildi');
+        console.log('Plan başarıyla çekildi, alanlar:', Object.keys(plan).join(', '));
 
         // İtinerary alanını parse et
         if (plan.itinerary && typeof plan.itinerary === 'string') {
           try {
+            console.log('İtinerary string formatında, parse ediliyor...');
             const parsedItinerary = safeParseJSON(plan.itinerary);
             if (parsedItinerary) {
               console.log('İtinerary başarıyla parse edildi');
@@ -314,52 +352,90 @@ export default function TripDetailsScreen() {
           } catch (parseError) {
             console.error('İtinerary parse hatası:', parseError);
           }
+        } else {
+          console.log('İtinerary string formatında değil veya mevcut değil:', typeof plan.itinerary);
         }
 
         // Fotoğrafları parse et
-        if (plan.tripPhotos) {
-          const photos = parseTripPhotos(plan.tripPhotos);
+        try {
+          console.log('Fotoğraflar yükleniyor...');
+          console.log('tripPhotos tipi:', typeof plan.tripPhotos);
 
-          // Fotoğraf referanslarını kontrol et ve gerekirse verileri getir
-          const updatedPhotos = await Promise.all(
-            photos.map(async (photo) => {
-              // Eğer fotoğrafın imageRef'i varsa ve imageData yoksa
-              if (photo.imageRef && !photo.imageData && !photo.imageUrl) {
-                try {
-                  // Firestore'dan fotoğraf verisini getir
-                  const photoDoc = await FirebaseService.TravelPlan.getPhotoById(photo.imageRef);
-                  if (photoDoc && photoDoc.imageData) {
-                    return {
-                      ...photo,
-                      imageData: photoDoc.imageData
-                    };
+          if (plan.tripPhotos) {
+            // Fotoğrafları parse et
+            const photos = parseTripPhotos(plan.tripPhotos);
+            console.log(`Parse edilen fotoğraf sayısı: ${photos.length}`);
+
+            if (photos.length > 0) {
+              // Fotoğraf referanslarını kontrol et ve gerekirse verileri getir
+              const updatedPhotos = await Promise.all(
+                photos.map(async (photo) => {
+                  // Eğer fotoğrafın imageRef'i varsa ve imageData yoksa
+                  if (photo.imageRef && !photo.imageData && !photo.imageUrl) {
+                    try {
+                      console.log(`Referans ile fotoğraf getiriliyor: ${photo.imageRef}`);
+                      // Firestore'dan fotoğraf verisini getir
+                      const photoDoc = await FirebaseService.TravelPlan.getPhotoById(photo.imageRef);
+                      if (photoDoc && photoDoc.imageData) {
+                        console.log(`Fotoğraf verisi başarıyla getirildi: ${photo.id}`);
+                        return {
+                          ...photo,
+                          imageData: photoDoc.imageData
+                        };
+                      }
+                    } catch (error) {
+                      console.error('Fotoğraf verisi getirme hatası:', error);
+                    }
+                  } else if (photo.imageData) {
+                    console.log(`Fotoğraf zaten base64 verisi içeriyor: ${photo.id}`);
+                  } else if (photo.imageUrl) {
+                    console.log(`Fotoğraf URL içeriyor: ${photo.id}`);
                   }
-                } catch (error) {
-                  console.error('Fotoğraf verisi getirme hatası:', error);
-                }
-              }
-              return photo;
-            })
-          );
+                  return photo;
+                })
+              );
 
-          setTripPhotos(updatedPhotos);
-          console.log(`${updatedPhotos.length} fotoğraf yüklendi`);
-        } else {
+              setTripPhotos(updatedPhotos);
+              console.log(`${updatedPhotos.length} fotoğraf yüklendi`);
+            } else {
+              console.log('Parse edilen fotoğraf bulunamadı');
+              setTripPhotos([]);
+            }
+          } else {
+            console.log('Plan içinde tripPhotos alanı bulunamadı');
+            setTripPhotos([]);
+          }
+        } catch (error) {
+          console.error('Fotoğraf yükleme hatası:', error);
           setTripPhotos([]);
         }
 
+        // UI'ı güncelle
+        console.log('UI güncelleniyor...');
         setTripData(plan);
         setShowPlansList(false); // Detay görünümünü göster
-        fetchWeatherData(plan); // Hava durumu verilerini getir
+
+        // Hava durumu verilerini getir
+        console.log('Hava durumu verileri getiriliyor...');
+        fetchWeatherData(plan);
+
+        // Yükleme durumunu kapat
+        setLoading(false);
+
+        console.log('Plan yükleme işlemi başarıyla tamamlandı');
         return true;
       } else {
-        console.error('Plan bulunamadı:', id);
+        console.error('Plan bulunamadı veya boş:', id);
+        setTripData(DEFAULT_TRAVEL_PLAN);
         setShowPlansList(true); // Liste görünümüne dön
+        setLoading(false);
         return false;
       }
     } catch (error) {
       console.error('Plan yükleme hatası:', error);
+      setTripData(DEFAULT_TRAVEL_PLAN);
       setShowPlansList(true);
+      setLoading(false);
       return false;
     }
   };
@@ -369,12 +445,25 @@ export default function TripDetailsScreen() {
     // Immediate function to allow async/await
     const fetchData = async () => {
       console.log('useEffect triggered, loading data...');
-      await loadData();
+
+      // Eğer planId varsa, doğrudan o planı yükle
+      if (planId) {
+        console.log(`Belirli bir plan yükleniyor, ID: ${planId}`);
+        await loadSinglePlan(planId);
+      } else {
+        // Yoksa tüm planları yükle
+        await loadData();
+      }
     };
 
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, planId]);
+
+  // Fotoğraflar değiştiğinde UI'ı güncelle
+  useEffect(() => {
+    console.log(`TripPhotos state güncellendi, fotoğraf sayısı: ${tripPhotos.length}`);
+  }, [tripPhotos]);
 
   // Plan listesine geri dönmek için
   const handleBackToList = () => {
@@ -392,8 +481,16 @@ export default function TripDetailsScreen() {
 
   // Fotoğraf eklendiğinde planı yeniden yükle
   const handlePhotoAdded = async () => {
+    console.log('Fotoğraf eklendi, plan yeniden yükleniyor...');
     if (planId) {
-      await loadSinglePlan(planId);
+      // Planı yeniden yükle
+      const success = await loadSinglePlan(planId);
+
+      if (!success) {
+        console.error('Plan yeniden yüklenemedi');
+      } else {
+        console.log('Plan başarıyla yeniden yüklendi');
+      }
     }
   };
 

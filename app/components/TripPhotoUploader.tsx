@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, Image, FlatList, Modal, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -22,6 +22,18 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPhotoForModal, setSelectedPhotoForModal] = useState<TripPhoto | null>(null);
+
+  // Component mount olduğunda veya tripPhotos değiştiğinde log
+  useEffect(() => {
+    console.log(`TripPhotoUploader: ${tripPhotos.length} fotoğraf alındı`);
+
+    // Fotoğrafların içeriğini kontrol et
+    if (tripPhotos.length > 0) {
+      tripPhotos.forEach((photo, index) => {
+        console.log(`Fotoğraf ${index + 1} - ID: ${photo.id}, imageData: ${photo.imageData ? 'var' : 'yok'}, imageUrl: ${photo.imageUrl ? 'var' : 'yok'}`);
+      });
+    }
+  }, [tripPhotos]);
 
   // Ekran boyutlarını al
   const screenWidth = Dimensions.get('window').width;
@@ -69,10 +81,9 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
       console.log('Seyahat Planı ID:', travelPlanId);
       console.log('Seçilen fotoğraf URI:', selectedImage);
 
-      // Fotoğrafı Firebase Storage'a yükle ve Firestore'a referans ekle
+      // Fotoğrafı Firestore'a yükle
       try {
         console.log('Fotoğraf işleniyor...');
-        setLoading(true);
 
         // Fotoğraf bilgilerini hazırla
         const timestamp = new Date().getTime();
@@ -82,24 +93,19 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
         console.log('Fotoğraf base64 olarak Firestore\'a kaydediliyor...');
 
         try {
-          // Fotoğraf bilgilerini hazırla
-          let photoInfo: Partial<TripPhoto>;
-
           // Resmi base64'e dönüştür
           const base64Data = await FileSystem.readAsStringAsync(photoUri, {
             encoding: FileSystem.EncodingType.Base64,
           });
 
           // Fotoğraf bilgilerini hazırla (base64 ile)
-          photoInfo = {
+          const photoInfo: Partial<TripPhoto> = {
             id: `photo_${timestamp}`,
             location: location.trim() || "", // Boş string kullan, undefined değil
             uploadedAt: new Date().toISOString()
           };
 
-          // Doğrudan ana koleksiyona ekleyelim (izin sorunu nedeniyle)
-          // Firestore izinleri nedeniyle travelPlans_photos koleksiyonu yerine
-          // doğrudan ana koleksiyona ekleyeceğiz
+          // Doğrudan ana koleksiyona ekleyelim
           const success = await FirebaseService.TravelPlan.addTripPhotoWithBase64(
             travelPlanId,
             base64Data,
@@ -107,12 +113,19 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
           );
 
           if (success) {
-            console.log('Fotoğraf base64 olarak başarıyla kaydedildi');
+            console.log('Fotoğraf başarıyla kaydedildi');
+
+            // Yeni fotoğrafı oluştur (imageData ile birlikte)
+            const newPhoto: TripPhoto = {
+              id: photoInfo.id || `photo_${timestamp}`,
+              imageData: base64Data,
+              location: photoInfo.location || "",
+              uploadedAt: photoInfo.uploadedAt || new Date().toISOString()
+            };
 
             // Fotoğrafları güncelle (eğer prop olarak geçildiyse)
-            if (setTripPhotos && tripPhotos) {
-              const updatedPhotos = [...tripPhotos];
-              updatedPhotos.push(photoInfo as TripPhoto);
+            if (setTripPhotos) {
+              const updatedPhotos = [...tripPhotos, newPhoto];
               setTripPhotos(updatedPhotos);
             }
 
@@ -183,11 +196,18 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
 
   // Fotoğraf kaynağını belirle (URL veya base64)
   const getImageSource = (item: TripPhoto) => {
-    return item.imageData
-      ? { uri: `data:image/jpeg;base64,${item.imageData}` }
-      : item.imageUrl
-        ? { uri: item.imageUrl }
-        : { uri: 'https://via.placeholder.com/300x200/4c669f/ffffff?text=Resim+Yok' }; // Online placeholder
+    console.log(`Fotoğraf kaynağı belirleniyor: ${item.id}`);
+
+    if (item.imageData) {
+      console.log(`${item.id} için base64 verisi kullanılıyor`);
+      return { uri: `data:image/jpeg;base64,${item.imageData}` };
+    } else if (item.imageUrl) {
+      console.log(`${item.id} için URL kullanılıyor: ${item.imageUrl}`);
+      return { uri: item.imageUrl };
+    } else {
+      console.log(`${item.id} için placeholder kullanılıyor`);
+      return { uri: 'https://via.placeholder.com/300x200/4c669f/ffffff?text=Resim+Yok' };
+    }
   };
 
   // Fotoğraf listesini render et
@@ -214,10 +234,12 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
     );
   };
 
-  return (
-    <View style={styles.container}>
-      {/* Fotoğraf Listesi */}
-      {tripPhotos.length > 0 ? (
+  // Fotoğrafları render et
+  const renderPhotoList = () => {
+    console.log(`Fotoğraf listesi render ediliyor, fotoğraf sayısı: ${tripPhotos.length}`);
+
+    if (tripPhotos.length > 0) {
+      return (
         <FlatList
           data={tripPhotos}
           keyExtractor={(item) => item.id}
@@ -225,15 +247,25 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
           horizontal={true}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.photoListHorizontal}
+          extraData={tripPhotos} // Fotoğraflar değiştiğinde FlatList'i yeniden render et
         />
-      ) : (
+      );
+    } else {
+      return (
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="image-off" size={50} color="#4c669f" />
           <ThemedText style={styles.emptyText}>
             Henüz fotoğraf eklenmemiş.
           </ThemedText>
         </View>
-      )}
+      );
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Fotoğraf Listesi */}
+      {renderPhotoList()}
 
       {/* Fotoğraf Detay Modalı */}
       <Modal

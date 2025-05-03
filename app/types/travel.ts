@@ -206,20 +206,35 @@ export function safeParseJSON(jsonString: string | any) {
 // Seyahat fotoğraflarını parse et
 export function parseTripPhotos(tripPhotos: TripPhoto[] | string | undefined): TripPhoto[] {
   if (!tripPhotos) {
+    console.log('Fotoğraf verisi bulunamadı');
     return [];
   }
 
   if (typeof tripPhotos === 'string') {
     try {
+      console.log('Fotoğraf verisi string formatında, parse ediliyor...');
       const parsed = safeParseJSON(tripPhotos);
-      return Array.isArray(parsed) ? parsed : [];
+
+      if (Array.isArray(parsed)) {
+        console.log(`${parsed.length} fotoğraf başarıyla parse edildi`);
+        return parsed;
+      } else {
+        console.error('Fotoğraf verisi array formatında değil');
+        return [];
+      }
     } catch (error) {
       console.error('Fotoğraf parse hatası:', error);
       return [];
     }
   }
 
-  return Array.isArray(tripPhotos) ? tripPhotos : [];
+  if (Array.isArray(tripPhotos)) {
+    console.log(`${tripPhotos.length} fotoğraf zaten array formatında`);
+    return tripPhotos;
+  }
+
+  console.error('Fotoğraf verisi geçersiz formatta:', typeof tripPhotos);
+  return [];
 }
 
 // Expo Router için default export gereklidir
