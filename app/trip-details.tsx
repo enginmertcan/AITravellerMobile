@@ -694,6 +694,34 @@ export default function TripDetailsScreen() {
                 itineraryToUse = tripData.itinerary.itinerary;
                 console.log('İtinerary objesi içindeki itinerary array kullanılıyor');
               }
+              // String ise parse etmeyi dene
+              else if (typeof tripData.itinerary === 'string') {
+                try {
+                  console.log('İtinerary string formatında, parse ediliyor...');
+                  const parsedItinerary = safeParseJSON(tripData.itinerary);
+
+                  if (parsedItinerary) {
+                    console.log('İtinerary başarıyla parse edildi, format kontrol ediliyor...');
+
+                    // Direkt array ise kullan
+                    if (Array.isArray(parsedItinerary)) {
+                      itineraryToUse = parsedItinerary;
+                      console.log('Parse edilen itinerary array olarak kullanılıyor');
+                    }
+                    // Obje içinde itinerary array'i varsa onu kullan
+                    else if (typeof parsedItinerary === 'object' &&
+                             parsedItinerary.itinerary &&
+                             Array.isArray(parsedItinerary.itinerary)) {
+                      itineraryToUse = parsedItinerary.itinerary;
+                      console.log('Parse edilen itinerary objesi içindeki itinerary array kullanılıyor');
+                    }
+                  } else {
+                    console.error('İtinerary parse edilemedi');
+                  }
+                } catch (parseError) {
+                  console.error('İtinerary parse hatası:', parseError);
+                }
+              }
             }
 
             if (itineraryToUse && itineraryToUse.length > 0) {
@@ -740,8 +768,20 @@ export default function TripDetailsScreen() {
                 {(() => {
                   try {
                     // Önce requiredDocuments'ın varlığını kontrol et
-                    if (!tripData.visaInfo.requiredDocuments) {
-                      return <ThemedText style={styles.infoItem}>Gerekli belgeler belirtilmemiş</ThemedText>;
+                    if (!tripData.visaInfo.requiredDocuments ||
+                        (Array.isArray(tripData.visaInfo.requiredDocuments) && tripData.visaInfo.requiredDocuments.length === 0)) {
+                      // Boş dizi yerine varsayılan değerler ekle
+                      tripData.visaInfo.requiredDocuments = ["Kimlik kartı", "Pasaport (isteğe bağlı)"];
+                      return (
+                        <>
+                          <ThemedText style={styles.subTitle}>Gerekli Belgeler:</ThemedText>
+                          {tripData.visaInfo.requiredDocuments.map((doc: string, index: number) => (
+                            <ThemedText key={index} style={styles.listItem}>
+                              <ThemedText style={styles.bulletPoint}>•</ThemedText> {doc}
+                            </ThemedText>
+                          ))}
+                        </>
+                      );
                     }
 
                     // Array olup olmadığını kontrol et
@@ -826,32 +866,412 @@ export default function TripDetailsScreen() {
           )}
 
           {/* Kültürel Farklılıklar */}
-          {tripData.culturalDifferences && typeof tripData.culturalDifferences === 'object' && (
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Kültürel Farklılıklar</ThemedText>
-              <View style={styles.card}>
-                {Object.entries(tripData.culturalDifferences).map(([key, value]: [string, any]) => (
-                  <ThemedText key={key} style={styles.infoItem} numberOfLines={3} ellipsizeMode="tail">
-                    {value}
-                  </ThemedText>
-                ))}
-              </View>
-            </View>
-          )}
+          {(() => {
+            // culturalDifferences'ı kontrol et ve doğru formatı bul
+            let culturalDifferencesData = null;
+            let hasCulturalData = false;
+
+            // String olarak geldiyse parse et
+            if (tripData.culturalDifferences && typeof tripData.culturalDifferences === 'string') {
+              try {
+                culturalDifferencesData = safeParseJSON(tripData.culturalDifferences);
+                console.log('culturalDifferences JSON olarak parse edildi');
+                hasCulturalData = true;
+              } catch (error) {
+                console.error('culturalDifferences parse hatası:', error);
+                // String olarak kullan
+                culturalDifferencesData = { culturalDifferences: tripData.culturalDifferences };
+                hasCulturalData = true;
+              }
+            }
+            // Direkt obje olarak geldiyse kullan
+            else if (tripData.culturalDifferences && typeof tripData.culturalDifferences === 'object') {
+              culturalDifferencesData = tripData.culturalDifferences;
+              hasCulturalData = true;
+            }
+
+            // Eksik alanları tamamla
+            if (culturalDifferencesData) {
+              // Temel kültürel farklılıklar
+              if (!culturalDifferencesData.culturalDifferences) {
+                culturalDifferencesData.culturalDifferences = "Bilgi bulunmuyor";
+              }
+
+              // Yaşam tarzı farklılıkları
+              if (!culturalDifferencesData.lifestyleDifferences) {
+                culturalDifferencesData.lifestyleDifferences = "Bilgi bulunmuyor";
+              }
+
+              // Yemek kültürü farklılıkları
+              if (!culturalDifferencesData.foodCultureDifferences) {
+                culturalDifferencesData.foodCultureDifferences = "Bilgi bulunmuyor";
+              }
+
+              // Sosyal normlar farklılıkları
+              if (!culturalDifferencesData.socialNormsDifferences) {
+                culturalDifferencesData.socialNormsDifferences = "Bilgi bulunmuyor";
+              }
+
+              // Dini ve kültürel hassasiyetler
+              if (!culturalDifferencesData.religiousAndCulturalSensitivities) {
+                culturalDifferencesData.religiousAndCulturalSensitivities = "Bilgi bulunmuyor";
+              }
+
+              // Yerel gelenekler ve görenekler
+              if (!culturalDifferencesData.localTraditionsAndCustoms) {
+                culturalDifferencesData.localTraditionsAndCustoms = "Bilgi bulunmuyor";
+              }
+
+              // Kültürel etkinlikler ve festivaller
+              if (!culturalDifferencesData.culturalEventsAndFestivals) {
+                culturalDifferencesData.culturalEventsAndFestivals = "Bilgi bulunmuyor";
+              }
+
+              // Yerel halkla iletişim önerileri
+              if (!culturalDifferencesData.localCommunicationTips) {
+                culturalDifferencesData.localCommunicationTips = "Bilgi bulunmuyor";
+              }
+            }
+
+            // Diğer kültürel farklılık alanlarını kontrol et
+            const hasLifestyleDifferences = tripData.lifestyleDifferences && typeof tripData.lifestyleDifferences === 'string';
+            const hasFoodCultureDifferences = tripData.foodCultureDifferences && typeof tripData.foodCultureDifferences === 'string';
+            const hasSocialNormsDifferences = tripData.socialNormsDifferences && typeof tripData.socialNormsDifferences === 'string';
+
+            // Herhangi bir kültürel veri varsa bölümü göster
+            if (hasCulturalData || hasLifestyleDifferences || hasFoodCultureDifferences || hasSocialNormsDifferences) {
+              return (
+                <View style={styles.section}>
+                  <View style={styles.sectionTitleContainer}>
+                    <MaterialCommunityIcons name="earth" size={24} color="#4c669f" />
+                    <ThemedText style={styles.sectionTitle}>Kültürel Farklılıklar ve Öneriler</ThemedText>
+                  </View>
+
+                  {/* Temel Kültürel Farklılıklar - Obje içinden */}
+                  {culturalDifferencesData && culturalDifferencesData.culturalDifferences && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Temel Kültürel Farklılıklar</ThemedText>
+                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.culturalDifferences}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Yaşam Tarzı Farklılıkları - Obje içinden */}
+                  {culturalDifferencesData && culturalDifferencesData.lifestyleDifferences && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Yaşam Tarzı Farklılıkları</ThemedText>
+                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.lifestyleDifferences}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Yemek Kültürü Farklılıkları - Obje içinden */}
+                  {culturalDifferencesData && culturalDifferencesData.foodCultureDifferences && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Yemek Kültürü</ThemedText>
+                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.foodCultureDifferences}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Sosyal Normlar Farklılıkları - Obje içinden */}
+                  {culturalDifferencesData && culturalDifferencesData.socialNormsDifferences && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Sosyal Normlar</ThemedText>
+                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.socialNormsDifferences}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Dini ve Kültürel Hassasiyetler - Obje içinden */}
+                  {culturalDifferencesData && culturalDifferencesData.religiousAndCulturalSensitivities && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Dini ve Kültürel Hassasiyetler</ThemedText>
+                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.religiousAndCulturalSensitivities}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Yerel Gelenekler ve Görenekler - Obje içinden */}
+                  {culturalDifferencesData && culturalDifferencesData.localTraditionsAndCustoms && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Yerel Gelenekler ve Görenekler</ThemedText>
+                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.localTraditionsAndCustoms}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Kültürel Etkinlikler ve Festivaller - Obje içinden */}
+                  {culturalDifferencesData && culturalDifferencesData.culturalEventsAndFestivals && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Kültürel Etkinlikler ve Festivaller</ThemedText>
+                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.culturalEventsAndFestivals}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Yerel Halkla İletişim Önerileri - Obje içinden */}
+                  {culturalDifferencesData && culturalDifferencesData.localCommunicationTips && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Yerel Halkla İletişim Önerileri</ThemedText>
+                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.localCommunicationTips}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Direkt ana objede bulunan alanlar */}
+                  {hasLifestyleDifferences && !culturalDifferencesData?.lifestyleDifferences && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Yaşam Tarzı Farklılıkları</ThemedText>
+                      <ThemedText style={styles.infoItem}>{tripData.lifestyleDifferences}</ThemedText>
+                    </View>
+                  )}
+
+                  {hasFoodCultureDifferences && !culturalDifferencesData?.foodCultureDifferences && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Yemek Kültürü</ThemedText>
+                      <ThemedText style={styles.infoItem}>{tripData.foodCultureDifferences}</ThemedText>
+                    </View>
+                  )}
+
+                  {hasSocialNormsDifferences && !culturalDifferencesData?.socialNormsDifferences && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Sosyal Normlar</ThemedText>
+                      <ThemedText style={styles.infoItem}>{tripData.socialNormsDifferences}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Diğer kültürel alanlar - Obje içindeki diğer alanlar */}
+                  {culturalDifferencesData && Object.entries(culturalDifferencesData)
+                    .filter(([key]) => !['culturalDifferences', 'lifestyleDifferences', 'foodCultureDifferences', 'socialNormsDifferences',
+                                        'religiousAndCulturalSensitivities', 'localTraditionsAndCustoms', 'culturalEventsAndFestivals',
+                                        'localCommunicationTips'].includes(key))
+                    .map(([key, value]: [string, any]) => (
+                      <View key={key} style={styles.card}>
+                        <ThemedText style={styles.cardTitle}>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}</ThemedText>
+                        <ThemedText style={styles.infoItem}>{value}</ThemedText>
+                      </View>
+                    ))
+                  }
+                </View>
+              );
+            }
+            return null;
+          })()}
 
           {/* Yerel İpuçları */}
-          {tripData.localTips && typeof tripData.localTips === 'object' && (
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Yerel İpuçları</ThemedText>
-              <View style={styles.card}>
-                {Object.entries(tripData.localTips).map(([key, value]: [string, any]) => (
-                  <ThemedText key={key} style={styles.infoItem} numberOfLines={3} ellipsizeMode="tail">
-                    {value}
-                  </ThemedText>
-                ))}
-              </View>
-            </View>
-          )}
+          {(() => {
+            // localTips'i kontrol et ve doğru formatı bul
+            let localTipsData = null;
+            let hasLocalTipsData = false;
+
+            // String olarak geldiyse parse et
+            if (tripData.localTips && typeof tripData.localTips === 'string') {
+              try {
+                localTipsData = safeParseJSON(tripData.localTips);
+                console.log('localTips JSON olarak parse edildi');
+                hasLocalTipsData = true;
+              } catch (error) {
+                console.error('localTips parse hatası:', error);
+                // String olarak kullan
+                localTipsData = { localTips: tripData.localTips };
+                hasLocalTipsData = true;
+              }
+            }
+            // Direkt obje olarak geldiyse kullan
+            else if (tripData.localTips && typeof tripData.localTips === 'object') {
+              localTipsData = tripData.localTips;
+              hasLocalTipsData = true;
+            }
+
+            // Eksik alanları tamamla
+            if (localTipsData) {
+              // Yerel ulaşım rehberi
+              if (!localTipsData.localTransportationGuide) {
+                localTipsData.localTransportationGuide = "Bilgi bulunmuyor";
+              }
+
+              // Acil durum iletişim bilgileri
+              if (!localTipsData.emergencyContacts) {
+                localTipsData.emergencyContacts = "Acil durumlarda 112'yi arayın";
+              }
+
+              // Para birimi ve ödeme
+              if (!localTipsData.currencyAndPayment) {
+                localTipsData.currencyAndPayment = "Türk Lirası (TL) kullanılmaktadır";
+              }
+
+              // İletişim bilgileri
+              if (!localTipsData.communicationInfo) {
+                localTipsData.communicationInfo = "Bilgi bulunmuyor";
+              }
+
+              // Sağlık hizmetleri
+              if (!localTipsData.healthcareInfo) {
+                localTipsData.healthcareInfo = "Bilgi bulunmuyor";
+              }
+
+              // Yerel mutfak ve yemek önerileri
+              if (!localTipsData.localCuisineAndFoodTips) {
+                localTipsData.localCuisineAndFoodTips = "Bilgi bulunmuyor";
+              }
+
+              // Güvenlik önerileri
+              if (!localTipsData.safetyTips) {
+                localTipsData.safetyTips = "Bilgi bulunmuyor";
+              }
+
+              // Yerel dil ve iletişim ipuçları
+              if (!localTipsData.localLanguageAndCommunicationTips) {
+                localTipsData.localLanguageAndCommunicationTips = "Bilgi bulunmuyor";
+              }
+            }
+
+            // Diğer yerel ipuçları alanlarını kontrol et
+            const hasLocalTransportationGuide = tripData.localTransportationGuide && typeof tripData.localTransportationGuide === 'string';
+            const hasEmergencyContacts = tripData.emergencyContacts;
+            const hasCurrencyAndPayment = tripData.currencyAndPayment && typeof tripData.currencyAndPayment === 'string';
+            const hasHealthcareInfo = tripData.healthcareInfo && typeof tripData.healthcareInfo === 'string';
+            const hasCommunicationInfo = tripData.communicationInfo && typeof tripData.communicationInfo === 'string';
+
+            // Herhangi bir yerel ipucu verisi varsa bölümü göster
+            if (hasLocalTipsData || hasLocalTransportationGuide || hasEmergencyContacts ||
+                hasCurrencyAndPayment || hasHealthcareInfo || hasCommunicationInfo) {
+              return (
+                <View style={styles.section}>
+                  <View style={styles.sectionTitleContainer}>
+                    <MaterialCommunityIcons name="map-marker-radius" size={24} color="#4c669f" />
+                    <ThemedText style={styles.sectionTitle}>Yerel Yaşam Önerileri</ThemedText>
+                  </View>
+
+                  {/* Yerel Ulaşım Rehberi - Obje içinden */}
+                  {localTipsData && localTipsData.localTransportationGuide && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Yerel Ulaşım Rehberi</ThemedText>
+                      <ThemedText style={styles.infoItem}>{localTipsData.localTransportationGuide}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Acil Durum İletişim Bilgileri - Obje içinden */}
+                  {localTipsData && localTipsData.emergencyContacts && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Acil Durum İletişim Bilgileri</ThemedText>
+                      {typeof localTipsData.emergencyContacts === 'string' ? (
+                        <ThemedText style={styles.infoItem}>{localTipsData.emergencyContacts}</ThemedText>
+                      ) : Array.isArray(localTipsData.emergencyContacts) ? (
+                        localTipsData.emergencyContacts.map((contact: string, index: number) => (
+                          <ThemedText key={index} style={styles.infoItem}>• {contact}</ThemedText>
+                        ))
+                      ) : typeof localTipsData.emergencyContacts === 'object' ? (
+                        Object.entries(localTipsData.emergencyContacts).map(([key, value]: [string, any]) => (
+                          <ThemedText key={key} style={styles.infoItem}>• {key}: {value}</ThemedText>
+                        ))
+                      ) : null}
+                    </View>
+                  )}
+
+                  {/* Para Birimi ve Ödeme - Obje içinden */}
+                  {localTipsData && localTipsData.currencyAndPayment && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Para Birimi ve Ödeme</ThemedText>
+                      <ThemedText style={styles.infoItem}>{localTipsData.currencyAndPayment}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Sağlık Hizmetleri - Obje içinden */}
+                  {localTipsData && localTipsData.healthcareInfo && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Sağlık Hizmetleri</ThemedText>
+                      <ThemedText style={styles.infoItem}>{localTipsData.healthcareInfo}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* İletişim Bilgileri - Obje içinden */}
+                  {localTipsData && localTipsData.communicationInfo && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>İletişim Bilgileri</ThemedText>
+                      <ThemedText style={styles.infoItem}>{localTipsData.communicationInfo}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Yerel Mutfak ve Yemek Önerileri - Obje içinden */}
+                  {localTipsData && localTipsData.localCuisineAndFoodTips && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Yerel Mutfak ve Yemek Önerileri</ThemedText>
+                      <ThemedText style={styles.infoItem}>{localTipsData.localCuisineAndFoodTips}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Güvenlik Önerileri - Obje içinden */}
+                  {localTipsData && localTipsData.safetyTips && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Güvenlik Önerileri</ThemedText>
+                      <ThemedText style={styles.infoItem}>{localTipsData.safetyTips}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Yerel Dil ve İletişim İpuçları - Obje içinden */}
+                  {localTipsData && localTipsData.localLanguageAndCommunicationTips && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Yerel Dil ve İletişim İpuçları</ThemedText>
+                      <ThemedText style={styles.infoItem}>{localTipsData.localLanguageAndCommunicationTips}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Direkt ana objede bulunan alanlar */}
+                  {hasLocalTransportationGuide && !localTipsData?.localTransportationGuide && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Yerel Ulaşım Rehberi</ThemedText>
+                      <ThemedText style={styles.infoItem}>{tripData.localTransportationGuide}</ThemedText>
+                    </View>
+                  )}
+
+                  {hasEmergencyContacts && !localTipsData?.emergencyContacts && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Acil Durum İletişim Bilgileri</ThemedText>
+                      {typeof tripData.emergencyContacts === 'string' ? (
+                        <ThemedText style={styles.infoItem}>{tripData.emergencyContacts}</ThemedText>
+                      ) : Array.isArray(tripData.emergencyContacts) ? (
+                        tripData.emergencyContacts.map((contact: string, index: number) => (
+                          <ThemedText key={index} style={styles.infoItem}>• {contact}</ThemedText>
+                        ))
+                      ) : typeof tripData.emergencyContacts === 'object' ? (
+                        Object.entries(tripData.emergencyContacts).map(([key, value]: [string, any]) => (
+                          <ThemedText key={key} style={styles.infoItem}>• {key}: {value}</ThemedText>
+                        ))
+                      ) : null}
+                    </View>
+                  )}
+
+                  {hasCurrencyAndPayment && !localTipsData?.currencyAndPayment && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Para Birimi ve Ödeme</ThemedText>
+                      <ThemedText style={styles.infoItem}>{tripData.currencyAndPayment}</ThemedText>
+                    </View>
+                  )}
+
+                  {hasHealthcareInfo && !localTipsData?.healthcareInfo && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>Sağlık Hizmetleri</ThemedText>
+                      <ThemedText style={styles.infoItem}>{tripData.healthcareInfo}</ThemedText>
+                    </View>
+                  )}
+
+                  {hasCommunicationInfo && !localTipsData?.communicationInfo && (
+                    <View style={styles.card}>
+                      <ThemedText style={styles.cardTitle}>İletişim Bilgileri</ThemedText>
+                      <ThemedText style={styles.infoItem}>{tripData.communicationInfo}</ThemedText>
+                    </View>
+                  )}
+
+                  {/* Diğer yerel ipuçları - Obje içindeki diğer alanlar */}
+                  {localTipsData && Object.entries(localTipsData)
+                    .filter(([key]) => !['localTransportationGuide', 'emergencyContacts', 'currencyAndPayment', 'healthcareInfo', 'communicationInfo',
+                                        'localCuisineAndFoodTips', 'safetyTips', 'localLanguageAndCommunicationTips'].includes(key))
+                    .map(([key, value]: [string, any]) => (
+                      <View key={key} style={styles.card}>
+                        <ThemedText style={styles.cardTitle}>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}</ThemedText>
+                        <ThemedText style={styles.infoItem}>{value}</ThemedText>
+                      </View>
+                    ))
+                  }
+                </View>
+              );
+            }
+            return null;
+          })()}
 
           {/* Temel Seyahat Bilgileri */}
           <View style={styles.section}>
@@ -1160,6 +1580,24 @@ const styles = StyleSheet.create({
   weatherLoadingText: {
     color: '#ccc',
     marginTop: 8,
+    fontFamily: 'SpaceMono',
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4c669f',
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 10,
     fontFamily: 'SpaceMono',
   },
   // Plan listesi stilleri

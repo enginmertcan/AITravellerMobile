@@ -264,7 +264,7 @@ export const aiService = {
               role: "system",
               content: `Sen bir seyahat asistanısın. Kullanıcının istediği seyahat planını JSON formatında oluşturmalısın. Tüm yanıtların Türkçe olmalı.
 
-Web uygulamasıyla uyumlu olması için aşağıdaki formatta JSON döndürmelisin:
+Web ve mobil uygulamalarıyla uyumlu olması için aşağıdaki formatta JSON döndürmelisin:
 
 {
   "hotelOptions": [
@@ -316,18 +316,15 @@ Web uygulamasıyla uyumlu olması için aşağıdaki formatta JSON döndürmelis
       "jandarma": "156"
     }
   },
-  "culturalDifferences": {
-    "culturalDifferences": "Kültürel farklılıklar",
-    "lifestyleDifferences": "Yaşam tarzı farklılıkları",
-    "foodCultureDifferences": "Yemek kültürü farklılıkları",
-    "socialNormsDifferences": "Sosyal norm farklılıkları"
-  },
-  "localTips": {
-    "localTransportationGuide": "Ulaşım rehberi",
-    "emergencyContacts": "Acil durum numaraları",
-    "currencyAndPayment": "Para birimi ve ödeme",
-    "communicationInfo": "İletişim bilgileri"
-  }
+  "culturalDifferences": "Türkiye ve hedef ülke arasındaki temel kültürel farklılıklar...",
+  "lifestyleDifferences": "Günlük yaşam alışkanlıkları farklılıkları...",
+  "foodCultureDifferences": "Yemek kültürü farklılıkları...",
+  "socialNormsDifferences": "Sosyal davranış normları farklılıkları...",
+  "localTransportationGuide": "Yerel ulaşım sistemini kullanma rehberi...",
+  "emergencyContacts": "Önemli acil durum numaraları...",
+  "currencyAndPayment": "Yerel para birimi ve ödeme yöntemleri...",
+  "healthcareInfo": "Sağlık hizmetleri bilgisi...",
+  "communicationInfo": "İletişim ve internet kullanımı..."
 }`
             },
             {

@@ -218,22 +218,128 @@ export const TravelPlanService = {
       }
     }
 
-    // Karmaşık nesneleri temizle - web uygulaması bunları beklemediği için
+    // Eksik alanları tamamla
+    if (!formattedPlan.bestTimeToVisit) {
+      formattedPlan.bestTimeToVisit = "Yıl boyu";
+    }
+
+    if (!formattedPlan.country) {
+      formattedPlan.country = formattedPlan.destination?.split(',').pop()?.trim() || "Türkiye";
+    }
+
+    if (!formattedPlan.citizenship) {
+      formattedPlan.citizenship = "Turkey";
+    }
+
+    if (!formattedPlan.residenceCountry) {
+      formattedPlan.residenceCountry = "Turkey";
+    }
+
+    // Vize bilgilerini kontrol et ve eksik alanları tamamla
+    if (formattedPlan.visaInfo && typeof formattedPlan.visaInfo === 'object') {
+      const visaInfo = formattedPlan.visaInfo as any;
+
+      // requiredDocuments alanı boş dizi ise varsayılan değerler ekle
+      if (visaInfo.requiredDocuments && Array.isArray(visaInfo.requiredDocuments) && visaInfo.requiredDocuments.length === 0) {
+        visaInfo.requiredDocuments = ["Kimlik kartı", "Pasaport (isteğe bağlı)"];
+      }
+    }
+
+    // Kültürel farklılıklar ve yerel ipuçları için eksik alanları tamamla
+    // Önce culturalDifferences'ı kontrol et
+    if (formattedPlan.culturalDifferences && typeof formattedPlan.culturalDifferences === 'object') {
+      const culturalDifferences = formattedPlan.culturalDifferences as any;
+
+      // Eksik alanları tamamla
+      if (!culturalDifferences.culturalDifferences) {
+        culturalDifferences.culturalDifferences = "Bilgi bulunmuyor";
+      }
+
+      if (!culturalDifferences.lifestyleDifferences) {
+        culturalDifferences.lifestyleDifferences = "Bilgi bulunmuyor";
+      }
+
+      if (!culturalDifferences.foodCultureDifferences) {
+        culturalDifferences.foodCultureDifferences = "Bilgi bulunmuyor";
+      }
+
+      if (!culturalDifferences.socialNormsDifferences) {
+        culturalDifferences.socialNormsDifferences = "Bilgi bulunmuyor";
+      }
+
+      if (!culturalDifferences.religiousAndCulturalSensitivities) {
+        culturalDifferences.religiousAndCulturalSensitivities = "Bilgi bulunmuyor";
+      }
+
+      if (!culturalDifferences.localTraditionsAndCustoms) {
+        culturalDifferences.localTraditionsAndCustoms = "Bilgi bulunmuyor";
+      }
+
+      if (!culturalDifferences.culturalEventsAndFestivals) {
+        culturalDifferences.culturalEventsAndFestivals = "Bilgi bulunmuyor";
+      }
+
+      if (!culturalDifferences.localCommunicationTips) {
+        culturalDifferences.localCommunicationTips = "Bilgi bulunmuyor";
+      }
+    }
+
+    // Yerel ipuçları için eksik alanları tamamla
+    if (formattedPlan.localTips && typeof formattedPlan.localTips === 'object') {
+      const localTips = formattedPlan.localTips as any;
+
+      // Eksik alanları tamamla
+      if (!localTips.localTransportationGuide) {
+        localTips.localTransportationGuide = "Bilgi bulunmuyor";
+      }
+
+      if (!localTips.emergencyContacts) {
+        localTips.emergencyContacts = "Acil durumlarda 112'yi arayın";
+      }
+
+      if (!localTips.currencyAndPayment) {
+        localTips.currencyAndPayment = "Türk Lirası (TL) kullanılmaktadır";
+      }
+
+      if (!localTips.communicationInfo) {
+        localTips.communicationInfo = "Bilgi bulunmuyor";
+      }
+
+      if (!localTips.healthcareInfo) {
+        localTips.healthcareInfo = "Bilgi bulunmuyor";
+      }
+
+      if (!localTips.localCuisineAndFoodTips) {
+        localTips.localCuisineAndFoodTips = "Bilgi bulunmuyor";
+      }
+
+      if (!localTips.safetyTips) {
+        localTips.safetyTips = "Bilgi bulunmuyor";
+      }
+
+      if (!localTips.localLanguageAndCommunicationTips) {
+        localTips.localLanguageAndCommunicationTips = "Bilgi bulunmuyor";
+      }
+    }
+
+    // Karmaşık nesneleri JSON string'e dönüştür - web uygulaması için
     // İtinerary ve hotelOptions alanlarını zaten string'e dönüştürdük
-    // Diğer karmaşık nesneleri temizleyelim
-    const complexObjectsToRemove = [
+    // Diğer karmaşık nesneleri de string'e dönüştürelim
+    const complexObjectsToStringify = [
       'visaInfo', 'tripSummary', 'destinationInfo', 'localTips',
-      'culturalDifferences', 'lifestyleDifferences', 'foodCultureDifferences',
-      'socialNormsDifferences', 'visaRequirements', 'visaApplicationProcess',
-      'visaFees', 'travelDocumentChecklist', 'localTransportationGuide',
-      'emergencyContacts', 'currencyAndPayment', 'communicationInfo',
-      'healthcareInfo', 'religiousAndCulturalSensitivities', 'localTraditionsAndCustoms',
-      'culturalEventsAndFestivals', 'localCommunicationTips'
+      'culturalDifferences'
     ];
 
-    complexObjectsToRemove.forEach(field => {
-      if (formattedPlan[field]) {
-        delete formattedPlan[field];
+    complexObjectsToStringify.forEach(field => {
+      if (formattedPlan[field] && typeof formattedPlan[field] === 'object') {
+        try {
+          formattedPlan[field] = JSON.stringify(formattedPlan[field]);
+          console.log(`${field} alanı JSON string'e dönüştürüldü`);
+        } catch (error) {
+          console.error(`${field} JSON dönüştürme hatası:`, error);
+          // Hata durumunda alanı silmek yerine boş bir string olarak ayarla
+          formattedPlan[field] = "{}";
+        }
       }
     });
 

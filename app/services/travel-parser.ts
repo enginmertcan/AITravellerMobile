@@ -139,6 +139,57 @@ export function parseOpenAIResponse(responseText: string): Partial<TravelPlan> {
       return DEFAULT_TRAVEL_PLAN;
     }
 
+    // Kültürel farklılıklar ve yerel ipuçları için özel işleme
+    // Web uygulamasıyla uyumlu olması için culturalDifferences nesnesini oluştur
+    if (parsedData.culturalDifferences && typeof parsedData.culturalDifferences === 'string') {
+      // Eğer culturalDifferences bir string ise, onu bir nesneye dönüştür
+      const culturalDifferencesObj: Record<string, any> = {
+        culturalDifferences: parsedData.culturalDifferences
+      };
+
+      // Diğer kültürel farklılık alanlarını ekle
+      if (parsedData.lifestyleDifferences) {
+        culturalDifferencesObj.lifestyleDifferences = parsedData.lifestyleDifferences;
+      }
+      if (parsedData.foodCultureDifferences) {
+        culturalDifferencesObj.foodCultureDifferences = parsedData.foodCultureDifferences;
+      }
+      if (parsedData.socialNormsDifferences) {
+        culturalDifferencesObj.socialNormsDifferences = parsedData.socialNormsDifferences;
+      }
+
+      // Orijinal culturalDifferences alanını güncelle
+      parsedData.culturalDifferences = culturalDifferencesObj;
+    }
+
+    // Yerel ipuçları için özel işleme
+    // Web uygulamasıyla uyumlu olması için localTips nesnesini oluştur
+    if (!parsedData.localTips || typeof parsedData.localTips !== 'object') {
+      const localTipsObj: any = {};
+
+      // Yerel ipuçları alanlarını ekle
+      if (parsedData.localTransportationGuide) {
+        localTipsObj.localTransportationGuide = parsedData.localTransportationGuide;
+      }
+      if (parsedData.emergencyContacts) {
+        localTipsObj.emergencyContacts = parsedData.emergencyContacts;
+      }
+      if (parsedData.currencyAndPayment) {
+        localTipsObj.currencyAndPayment = parsedData.currencyAndPayment;
+      }
+      if (parsedData.communicationInfo) {
+        localTipsObj.communicationInfo = parsedData.communicationInfo;
+      }
+      if (parsedData.healthcareInfo) {
+        localTipsObj.healthcareInfo = parsedData.healthcareInfo;
+      }
+
+      // Eğer en az bir alan varsa, localTips nesnesini oluştur
+      if (Object.keys(localTipsObj).length > 0) {
+        parsedData.localTips = localTipsObj;
+      }
+    }
+
     // TravelPlan formatına dönüştürme
     return formatTravelPlan(parsedData);
   } catch (error) {
