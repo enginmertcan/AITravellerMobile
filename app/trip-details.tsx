@@ -943,15 +943,17 @@ export default function TripDetailsScreen() {
               return (
                 <View style={styles.section}>
                   <View style={styles.sectionTitleContainer}>
-                    <MaterialCommunityIcons name="earth" size={24} color="#4c669f" />
-                    <ThemedText style={styles.sectionTitle}>Kültürel Farklılıklar ve Öneriler</ThemedText>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <MaterialCommunityIcons name="earth" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                      <ThemedText style={styles.sectionTitle} numberOfLines={2}>Kültürel Farklılıklar ve Öneriler</ThemedText>
+                    </View>
                   </View>
 
                   {/* Temel Kültürel Farklılıklar - Obje içinden */}
                   {culturalDifferencesData && culturalDifferencesData.culturalDifferences && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Temel Kültürel Farklılıklar</ThemedText>
-                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.culturalDifferences}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{culturalDifferencesData.culturalDifferences}</ThemedText>
                     </View>
                   )}
 
@@ -959,7 +961,7 @@ export default function TripDetailsScreen() {
                   {culturalDifferencesData && culturalDifferencesData.lifestyleDifferences && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yaşam Tarzı Farklılıkları</ThemedText>
-                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.lifestyleDifferences}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{culturalDifferencesData.lifestyleDifferences}</ThemedText>
                     </View>
                   )}
 
@@ -967,7 +969,7 @@ export default function TripDetailsScreen() {
                   {culturalDifferencesData && culturalDifferencesData.foodCultureDifferences && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yemek Kültürü</ThemedText>
-                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.foodCultureDifferences}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{culturalDifferencesData.foodCultureDifferences}</ThemedText>
                     </View>
                   )}
 
@@ -975,7 +977,7 @@ export default function TripDetailsScreen() {
                   {culturalDifferencesData && culturalDifferencesData.socialNormsDifferences && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Sosyal Normlar</ThemedText>
-                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.socialNormsDifferences}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{culturalDifferencesData.socialNormsDifferences}</ThemedText>
                     </View>
                   )}
 
@@ -983,7 +985,7 @@ export default function TripDetailsScreen() {
                   {culturalDifferencesData && culturalDifferencesData.religiousAndCulturalSensitivities && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Dini ve Kültürel Hassasiyetler</ThemedText>
-                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.religiousAndCulturalSensitivities}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{culturalDifferencesData.religiousAndCulturalSensitivities}</ThemedText>
                     </View>
                   )}
 
@@ -991,7 +993,7 @@ export default function TripDetailsScreen() {
                   {culturalDifferencesData && culturalDifferencesData.localTraditionsAndCustoms && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yerel Gelenekler ve Görenekler</ThemedText>
-                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.localTraditionsAndCustoms}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{culturalDifferencesData.localTraditionsAndCustoms}</ThemedText>
                     </View>
                   )}
 
@@ -999,7 +1001,7 @@ export default function TripDetailsScreen() {
                   {culturalDifferencesData && culturalDifferencesData.culturalEventsAndFestivals && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Kültürel Etkinlikler ve Festivaller</ThemedText>
-                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.culturalEventsAndFestivals}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{culturalDifferencesData.culturalEventsAndFestivals}</ThemedText>
                     </View>
                   )}
 
@@ -1007,7 +1009,7 @@ export default function TripDetailsScreen() {
                   {culturalDifferencesData && culturalDifferencesData.localCommunicationTips && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yerel Halkla İletişim Önerileri</ThemedText>
-                      <ThemedText style={styles.infoItem}>{culturalDifferencesData.localCommunicationTips}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{culturalDifferencesData.localCommunicationTips}</ThemedText>
                     </View>
                   )}
 
@@ -1015,21 +1017,21 @@ export default function TripDetailsScreen() {
                   {hasLifestyleDifferences && !culturalDifferencesData?.lifestyleDifferences && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yaşam Tarzı Farklılıkları</ThemedText>
-                      <ThemedText style={styles.infoItem}>{tripData.lifestyleDifferences}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{tripData.lifestyleDifferences}</ThemedText>
                     </View>
                   )}
 
                   {hasFoodCultureDifferences && !culturalDifferencesData?.foodCultureDifferences && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yemek Kültürü</ThemedText>
-                      <ThemedText style={styles.infoItem}>{tripData.foodCultureDifferences}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{tripData.foodCultureDifferences}</ThemedText>
                     </View>
                   )}
 
                   {hasSocialNormsDifferences && !culturalDifferencesData?.socialNormsDifferences && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Sosyal Normlar</ThemedText>
-                      <ThemedText style={styles.infoItem}>{tripData.socialNormsDifferences}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{tripData.socialNormsDifferences}</ThemedText>
                     </View>
                   )}
 
@@ -1041,7 +1043,7 @@ export default function TripDetailsScreen() {
                     .map(([key, value]: [string, any]) => (
                       <View key={key} style={styles.card}>
                         <ThemedText style={styles.cardTitle}>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}</ThemedText>
-                        <ThemedText style={styles.infoItem}>{value}</ThemedText>
+                        <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{value}</ThemedText>
                       </View>
                     ))
                   }
@@ -1132,15 +1134,17 @@ export default function TripDetailsScreen() {
               return (
                 <View style={styles.section}>
                   <View style={styles.sectionTitleContainer}>
-                    <MaterialCommunityIcons name="map-marker-radius" size={24} color="#4c669f" />
-                    <ThemedText style={styles.sectionTitle}>Yerel Yaşam Önerileri</ThemedText>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <MaterialCommunityIcons name="map-marker-radius" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                      <ThemedText style={styles.sectionTitle} numberOfLines={2}>Yerel Yaşam Önerileri</ThemedText>
+                    </View>
                   </View>
 
                   {/* Yerel Ulaşım Rehberi - Obje içinden */}
                   {localTipsData && localTipsData.localTransportationGuide && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yerel Ulaşım Rehberi</ThemedText>
-                      <ThemedText style={styles.infoItem}>{localTipsData.localTransportationGuide}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{localTipsData.localTransportationGuide}</ThemedText>
                     </View>
                   )}
 
@@ -1149,14 +1153,14 @@ export default function TripDetailsScreen() {
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Acil Durum İletişim Bilgileri</ThemedText>
                       {typeof localTipsData.emergencyContacts === 'string' ? (
-                        <ThemedText style={styles.infoItem}>{localTipsData.emergencyContacts}</ThemedText>
+                        <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{localTipsData.emergencyContacts}</ThemedText>
                       ) : Array.isArray(localTipsData.emergencyContacts) ? (
                         localTipsData.emergencyContacts.map((contact: string, index: number) => (
-                          <ThemedText key={index} style={styles.infoItem}>• {contact}</ThemedText>
+                          <ThemedText key={index} style={[styles.infoItem, { flexShrink: 1 }]}>• {contact}</ThemedText>
                         ))
                       ) : typeof localTipsData.emergencyContacts === 'object' ? (
                         Object.entries(localTipsData.emergencyContacts).map(([key, value]: [string, any]) => (
-                          <ThemedText key={key} style={styles.infoItem}>• {key}: {value}</ThemedText>
+                          <ThemedText key={key} style={[styles.infoItem, { flexShrink: 1 }]}>• {key}: {value}</ThemedText>
                         ))
                       ) : null}
                     </View>
@@ -1166,7 +1170,7 @@ export default function TripDetailsScreen() {
                   {localTipsData && localTipsData.currencyAndPayment && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Para Birimi ve Ödeme</ThemedText>
-                      <ThemedText style={styles.infoItem}>{localTipsData.currencyAndPayment}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{localTipsData.currencyAndPayment}</ThemedText>
                     </View>
                   )}
 
@@ -1174,7 +1178,7 @@ export default function TripDetailsScreen() {
                   {localTipsData && localTipsData.healthcareInfo && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Sağlık Hizmetleri</ThemedText>
-                      <ThemedText style={styles.infoItem}>{localTipsData.healthcareInfo}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{localTipsData.healthcareInfo}</ThemedText>
                     </View>
                   )}
 
@@ -1182,7 +1186,7 @@ export default function TripDetailsScreen() {
                   {localTipsData && localTipsData.communicationInfo && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>İletişim Bilgileri</ThemedText>
-                      <ThemedText style={styles.infoItem}>{localTipsData.communicationInfo}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{localTipsData.communicationInfo}</ThemedText>
                     </View>
                   )}
 
@@ -1190,7 +1194,7 @@ export default function TripDetailsScreen() {
                   {localTipsData && localTipsData.localCuisineAndFoodTips && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yerel Mutfak ve Yemek Önerileri</ThemedText>
-                      <ThemedText style={styles.infoItem}>{localTipsData.localCuisineAndFoodTips}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{localTipsData.localCuisineAndFoodTips}</ThemedText>
                     </View>
                   )}
 
@@ -1198,7 +1202,7 @@ export default function TripDetailsScreen() {
                   {localTipsData && localTipsData.safetyTips && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Güvenlik Önerileri</ThemedText>
-                      <ThemedText style={styles.infoItem}>{localTipsData.safetyTips}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{localTipsData.safetyTips}</ThemedText>
                     </View>
                   )}
 
@@ -1206,7 +1210,7 @@ export default function TripDetailsScreen() {
                   {localTipsData && localTipsData.localLanguageAndCommunicationTips && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yerel Dil ve İletişim İpuçları</ThemedText>
-                      <ThemedText style={styles.infoItem}>{localTipsData.localLanguageAndCommunicationTips}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{localTipsData.localLanguageAndCommunicationTips}</ThemedText>
                     </View>
                   )}
 
@@ -1214,7 +1218,7 @@ export default function TripDetailsScreen() {
                   {hasLocalTransportationGuide && !localTipsData?.localTransportationGuide && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yerel Ulaşım Rehberi</ThemedText>
-                      <ThemedText style={styles.infoItem}>{tripData.localTransportationGuide}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{tripData.localTransportationGuide}</ThemedText>
                     </View>
                   )}
 
@@ -1275,7 +1279,12 @@ export default function TripDetailsScreen() {
 
           {/* Temel Seyahat Bilgileri */}
           <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>Seyahat Bilgileri</ThemedText>
+            <View style={styles.sectionTitleContainer}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <MaterialCommunityIcons name="information-outline" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                <ThemedText style={styles.sectionTitle} numberOfLines={2}>Seyahat Bilgileri</ThemedText>
+              </View>
+            </View>
             <View style={styles.card}>
               <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">Destinasyon: {tripData.destination}</ThemedText>
               {tripData.startDate && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Başlangıç Tarihi: {tripData.startDate}</ThemedText>}
@@ -1290,7 +1299,12 @@ export default function TripDetailsScreen() {
           {/* Hava Durumu */}
           {weatherLoading ? (
             <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Hava Durumu</ThemedText>
+              <View style={styles.sectionTitleContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  <ThemedText style={styles.sectionTitle} numberOfLines={2}>Hava Durumu</ThemedText>
+                </View>
+              </View>
               <View style={[styles.card, styles.weatherLoadingContainer]}>
                 <ActivityIndicator size="small" color="#4c669f" />
                 <ThemedText style={styles.weatherLoadingText}>Hava durumu bilgileri yükleniyor...</ThemedText>
@@ -1298,7 +1312,12 @@ export default function TripDetailsScreen() {
             </View>
           ) : weatherData ? (
             <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Hava Durumu</ThemedText>
+              <View style={styles.sectionTitleContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  <ThemedText style={styles.sectionTitle} numberOfLines={2}>Hava Durumu</ThemedText>
+                </View>
+              </View>
               <WeatherCard weatherData={weatherData} />
             </View>
           ) : null}
@@ -1306,7 +1325,12 @@ export default function TripDetailsScreen() {
           {/* Seyahat Fotoğrafları */}
           {!showPlansList && tripData.id && userId && (
             <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Seyahat Fotoğrafları</ThemedText>
+              <View style={styles.sectionTitleContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <MaterialCommunityIcons name="image-multiple" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  <ThemedText style={styles.sectionTitle} numberOfLines={2}>Seyahat Fotoğrafları</ThemedText>
+                </View>
+              </View>
               <TripPhotoUploader
                 travelPlanId={tripData.id}
                 userId={userId}
@@ -1407,17 +1431,15 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 16,
     fontFamily: 'SpaceMono',
-    backgroundColor: 'rgba(76, 102, 159, 0.1)',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#4c669f',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   card: {
     backgroundColor: '#111',
@@ -1431,6 +1453,7 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderWidth: 1,
     borderColor: 'rgba(76, 102, 159, 0.1)',
+    width: '100%',
   },
   dayCard: {
     backgroundColor: '#111',
@@ -1512,6 +1535,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontSize: 14,
     flexWrap: 'wrap',
+    flex: 1,
   },
   description: {
     color: '#999',
@@ -1583,8 +1607,6 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
   },
   sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 16,
     backgroundColor: 'rgba(76, 102, 159, 0.1)',
     paddingVertical: 10,
