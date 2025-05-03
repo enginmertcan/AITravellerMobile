@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform, FlatList } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform, FlatList, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -10,6 +10,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { getWeatherForecast, WeatherData } from './services/weather.service';
 import WeatherCard from './components/WeatherCard';
 import TripPhotoUploader from './components/TripPhotoUploader';
+import * as Calendar from 'expo-calendar';
 
 export default function TripDetailsScreen() {
   const [loading, setLoading] = useState(true);
@@ -19,10 +20,170 @@ export default function TripDetailsScreen() {
   const [weatherData, setWeatherData] = useState<WeatherData[] | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [tripPhotos, setTripPhotos] = useState<TripPhoto[]>([]);
+  const [calendarPermission, setCalendarPermission] = useState(false);
   const router = useRouter();
   const params = useLocalSearchParams();
   const { userId } = useAuth();
   const planId = params.id as string | undefined;
+
+  // Takvim izinlerini kontrol et
+  const checkCalendarPermission = async () => {
+    const { status } = await Calendar.requestCalendarPermissionsAsync();
+    if (status === 'granted') {
+      setCalendarPermission(true);
+      return true;
+    } else {
+      setCalendarPermission(false);
+      return false;
+    }
+  };
+
+  // Takvime etkinlik ekle
+  const addToCalendar = async () => {
+    try {
+      // İzinleri kontrol et
+      const hasPermission = await checkCalendarPermission();
+      if (!hasPermission) {
+        Alert.alert(
+          "İzin Gerekli",
+          "Takvime etkinlik eklemek için takvim izni gereklidir.",
+          [{ text: "Tamam" }]
+        );
+        return;
+      }
+
+      // Seyahat planı bilgilerini kontrol et
+      if (!tripData.destination || !tripData.startDate) {
+        Alert.alert(
+          "Eksik Bilgi",
+          "Takvime eklemek için seyahat planında destinasyon ve başlangıç tarihi olmalıdır.",
+          [{ text: "Tamam" }]
+        );
+        return;
+      }
+
+      // Başlangıç tarihini parse et
+      let startDate: Date;
+      try {
+        // startDate formatı "DD/MM/YYYY" veya "DD Ay YYYY" olabilir
+        if (tripData.startDate.includes('/')) {
+          const [day, month, year] = tripData.startDate.split('/').map(Number);
+          // UTC kullanarak tarih oluştur - artık gün ekleme yok
+          startDate = new Date(Date.UTC(year, month - 1, day));
+          console.log('Parsed date (DD/MM/YYYY):', startDate.toISOString());
+        } else {
+          // "30 Nisan 2025" gibi formatlar için
+          const dateParts = tripData.startDate.split(' ');
+          const day = parseInt(dateParts[0], 10);
+          const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+          const month = monthNames.indexOf(dateParts[1]);
+          const year = parseInt(dateParts[2], 10);
+          // UTC kullanarak tarih oluştur - artık gün ekleme yok
+          startDate = new Date(Date.UTC(year, month, day));
+          console.log('Parsed date (DD Ay YYYY):', startDate.toISOString());
+        }
+
+        // Tarih geçerli değilse hata ver
+        if (isNaN(startDate.getTime())) {
+          throw new Error('Geçersiz tarih formatı');
+        }
+
+        console.log('Final start date for calendar:', startDate.toISOString());
+      } catch (error) {
+        console.error('Tarih parse hatası:', error);
+        Alert.alert(
+          "Tarih Hatası",
+          "Başlangıç tarihi doğru formatta değil. Lütfen geçerli bir tarih giriniz.",
+          [{ text: "Tamam" }]
+        );
+        return;
+      }
+
+      // Seyahat süresini belirle
+      let durationDays = 1;
+      if (tripData.duration) {
+        if (typeof tripData.duration === 'number') {
+          durationDays = tripData.duration;
+        } else if (typeof tripData.duration === 'string') {
+          // String içindeki sayıyı bulmak için regex kullanmak yerine güvenli bir yöntem
+          const durationStr = String(tripData.duration);
+          const durationNum = parseInt(durationStr.replace(/\D/g, ''), 10);
+          if (!isNaN(durationNum)) {
+            durationDays = durationNum;
+          }
+        }
+      } else if (tripData.days) {
+        if (typeof tripData.days === 'number') {
+          durationDays = tripData.days;
+        } else if (typeof tripData.days === 'string') {
+          // String içindeki sayıyı bulmak için regex kullanmak yerine güvenli bir yöntem
+          const daysStr = String(tripData.days);
+          const daysNum = parseInt(daysStr.replace(/\D/g, ''), 10);
+          if (!isNaN(daysNum)) {
+            durationDays = daysNum;
+          }
+        }
+      }
+
+      console.log('Duration days:', durationDays);
+
+      // Bitiş tarihini hesapla
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + durationDays);
+      console.log('End date for calendar:', endDate.toISOString());
+
+      // Varsayılan takvimi al
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const defaultCalendar = calendars.find(
+        (calendar) => calendar.allowsModifications && calendar.source.name !== 'Facebook'
+      );
+
+      if (!defaultCalendar) {
+        Alert.alert(
+          "Takvim Bulunamadı",
+          "Etkinlik eklenecek uygun bir takvim bulunamadı.",
+          [{ text: "Tamam" }]
+        );
+        return;
+      }
+
+      // Etkinlik detaylarını oluştur
+      const eventDetails = {
+        title: `${tripData.destination} Seyahati`,
+        startDate: startDate,
+        endDate: endDate,
+        timeZone: 'Europe/Istanbul',
+        location: tripData.destination,
+        notes: `Seyahat Planı: ${tripData.destination}\n` +
+               `Süre: ${durationDays} gün\n` +
+               (tripData.budget ? `Bütçe: ${tripData.budget}\n` : '') +
+               (tripData.groupType ? `Grup Tipi: ${tripData.groupType}\n` : '') +
+               (tripData.numberOfPeople ? `Kişi Sayısı: ${tripData.numberOfPeople}\n` : '') +
+               (tripData.bestTimeToVisit ? `En İyi Ziyaret Zamanı: ${tripData.bestTimeToVisit}\n` : ''),
+        allDay: true,
+      };
+
+      // Etkinliği takvime ekle
+      const eventId = await Calendar.createEventAsync(defaultCalendar.id, eventDetails);
+
+      if (eventId) {
+        Alert.alert(
+          "Başarılı",
+          "Seyahat planınız takvime eklendi.",
+          [{ text: "Tamam" }]
+        );
+      } else {
+        throw new Error('Etkinlik oluşturulamadı');
+      }
+    } catch (error) {
+      console.error('Takvime ekleme hatası:', error);
+      Alert.alert(
+        "Hata",
+        "Seyahat planı takvime eklenirken bir hata oluştu.",
+        [{ text: "Tamam" }]
+      );
+    }
+  };
 
   // Belirli bir planı seçmek için
   const selectPlan = async (plan: Partial<TravelPlan>) => {
@@ -459,6 +620,12 @@ export default function TripDetailsScreen() {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, planId]);
+
+  // Uygulama başladığında takvim izinlerini kontrol et
+  useEffect(() => {
+    checkCalendarPermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fotoğraflar değiştiğinde UI'ı güncelle
   useEffect(() => {
@@ -1293,6 +1460,15 @@ export default function TripDetailsScreen() {
               {tripData.groupType && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Grup Tipi: {tripData.groupType}</ThemedText>}
               {tripData.numberOfPeople && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Kişi Sayısı: {tripData.numberOfPeople}</ThemedText>}
               {tripData.bestTimeToVisit && <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">En İyi Ziyaret Zamanı: {tripData.bestTimeToVisit}</ThemedText>}
+
+              {/* Takvime Ekle Butonu */}
+              <TouchableOpacity
+                style={styles.calendarButton}
+                onPress={addToCalendar}
+              >
+                <MaterialCommunityIcons name="calendar-plus" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <ThemedText style={styles.calendarButtonText}>Takvime Ekle</ThemedText>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -1620,6 +1796,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginBottom: 10,
+    fontFamily: 'SpaceMono',
+  },
+  calendarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4c669f',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  calendarButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
     fontFamily: 'SpaceMono',
   },
   // Plan listesi stilleri
