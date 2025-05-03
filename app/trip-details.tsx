@@ -3,12 +3,13 @@ import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Plat
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { TravelPlan, DEFAULT_TRAVEL_PLAN, Hotel } from './types/travel';
-import { safeParseJSON } from './types/travel';
+import { TravelPlan, DEFAULT_TRAVEL_PLAN, Hotel, TripPhoto } from './types/travel';
+import { safeParseJSON, parseTripPhotos } from './types/travel';
 import { FirebaseService } from './services/firebase.service';
 import { useAuth } from '@clerk/clerk-expo';
 import { getWeatherForecast, WeatherData } from './services/weather.service';
 import WeatherCard from './components/WeatherCard';
+import TripPhotoUploader from './components/TripPhotoUploader';
 
 export default function TripDetailsScreen() {
   const [loading, setLoading] = useState(true);
@@ -17,13 +18,14 @@ export default function TripDetailsScreen() {
   const [showPlansList, setShowPlansList] = useState(true); // True to show list, false to show details
   const [weatherData, setWeatherData] = useState<WeatherData[] | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [tripPhotos, setTripPhotos] = useState<TripPhoto[]>([]);
   const router = useRouter();
   const params = useLocalSearchParams();
   const { userId } = useAuth();
   const planId = params.id as string | undefined;
 
   // Belirli bir planı seçmek için
-  const selectPlan = (plan: Partial<TravelPlan>) => {
+  const selectPlan = async (plan: Partial<TravelPlan>) => {
     // İtinerary alanını parse et
     if (plan.itinerary && typeof plan.itinerary === 'string') {
       try {
@@ -35,6 +37,38 @@ export default function TripDetailsScreen() {
       } catch (parseError) {
         console.error('Seçilen plan itinerary parse hatası:', parseError);
       }
+    }
+
+    // Fotoğrafları parse et
+    if (plan.tripPhotos) {
+      const photos = parseTripPhotos(plan.tripPhotos);
+
+      // Fotoğraf referanslarını kontrol et ve gerekirse verileri getir
+      const updatedPhotos = await Promise.all(
+        photos.map(async (photo) => {
+          // Eğer fotoğrafın imageRef'i varsa ve imageData yoksa
+          if (photo.imageRef && !photo.imageData && !photo.imageUrl) {
+            try {
+              // Firestore'dan fotoğraf verisini getir
+              const photoDoc = await FirebaseService.TravelPlan.getPhotoById(photo.imageRef);
+              if (photoDoc && photoDoc.imageData) {
+                return {
+                  ...photo,
+                  imageData: photoDoc.imageData
+                };
+              }
+            } catch (error) {
+              console.error('Fotoğraf verisi getirme hatası:', error);
+            }
+          }
+          return photo;
+        })
+      );
+
+      setTripPhotos(updatedPhotos);
+      console.log(`${updatedPhotos.length} fotoğraf yüklendi`);
+    } else {
+      setTripPhotos([]);
     }
 
     setTripData(plan);
@@ -282,6 +316,38 @@ export default function TripDetailsScreen() {
           }
         }
 
+        // Fotoğrafları parse et
+        if (plan.tripPhotos) {
+          const photos = parseTripPhotos(plan.tripPhotos);
+
+          // Fotoğraf referanslarını kontrol et ve gerekirse verileri getir
+          const updatedPhotos = await Promise.all(
+            photos.map(async (photo) => {
+              // Eğer fotoğrafın imageRef'i varsa ve imageData yoksa
+              if (photo.imageRef && !photo.imageData && !photo.imageUrl) {
+                try {
+                  // Firestore'dan fotoğraf verisini getir
+                  const photoDoc = await FirebaseService.TravelPlan.getPhotoById(photo.imageRef);
+                  if (photoDoc && photoDoc.imageData) {
+                    return {
+                      ...photo,
+                      imageData: photoDoc.imageData
+                    };
+                  }
+                } catch (error) {
+                  console.error('Fotoğraf verisi getirme hatası:', error);
+                }
+              }
+              return photo;
+            })
+          );
+
+          setTripPhotos(updatedPhotos);
+          console.log(`${updatedPhotos.length} fotoğraf yüklendi`);
+        } else {
+          setTripPhotos([]);
+        }
+
         setTripData(plan);
         setShowPlansList(false); // Detay görünümünü göster
         fetchWeatherData(plan); // Hava durumu verilerini getir
@@ -321,6 +387,13 @@ export default function TripDetailsScreen() {
     loadData();
     if (!showPlansList && tripData) {
       fetchWeatherData(tripData);
+    }
+  };
+
+  // Fotoğraf eklendiğinde planı yeniden yükle
+  const handlePhotoAdded = async () => {
+    if (planId) {
+      await loadSinglePlan(planId);
     }
   };
 
@@ -712,6 +785,20 @@ export default function TripDetailsScreen() {
               <WeatherCard weatherData={weatherData} />
             </View>
           ) : null}
+
+          {/* Seyahat Fotoğrafları */}
+          {!showPlansList && tripData.id && userId && (
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Seyahat Fotoğrafları</ThemedText>
+              <TripPhotoUploader
+                travelPlanId={tripData.id}
+                userId={userId}
+                tripPhotos={tripPhotos}
+                onPhotoAdded={handlePhotoAdded}
+                setTripPhotos={setTripPhotos}
+              />
+            </View>
+          )}
 
           {/* AI yanıtı düzgün parse edilememişse ham yanıtı göster */}
           {tripData.rawResponse && (

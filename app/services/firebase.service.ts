@@ -12,7 +12,7 @@ import {
   Timestamp,
   addDoc
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, uploadBytesResumable, StorageReference } from "firebase/storage";
 import { db, storage } from "./firebaseConfig";
 import { TravelPlan, DEFAULT_TRAVEL_PLAN } from "../types/travel";
 
@@ -532,25 +532,385 @@ export const TravelPlanService = {
    */
   async uploadImage(userId: string, imageUri: string, folderName: string = "travelImages"): Promise<string> {
     try {
+      console.log(`Resim yükleme başlatılıyor: ${folderName} klasörüne ${userId} kullanıcısı için`);
+
       // Dosya adı oluştur
       const timestamp = new Date().getTime();
       const fileName = `${userId}_${timestamp}.jpg`;
-      const storageRef = ref(storage, `${folderName}/${fileName}`);
+      const fullPath = `${folderName}/${fileName}`;
+      console.log(`Dosya yolu: ${fullPath}`);
+
+      const storageRef = ref(storage, fullPath);
+      console.log('Storage referansı oluşturuldu');
 
       // Resmi fetch et ve buffer'a dönüştür
+      console.log('Resim fetch ediliyor:', imageUri.substring(0, 50) + '...');
       const response = await fetch(imageUri);
       const blob = await response.blob();
+      console.log(`Blob oluşturuldu, boyut: ${blob.size} bytes`);
 
       // Storage'a yükle
+      console.log('Firebase Storage\'a yükleniyor...');
       const snapshot = await uploadBytes(storageRef, blob);
+      console.log('Yükleme tamamlandı, metadata:', snapshot.metadata);
 
       // Download URL al
+      console.log('Download URL alınıyor...');
       const downloadUrl = await getDownloadURL(snapshot.ref);
+      console.log('Download URL:', downloadUrl);
 
       return downloadUrl;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Resim yükleme hatası:", error);
+      // Daha detaylı hata bilgisi
+      if (error.code) {
+        console.error(`Hata kodu: ${error.code}`);
+      }
+      if (error.serverResponse) {
+        console.error(`Sunucu yanıtı: ${error.serverResponse}`);
+      }
+      if (error.name) {
+        console.error(`Hata adı: ${error.name}`);
+      }
       throw error;
+    }
+  },
+
+  /**
+   * Storage referansı oluşturur
+   */
+  getStorageRef(path: string): StorageReference {
+    return ref(storage, path);
+  },
+
+  /**
+   * Blob yükler ve yükleme görevini döndürür
+   */
+  async uploadBlob(storageRef: StorageReference, blob: Blob): Promise<StorageReference> {
+    try {
+      console.log(`Blob yükleniyor, boyut: ${blob.size} bytes`);
+
+      // Yükleme işlemi
+      const uploadTask = uploadBytesResumable(storageRef, blob);
+
+      // Promise olarak yükleme işlemini bekle
+      return new Promise((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            // Yükleme durumunu izle
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log(`Yükleme ilerlemesi: ${progress.toFixed(2)}%`);
+          },
+          (error) => {
+            // Hata durumunda
+            console.error('Yükleme hatası:', error);
+            reject(error);
+          },
+          () => {
+            // Yükleme tamamlandığında
+            console.log('Yükleme başarıyla tamamlandı');
+            resolve(storageRef);
+          }
+        );
+      });
+    } catch (error) {
+      console.error('Blob yükleme hatası:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Storage referansından download URL alır
+   */
+  async getDownloadURL(storageRef: StorageReference): Promise<string> {
+    try {
+      const url = await getDownloadURL(storageRef);
+      console.log('Download URL alındı:', url);
+      return url;
+    } catch (error) {
+      console.error('Download URL alma hatası:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Base64 formatındaki resmi yükler ve URL'ini döndürür
+   */
+  async uploadBase64Image(base64Image: string, fullPath: string): Promise<string> {
+    try {
+      console.log(`Base64 resim yükleme başlatılıyor: ${fullPath}`);
+      console.log(`Base64 uzunluğu: ${base64Image.length}`);
+
+      // Base64 formatını kontrol et ve düzelt
+      let formattedBase64 = base64Image;
+      if (base64Image.includes('base64,')) {
+        formattedBase64 = base64Image.split('base64,')[1];
+        console.log('Base64 formatı düzeltildi');
+      }
+
+      // Storage referansı oluştur
+      const storageRef = ref(storage, fullPath);
+      console.log('Storage referansı oluşturuldu');
+
+      // Base64'ü blob'a dönüştür
+      const byteCharacters = atob(formattedBase64);
+      const byteArrays = [];
+
+      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512);
+
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i);
+        }
+
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+      }
+
+      const blob = new Blob(byteArrays, { type: 'image/jpeg' });
+      console.log(`Blob oluşturuldu, boyut: ${blob.size} bytes`);
+
+      // Storage'a yükle
+      console.log('Firebase Storage\'a yükleniyor...');
+      const snapshot = await uploadBytes(storageRef, blob);
+      console.log('Yükleme tamamlandı, metadata:', snapshot.metadata);
+
+      // Download URL al
+      console.log('Download URL alınıyor...');
+      const downloadUrl = await getDownloadURL(snapshot.ref);
+      console.log('Download URL:', downloadUrl);
+
+      return downloadUrl;
+    } catch (error: any) {
+      console.error("Base64 resim yükleme hatası:", error);
+      // Daha detaylı hata bilgisi
+      if (error.code) {
+        console.error(`Hata kodu: ${error.code}`);
+      }
+      if (error.serverResponse) {
+        console.error(`Sunucu yanıtı: ${error.serverResponse}`);
+      }
+      if (error.name) {
+        console.error(`Hata adı: ${error.name}`);
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Seyahat planına fotoğraf ekler
+   */
+  async addTripPhoto(travelPlanId: string, photoData: Partial<import('../types/travel').TripPhoto>): Promise<boolean> {
+    try {
+      if (!travelPlanId?.trim()) {
+        console.warn("Geçersiz seyahat planı ID'si");
+        return false;
+      }
+
+      // Seyahat planını getir
+      const travelPlan = await this.getTravelPlanById(travelPlanId);
+      if (!travelPlan || !travelPlan.id) {
+        console.warn("Seyahat planı bulunamadı:", travelPlanId);
+        return false;
+      }
+
+      // Mevcut fotoğrafları al
+      let tripPhotos = [];
+      if (travelPlan.tripPhotos) {
+        if (typeof travelPlan.tripPhotos === 'string') {
+          try {
+            tripPhotos = JSON.parse(travelPlan.tripPhotos);
+          } catch (error) {
+            console.error("Fotoğraf verisi parse hatası:", error);
+            tripPhotos = [];
+          }
+        } else if (Array.isArray(travelPlan.tripPhotos)) {
+          tripPhotos = [...travelPlan.tripPhotos];
+        }
+      }
+
+      // Yeni fotoğrafı ekle
+      const newPhoto = {
+        id: `photo_${new Date().getTime()}`,
+        uploadedAt: new Date().toISOString(),
+        ...photoData
+      };
+      tripPhotos.push(newPhoto);
+
+      // Web uyumluluğu için string'e dönüştür
+      const tripPhotosString = JSON.stringify(tripPhotos);
+
+      // Seyahat planını güncelle
+      const docRef = doc(db, TRAVEL_PLANS_COLLECTION, travelPlanId);
+      await updateDoc(docRef, {
+        tripPhotos: tripPhotosString,
+        updatedAt: serverTimestamp()
+      });
+
+      console.log("Fotoğraf başarıyla eklendi:", newPhoto.id);
+      return true;
+    } catch (error) {
+      console.error("Fotoğraf ekleme hatası:", error);
+      return false;
+    }
+  },
+
+  /**
+   * Base64 formatındaki resmi doğrudan Firestore'a kaydeder
+   */
+  async saveBase64ImageToFirestore(travelPlanId: string, base64Image: string, photoInfo: Partial<import('../types/travel').TripPhoto>): Promise<boolean> {
+    try {
+      console.log(`Base64 resim Firestore'a kaydediliyor...`);
+      console.log(`Base64 uzunluğu: ${base64Image.length}`);
+
+      if (!travelPlanId?.trim()) {
+        console.warn("Geçersiz seyahat planı ID'si");
+        return false;
+      }
+
+      // Seyahat planını getir
+      const travelPlan = await this.getTravelPlanById(travelPlanId);
+      if (!travelPlan || !travelPlan.id) {
+        console.warn("Seyahat planı bulunamadı:", travelPlanId);
+        return false;
+      }
+
+      // Mevcut fotoğrafları al
+      let tripPhotos = [];
+      if (travelPlan.tripPhotos) {
+        if (typeof travelPlan.tripPhotos === 'string') {
+          try {
+            tripPhotos = JSON.parse(travelPlan.tripPhotos);
+          } catch (error) {
+            console.error("Fotoğraf verisi parse hatası:", error);
+            tripPhotos = [];
+          }
+        } else if (Array.isArray(travelPlan.tripPhotos)) {
+          tripPhotos = [...travelPlan.tripPhotos];
+        }
+      }
+
+      // Yeni fotoğrafı ekle
+      const photoId = `photo_${new Date().getTime()}`;
+      const newPhoto = {
+        id: photoId,
+        uploadedAt: new Date().toISOString(),
+        imageData: base64Image, // Base64 veriyi doğrudan kaydediyoruz
+        ...photoInfo
+      };
+
+      // Ayrı bir koleksiyon oluşturalım (büyük veri için)
+      const photoDocRef = doc(db, `${TRAVEL_PLANS_COLLECTION}_photos`, photoId);
+      await setDoc(photoDocRef, {
+        travelPlanId,
+        photoId,
+        imageData: base64Image,
+        uploadedAt: serverTimestamp(),
+        ...photoInfo
+      });
+
+      // Ana dokümana sadece referans ekleyelim
+      const photoReference = {
+        id: photoId,
+        uploadedAt: new Date().toISOString(),
+        ...photoInfo,
+        // imageData yerine referans kullanıyoruz
+        imageRef: `${TRAVEL_PLANS_COLLECTION}_photos/${photoId}`
+      };
+
+      tripPhotos.push(photoReference);
+
+      // Web uyumluluğu için string'e dönüştür
+      const tripPhotosString = JSON.stringify(tripPhotos);
+
+      // Seyahat planını güncelle
+      const docRef = doc(db, TRAVEL_PLANS_COLLECTION, travelPlanId);
+      await updateDoc(docRef, {
+        tripPhotos: tripPhotosString,
+        updatedAt: serverTimestamp()
+      });
+
+      console.log("Base64 resim başarıyla kaydedildi:", photoId);
+      return true;
+    } catch (error) {
+      console.error("Base64 resim kaydetme hatası:", error);
+      return false;
+    }
+  },
+
+  /**
+   * Fotoğraf ID'sine göre fotoğraf verisini getirir
+   */
+  async getPhotoById(photoRef: string): Promise<any> {
+    try {
+      console.log(`Fotoğraf verisi getiriliyor: ${photoRef}`);
+
+      // Referans formatını kontrol et
+      let collectionPath = '';
+      let photoId = '';
+
+      if (photoRef.includes('/')) {
+        // Tam yol formatı: "koleksiyon/id"
+        const parts = photoRef.split('/');
+        collectionPath = parts[0];
+        photoId = parts[1];
+      } else {
+        // Sadece ID formatı
+        collectionPath = `${TRAVEL_PLANS_COLLECTION}_photos`;
+        photoId = photoRef;
+      }
+
+      console.log(`Koleksiyon: ${collectionPath}, ID: ${photoId}`);
+
+      // Firestore'dan fotoğraf verisini getir
+      const photoDocRef = doc(db, collectionPath, photoId);
+      const photoDoc = await getDoc(photoDocRef);
+
+      if (!photoDoc.exists()) {
+        console.warn(`Fotoğraf bulunamadı: ${photoRef}`);
+        return null;
+      }
+
+      const photoData = photoDoc.data();
+      console.log(`Fotoğraf verisi başarıyla getirildi: ${photoId}`);
+
+      return photoData;
+    } catch (error) {
+      console.error(`Fotoğraf getirme hatası (${photoRef}):`, error);
+      return null;
+    }
+  },
+
+  /**
+   * Seyahat planının fotoğraf referanslarını günceller
+   */
+  async updateTripPhotosReferences(travelPlanId: string, photos: import('../types/travel').TripPhoto[]): Promise<boolean> {
+    try {
+      console.log(`Seyahat planı fotoğraf referansları güncelleniyor: ${travelPlanId}`);
+      console.log(`Fotoğraf sayısı: ${photos.length}`);
+
+      if (!travelPlanId?.trim()) {
+        console.warn("Geçersiz seyahat planı ID'si");
+        return false;
+      }
+
+      // Web uyumluluğu için string'e dönüştür
+      const tripPhotosString = JSON.stringify(photos);
+
+      // Seyahat planını güncelle
+      const docRef = doc(db, TRAVEL_PLANS_COLLECTION, travelPlanId);
+      await updateDoc(docRef, {
+        tripPhotos: tripPhotosString,
+        updatedAt: serverTimestamp()
+      });
+
+      console.log("Fotoğraf referansları başarıyla güncellendi");
+      return true;
+    } catch (error) {
+      console.error("Fotoğraf referansları güncelleme hatası:", error);
+      return false;
     }
   }
 };

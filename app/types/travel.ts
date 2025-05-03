@@ -45,6 +45,19 @@ export interface Hotel {
   surroundings?: string;
 }
 
+export interface TripPhoto {
+  id: string;
+  imageUrl?: string;
+  imageData?: string; // Base64 formatında resim verisi
+  imageRef?: string;  // Firestore referansı
+  caption?: string;
+  location?: string;
+  date?: string;
+  dayNumber?: number;
+  activityName?: string;
+  uploadedAt: string;
+}
+
 export interface TravelPlan {
   // Temel bilgiler
   id?: string;                // Firebase document ID
@@ -135,6 +148,9 @@ export interface TravelPlan {
   currencyAndPayment?: string;
   communicationInfo?: string;
   healthcareInfo?: string;
+
+  // Seyahat fotoğrafları
+  tripPhotos?: TripPhoto[] | string; // Web uyumluluğu için dizi veya string
 }
 
 export interface VisaInfo {
@@ -185,6 +201,25 @@ export function safeParseJSON(jsonString: string | any) {
       return null;
     }
   }
+}
+
+// Seyahat fotoğraflarını parse et
+export function parseTripPhotos(tripPhotos: TripPhoto[] | string | undefined): TripPhoto[] {
+  if (!tripPhotos) {
+    return [];
+  }
+
+  if (typeof tripPhotos === 'string') {
+    try {
+      const parsed = safeParseJSON(tripPhotos);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.error('Fotoğraf parse hatası:', error);
+      return [];
+    }
+  }
+
+  return Array.isArray(tripPhotos) ? tripPhotos : [];
 }
 
 // Expo Router için default export gereklidir
@@ -258,5 +293,7 @@ export const DEFAULT_TRAVEL_PLAN: TravelPlan = {
   emergencyContacts: [],
   currencyAndPayment: '',
   communicationInfo: '',
-  healthcareInfo: ''
+  healthcareInfo: '',
+  // Seyahat fotoğrafları
+  tripPhotos: []
 };
