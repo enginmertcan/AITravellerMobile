@@ -549,17 +549,50 @@ export const TravelPlanService = {
       const blob = await response.blob();
       console.log(`Blob oluşturuldu, boyut: ${blob.size} bytes`);
 
-      // Storage'a yükle
+      // Storage'a yükle - uploadBytesResumable kullanarak daha iyi hata yönetimi
       console.log('Firebase Storage\'a yükleniyor...');
-      const snapshot = await uploadBytes(storageRef, blob);
-      console.log('Yükleme tamamlandı, metadata:', snapshot.metadata);
 
-      // Download URL al
-      console.log('Download URL alınıyor...');
-      const downloadUrl = await getDownloadURL(snapshot.ref);
-      console.log('Download URL:', downloadUrl);
+      // Promise olarak yükleme işlemini bekle
+      return new Promise((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, blob);
 
-      return downloadUrl;
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            // Yükleme durumunu izle
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log(`Yükleme ilerlemesi: ${progress.toFixed(2)}%`);
+          },
+          (error) => {
+            // Hata durumunda
+            console.error('Yükleme hatası:', error);
+            if (error.code) {
+              console.error(`Hata kodu: ${error.code}`);
+            }
+            if (error.serverResponse) {
+              console.error(`Sunucu yanıtı: ${error.serverResponse}`);
+            }
+            if (error.name) {
+              console.error(`Hata adı: ${error.name}`);
+            }
+            reject(error);
+          },
+          async () => {
+            // Yükleme tamamlandığında
+            console.log('Yükleme başarıyla tamamlandı');
+            try {
+              // Download URL al
+              console.log('Download URL alınıyor...');
+              const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+              console.log('Download URL:', downloadUrl);
+              resolve(downloadUrl);
+            } catch (urlError) {
+              console.error('Download URL alma hatası:', urlError);
+              reject(urlError);
+            }
+          }
+        );
+      });
     } catch (error: any) {
       console.error("Resim yükleme hatası:", error);
       // Daha detaylı hata bilgisi
@@ -758,6 +791,96 @@ export const TravelPlanService = {
   },
 
   /**
+   * Base64 formatındaki resmi doğrudan ana koleksiyona ekler
+   * Bu metod, Firestore izinleri nedeniyle travelPlans_photos koleksiyonu yerine
+   * doğrudan ana koleksiyona eklemek için kullanılır
+   */
+  async addTripPhotoWithBase64(travelPlanId: string, base64Image: string, photoInfo: Partial<import('../types/travel').TripPhoto>): Promise<boolean> {
+    try {
+      console.log(`Base64 resim ana koleksiyona kaydediliyor...`);
+      console.log(`Base64 uzunluğu: ${base64Image.length}`);
+
+      if (!travelPlanId?.trim()) {
+        console.warn("Geçersiz seyahat planı ID'si");
+        return false;
+      }
+
+      // Seyahat planını getir
+      const travelPlan = await this.getTravelPlanById(travelPlanId);
+      if (!travelPlan || !travelPlan.id) {
+        console.warn("Seyahat planı bulunamadı:", travelPlanId);
+        return false;
+      }
+
+      // Mevcut fotoğrafları al
+      let tripPhotos = [];
+      if (travelPlan.tripPhotos) {
+        if (typeof travelPlan.tripPhotos === 'string') {
+          try {
+            tripPhotos = JSON.parse(travelPlan.tripPhotos);
+          } catch (error) {
+            console.error("Fotoğraf verisi parse hatası:", error);
+            tripPhotos = [];
+          }
+        } else if (Array.isArray(travelPlan.tripPhotos)) {
+          tripPhotos = [...travelPlan.tripPhotos];
+        }
+      }
+
+      // Undefined değerleri boş string ile değiştir
+      const cleanPhotoInfo: Record<string, any> = { ...photoInfo };
+
+      // Konum alanını kontrol et - bu alan özellikle hata veriyor
+      if (cleanPhotoInfo.location === undefined) {
+        cleanPhotoInfo.location = "";
+      }
+
+      // Diğer alanları da kontrol et
+      if (cleanPhotoInfo.caption === undefined) {
+        cleanPhotoInfo.caption = "";
+      }
+
+      if (cleanPhotoInfo.date === undefined) {
+        cleanPhotoInfo.date = "";
+      }
+
+      if (cleanPhotoInfo.activityName === undefined) {
+        cleanPhotoInfo.activityName = "";
+      }
+
+      // Yeni fotoğraf ID'si oluştur
+      const photoId = `photo_${new Date().getTime()}`;
+
+      // Yeni fotoğrafı ekle - base64 verisiyle birlikte
+      const newPhoto = {
+        id: photoId,
+        uploadedAt: new Date().toISOString(),
+        ...cleanPhotoInfo,
+        // Base64 verisini doğrudan ekle
+        imageData: base64Image
+      };
+
+      tripPhotos.push(newPhoto);
+
+      // Web uyumluluğu için string'e dönüştür
+      const tripPhotosString = JSON.stringify(tripPhotos);
+
+      // Seyahat planını güncelle
+      const docRef = doc(db, TRAVEL_PLANS_COLLECTION, travelPlanId);
+      await updateDoc(docRef, {
+        tripPhotos: tripPhotosString,
+        updatedAt: serverTimestamp()
+      });
+
+      console.log("Base64 resim başarıyla ana koleksiyona kaydedildi:", photoId);
+      return true;
+    } catch (error) {
+      console.error("Base64 resim kaydetme hatası:", error);
+      return false;
+    }
+  },
+
+  /**
    * Base64 formatındaki resmi doğrudan Firestore'a kaydeder
    */
   async saveBase64ImageToFirestore(travelPlanId: string, base64Image: string, photoInfo: Partial<import('../types/travel').TripPhoto>): Promise<boolean> {
@@ -792,14 +915,29 @@ export const TravelPlanService = {
         }
       }
 
-      // Yeni fotoğrafı ekle
+      // Yeni fotoğraf ID'si oluştur
       const photoId = `photo_${new Date().getTime()}`;
-      const newPhoto = {
-        id: photoId,
-        uploadedAt: new Date().toISOString(),
-        imageData: base64Image, // Base64 veriyi doğrudan kaydediyoruz
-        ...photoInfo
-      };
+
+      // Undefined değerleri boş string ile değiştir
+      const cleanPhotoInfo: Record<string, any> = { ...photoInfo };
+
+      // Konum alanını kontrol et - bu alan özellikle hata veriyor
+      if (cleanPhotoInfo.location === undefined) {
+        cleanPhotoInfo.location = "";
+      }
+
+      // Diğer alanları da kontrol et
+      if (cleanPhotoInfo.caption === undefined) {
+        cleanPhotoInfo.caption = "";
+      }
+
+      if (cleanPhotoInfo.date === undefined) {
+        cleanPhotoInfo.date = "";
+      }
+
+      if (cleanPhotoInfo.activityName === undefined) {
+        cleanPhotoInfo.activityName = "";
+      }
 
       // Ayrı bir koleksiyon oluşturalım (büyük veri için)
       const photoDocRef = doc(db, `${TRAVEL_PLANS_COLLECTION}_photos`, photoId);
@@ -808,14 +946,14 @@ export const TravelPlanService = {
         photoId,
         imageData: base64Image,
         uploadedAt: serverTimestamp(),
-        ...photoInfo
+        ...cleanPhotoInfo
       });
 
       // Ana dokümana sadece referans ekleyelim
       const photoReference = {
         id: photoId,
         uploadedAt: new Date().toISOString(),
-        ...photoInfo,
+        ...cleanPhotoInfo,
         // imageData yerine referans kullanıyoruz
         imageRef: `${TRAVEL_PLANS_COLLECTION}_photos/${photoId}`
       };

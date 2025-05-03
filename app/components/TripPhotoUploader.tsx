@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, Image, FlatList } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, Image, FlatList, Modal, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,6 +20,12 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
   const [location, setLocation] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedPhotoForModal, setSelectedPhotoForModal] = useState<TripPhoto | null>(null);
+
+  // Ekran boyutlarını al
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
 
   // Fotoğraf seçme işlemi
   const handleSelectImage = async () => {
@@ -33,8 +39,7 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
 
       // Fotoğraf seçiciyi aç
       const result = await ImagePicker.launchImageLibraryAsync({
-        // @ts-ignore - MediaTypeOptions is deprecated but still works
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         quality: 0.5, // Kaliteyi düşürelim
         aspect: [4, 3],
@@ -64,59 +69,73 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
       console.log('Seyahat Planı ID:', travelPlanId);
       console.log('Seçilen fotoğraf URI:', selectedImage);
 
-      // Fotoğrafı yerel olarak kaydet ve Firestore'a referans ekle
+      // Fotoğrafı Firebase Storage'a yükle ve Firestore'a referans ekle
       try {
         console.log('Fotoğraf işleniyor...');
+        setLoading(true);
 
         // Fotoğraf bilgilerini hazırla
         const timestamp = new Date().getTime();
         const photoUri = selectedImage;
 
-        // Fotoğraf bilgilerini hazırla
-        const photoInfo: Partial<TripPhoto> = {
-          id: `photo_${timestamp}`,
-          imageUrl: photoUri, // Doğrudan cihaz URI'sini kullan
-          location: location.trim() || undefined,
-          uploadedAt: new Date().toISOString()
-        };
+        // Fotoğrafı Firestore'a base64 olarak kaydet
+        console.log('Fotoğraf base64 olarak Firestore\'a kaydediliyor...');
 
-        console.log('Fotoğraf bilgileri:', photoInfo);
+        try {
+          // Fotoğraf bilgilerini hazırla
+          let photoInfo: Partial<TripPhoto>;
 
-        // Seyahat planına fotoğraf bilgilerini ekle
-        console.log('Seyahat planına fotoğraf bilgileri ekleniyor...');
+          // Resmi base64'e dönüştür
+          const base64Data = await FileSystem.readAsStringAsync(photoUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
 
-        // Mevcut fotoğrafları al
-        const existingPhotos = [...tripPhotos];
+          // Fotoğraf bilgilerini hazırla (base64 ile)
+          photoInfo = {
+            id: `photo_${timestamp}`,
+            location: location.trim() || "", // Boş string kullan, undefined değil
+            uploadedAt: new Date().toISOString()
+          };
 
-        // Yeni fotoğrafı ekle
-        existingPhotos.push(photoInfo as TripPhoto);
+          // Doğrudan ana koleksiyona ekleyelim (izin sorunu nedeniyle)
+          // Firestore izinleri nedeniyle travelPlans_photos koleksiyonu yerine
+          // doğrudan ana koleksiyona ekleyeceğiz
+          const success = await FirebaseService.TravelPlan.addTripPhotoWithBase64(
+            travelPlanId,
+            base64Data,
+            photoInfo
+          );
 
-        // Firestore'a sadece fotoğraf referansını kaydet
-        const success = await FirebaseService.TravelPlan.updateTripPhotosReferences(
-          travelPlanId,
-          existingPhotos
-        );
+          if (success) {
+            console.log('Fotoğraf base64 olarak başarıyla kaydedildi');
 
-        if (success) {
-          console.log('Fotoğraf referansı başarıyla kaydedildi');
-          Alert.alert('Başarılı', 'Fotoğraf başarıyla eklendi.');
+            // Fotoğrafları güncelle (eğer prop olarak geçildiyse)
+            if (setTripPhotos && tripPhotos) {
+              const updatedPhotos = [...tripPhotos];
+              updatedPhotos.push(photoInfo as TripPhoto);
+              setTripPhotos(updatedPhotos);
+            }
 
-          // Fotoğrafları güncelle (eğer prop olarak geçildiyse)
-          if (setTripPhotos) {
-            setTripPhotos(existingPhotos);
+            // Başarı mesajı göster
+            Alert.alert('Başarılı', 'Fotoğraf başarıyla eklendi.');
+
+            // Formu temizle
+            setSelectedImage(null);
+            setLocation('');
+            setShowForm(false);
+
+            // Fotoğrafları yeniden yükle
+            onPhotoAdded();
+          } else {
+            console.error('Fotoğraf kaydetme başarısız');
+            Alert.alert('Hata', 'Fotoğraf kaydedilirken bir hata oluştu.');
           }
-
-          // Formu temizle
-          setSelectedImage(null);
-          setLocation('');
-          setShowForm(false);
-
-          // Yenileme fonksiyonunu çağır
-          onPhotoAdded();
-        } else {
-          console.error('Fotoğraf referansı kaydetme başarısız');
-          Alert.alert('Hata', 'Fotoğraf bilgileri kaydedilirken bir hata oluştu.');
+        } catch (uploadError: any) {
+          console.error('Fotoğraf yükleme hatası:', uploadError);
+          Alert.alert('Hata', 'Fotoğraf yüklenirken bir hata oluştu: ' + (uploadError.message || 'Bilinmeyen hata'));
         }
+
+
       } catch (error: any) {
         console.error('Fotoğraf kaydetme hatası:', error);
 
@@ -150,53 +169,48 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
     setShowForm(false);
   };
 
-  // Fotoğraf listesini render et
-  const renderPhotoItem = ({ item }: { item: TripPhoto }) => {
-    // Resim kaynağını belirle (URL veya base64)
-    const imageSource = item.imageData
+  // Fotoğrafa tıklama işlemi
+  const handlePhotoPress = (photo: TripPhoto) => {
+    setSelectedPhotoForModal(photo);
+    setModalVisible(true);
+  };
+
+  // Modalı kapat
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedPhotoForModal(null);
+  };
+
+  // Fotoğraf kaynağını belirle (URL veya base64)
+  const getImageSource = (item: TripPhoto) => {
+    return item.imageData
       ? { uri: `data:image/jpeg;base64,${item.imageData}` }
       : item.imageUrl
         ? { uri: item.imageUrl }
         : { uri: 'https://via.placeholder.com/300x200/4c669f/ffffff?text=Resim+Yok' }; // Online placeholder
+  };
+
+  // Fotoğraf listesini render et
+  const renderPhotoItem = ({ item }: { item: TripPhoto }) => {
+    const imageSource = getImageSource(item);
 
     return (
-      <View style={styles.photoCard}>
-        <Image source={imageSource} style={styles.photoImage} />
-        <View style={styles.photoDetails}>
-          {item.caption && (
-            <ThemedText style={styles.photoCaption} numberOfLines={2} ellipsizeMode="tail">
-              {item.caption}
-            </ThemedText>
-          )}
+      <TouchableOpacity
+        style={styles.photoCardHorizontal}
+        onPress={() => handlePhotoPress(item)}
+      >
+        <Image source={imageSource} style={styles.photoImageHorizontal} />
+        <View style={styles.photoOverlay}>
           {item.location && (
-            <View style={styles.photoInfoRow}>
-              <MaterialCommunityIcons name="map-marker" size={16} color="#4c669f" />
-              <ThemedText style={styles.photoInfoText} numberOfLines={1} ellipsizeMode="tail">
+            <View style={styles.photoLocationBadge}>
+              <MaterialCommunityIcons name="map-marker" size={12} color="#fff" />
+              <ThemedText style={styles.photoLocationText} numberOfLines={1} ellipsizeMode="tail">
                 {item.location}
               </ThemedText>
             </View>
           )}
-          {item.dayNumber && (
-            <View style={styles.photoInfoRow}>
-              <MaterialCommunityIcons name="calendar-outline" size={16} color="#4c669f" />
-              <ThemedText style={styles.photoInfoText} numberOfLines={1} ellipsizeMode="tail">
-                Gün {item.dayNumber}
-              </ThemedText>
-            </View>
-          )}
-          {item.activityName && (
-            <View style={styles.photoInfoRow}>
-              <MaterialCommunityIcons name="tag-outline" size={16} color="#4c669f" />
-              <ThemedText style={styles.photoInfoText} numberOfLines={1} ellipsizeMode="tail">
-                {item.activityName}
-              </ThemedText>
-            </View>
-          )}
-          <ThemedText style={styles.photoDate}>
-            {new Date(item.uploadedAt).toLocaleDateString('tr-TR')}
-          </ThemedText>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -208,8 +222,9 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
           data={tripPhotos}
           keyExtractor={(item) => item.id}
           renderItem={renderPhotoItem}
-          horizontal={false}
-          contentContainerStyle={styles.photoList}
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.photoListHorizontal}
         />
       ) : (
         <View style={styles.emptyContainer}>
@@ -219,6 +234,58 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
           </ThemedText>
         </View>
       )}
+
+      {/* Fotoğraf Detay Modalı */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={closeModal}
+      >
+        <TouchableOpacity
+          style={styles.modalContainer}
+          activeOpacity={1}
+          onPress={closeModal}
+        >
+          {selectedPhotoForModal && (
+            <View style={styles.modalContent}>
+              <Image
+                source={getImageSource(selectedPhotoForModal)}
+                style={styles.modalImage}
+                resizeMode="contain"
+              />
+
+              <View style={styles.modalInfo}>
+                {selectedPhotoForModal.location && (
+                  <View style={styles.photoInfoRow}>
+                    <MaterialCommunityIcons name="map-marker" size={18} color="#4c669f" />
+                    <ThemedText style={styles.modalInfoText}>
+                      {selectedPhotoForModal.location}
+                    </ThemedText>
+                  </View>
+                )}
+
+                {selectedPhotoForModal.dayNumber && (
+                  <View style={styles.photoInfoRow}>
+                    <MaterialCommunityIcons name="calendar-outline" size={18} color="#4c669f" />
+                    <ThemedText style={styles.modalInfoText}>
+                      Gün {selectedPhotoForModal.dayNumber}
+                    </ThemedText>
+                  </View>
+                )}
+
+                <ThemedText style={styles.photoDate}>
+                  {new Date(selectedPhotoForModal.uploadedAt).toLocaleDateString('tr-TR')}
+                </ThemedText>
+              </View>
+
+              <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+                <MaterialCommunityIcons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
+        </TouchableOpacity>
+      </Modal>
 
       {/* Fotoğraf Yükleme Formu */}
       {showForm && selectedImage ? (
@@ -274,6 +341,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  // Eski dikey liste stilleri
   photoList: {
     paddingBottom: 16,
   },
@@ -293,6 +361,92 @@ const styles = StyleSheet.create({
   photoDetails: {
     padding: 12,
   },
+
+  // Yeni yatay liste stilleri
+  photoListHorizontal: {
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+  },
+  photoCardHorizontal: {
+    backgroundColor: '#111',
+    borderRadius: 12,
+    marginHorizontal: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.2)',
+    width: 200,
+    height: 200,
+    position: 'relative',
+  },
+  photoImageHorizontal: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  photoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 8,
+  },
+  photoLocationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 102, 159, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  photoLocationText: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 4,
+  },
+
+  // Modal stilleri
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    maxHeight: '80%',
+    backgroundColor: '#111',
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  modalImage: {
+    width: '100%',
+    height: 400,
+    backgroundColor: '#000',
+  },
+  modalInfo: {
+    padding: 16,
+  },
+  modalInfoText: {
+    color: '#fff',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Diğer stiller
   photoCaption: {
     fontSize: 16,
     fontWeight: '600',
@@ -302,7 +456,7 @@ const styles = StyleSheet.create({
   photoInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   photoInfoText: {
     marginLeft: 6,

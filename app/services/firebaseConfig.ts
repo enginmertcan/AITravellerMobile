@@ -12,7 +12,7 @@ const firebaseConfig = {
   apiKey: Constants.expoConfig?.extra?.firebaseApiKey || process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyBGux1bZhFmmuNQDvGr2CDsUxIrHF1pFhU", // Önce Constants, sonra process.env, son olarak yedek
   authDomain: "ai-traveller-67214.firebaseapp.com",
   projectId: "ai-traveller-67214",
-  storageBucket: "ai-traveller-67214.appspot.com",
+  storageBucket: "ai-traveller-67214.firebasestorage.app",
   messagingSenderId: "151291844199",
   appId: "1:151291844199:web:45fcc2574f5c1d3453a6c2",
   measurementId: "G-W93HDHGMR1",
@@ -30,7 +30,7 @@ try {
     console.log('Firebase: Mevcut instance kullanılıyor...');
     app = getApp(); // Eğer zaten initialize edilmişse mevcut app'i kullan
   }
-  
+
   // API anahtarı kontrolü
   if (!firebaseConfig.apiKey) {
     console.error('Firebase API anahtarı bulunamadı! Environment değişkenleri kontrol edin.');
@@ -57,8 +57,8 @@ export const db = getFirestore(app);
 // Initialize Firebase Auth - şimdilik devre dışı bıraktık
 // export const auth = getAuth(app);
 
-// Initialize Firebase Storage
-export const storage = getStorage(app);
+// Initialize Firebase Storage with explicit bucket URL
+export const storage = getStorage(app, `gs://${firebaseConfig.storageBucket}`);
 
 // Export Firebase app instance for other services
 export default app;
