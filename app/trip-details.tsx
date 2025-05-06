@@ -908,6 +908,82 @@ export default function TripDetailsScreen() {
         </TouchableOpacity>
         <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">Seyahat Planı</ThemedText>
 
+        {/* Beğeni Sayısı ve Butonu - Önerilen planlarda göster */}
+        {tripData.isRecommended && (
+          <TouchableOpacity
+            style={styles.likeCountContainer}
+            onPress={() => {
+              if (!userId) {
+                Alert.alert('Giriş Gerekli', 'Beğeni yapabilmek için giriş yapmalısınız.');
+                return;
+              }
+
+              // Optimistic UI update
+              const isCurrentlyLiked = tripData.likedBy?.includes(userId || '') || false;
+              const currentLikes = tripData.likes || 0;
+
+              // Create a new likedBy array
+              const newLikedBy = [...(tripData.likedBy || [])];
+
+              if (isCurrentlyLiked) {
+                // Remove user from likedBy
+                const index = newLikedBy.indexOf(userId || '');
+                if (index > -1) {
+                  newLikedBy.splice(index, 1);
+                }
+              } else {
+                // Add user to likedBy
+                newLikedBy.push(userId || '');
+              }
+
+              // Create a new tripData object with updated like info
+              const updatedTripData = {
+                ...tripData,
+                likes: isCurrentlyLiked ? currentLikes - 1 : currentLikes + 1,
+                likedBy: newLikedBy
+              };
+
+              // Update the state immediately for responsive UI
+              setTripData(updatedTripData);
+
+              // Then perform the actual API call in the background without waiting
+              FirebaseService.TravelPlan.toggleLike(tripData.id as string, userId || '')
+                .then(success => {
+                  if (!success) {
+                    // If the API call fails, revert the UI change
+                    setTripData({
+                      ...tripData,
+                      likes: currentLikes,
+                      likedBy: tripData.likedBy || []
+                    });
+                    Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+                  }
+                })
+                .catch(error => {
+                  console.error('Beğeni hatası:', error);
+                  // Revert UI change on error
+                  setTripData({
+                    ...tripData,
+                    likes: currentLikes,
+                    likedBy: tripData.likedBy || []
+                  });
+                  Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+                });
+            }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MaterialCommunityIcons
+              name={tripData.likedBy?.includes(userId || '') ? "heart" : "heart-outline"}
+              size={18}
+              color="#e91e63"
+            />
+            <ThemedText style={styles.likeCountText}>
+              {tripData.likes || 0}
+            </ThemedText>
+          </TouchableOpacity>
+        )}
+
         {/* Öneri Butonu */}
         {tripData.userId === userId && (
           <TouchableOpacity
@@ -1909,6 +1985,25 @@ const styles = StyleSheet.create({
   recommendedButton: {
     backgroundColor: 'rgba(255, 215, 0, 0.2)',
     borderColor: '#FFD700',
+  },
+  likeCountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(233, 30, 99, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginLeft: 'auto',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(233, 30, 99, 0.3)',
+    ...AppStyles.shadows.small,
+  },
+  likeCountText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 4,
+    color: '#e91e63',
   },
   title: {
     ...AppStyles.typography.subtitle,

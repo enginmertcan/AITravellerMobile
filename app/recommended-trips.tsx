@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, RefreshControl, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -49,10 +49,80 @@ export default function RecommendedTripsScreen() {
     }
   };
 
+  // Beğeni işlemi - Sayfa yenilenmeden çalışacak şekilde düzenlendi
+  const handleLike = (plan: Partial<TravelPlan>) => {
+    if (!userId) {
+      Alert.alert('Giriş Gerekli', 'Beğeni yapabilmek için giriş yapmalısınız.');
+      return;
+    }
+
+    if (!plan.id) return;
+
+    // Find the plan in the current state
+    const planIndex = recommendedPlans.findIndex(p => p.id === plan.id);
+    if (planIndex === -1) return;
+
+    const isCurrentlyLiked = plan.likedBy?.includes(userId) || false;
+    const currentLikes = plan.likes || 0;
+
+    // Create a new likedBy array
+    const newLikedBy = [...(plan.likedBy || [])];
+
+    if (isCurrentlyLiked) {
+      // Remove user from likedBy
+      const index = newLikedBy.indexOf(userId);
+      if (index > -1) {
+        newLikedBy.splice(index, 1);
+      }
+    } else {
+      // Add user to likedBy
+      newLikedBy.push(userId);
+    }
+
+    // Create a new plan object with updated like info
+    const updatedPlan = {
+      ...plan,
+      likes: isCurrentlyLiked ? currentLikes - 1 : currentLikes + 1,
+      likedBy: newLikedBy
+    };
+
+    // Create a new plans array with the updated plan
+    const updatedPlans = [...recommendedPlans];
+    updatedPlans[planIndex] = updatedPlan;
+
+    // Update the state immediately for responsive UI
+    setRecommendedPlans(updatedPlans);
+
+    // Then perform the actual API call in the background without waiting
+    FirebaseService.TravelPlan.toggleLike(plan.id, userId)
+      .then(success => {
+        if (!success) {
+          // If the API call fails, revert the UI change
+          const revertedPlans = [...recommendedPlans];
+          revertedPlans[planIndex] = plan;
+          setRecommendedPlans(revertedPlans);
+          Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+        }
+      })
+      .catch(error => {
+        console.error('Beğeni hatası:', error);
+        // Revert UI change on error
+        const revertedPlans = [...recommendedPlans];
+        revertedPlans[planIndex] = plan;
+        setRecommendedPlans(revertedPlans);
+        Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+      });
+  };
+
+  // Kullanıcının planı beğenip beğenmediğini kontrol et
+  const isLikedByUser = (plan: Partial<TravelPlan>) => {
+    return plan.likedBy?.includes(userId || '') || false;
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
@@ -75,11 +145,13 @@ export default function RecommendedTripsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.planCard}
-              onPress={() => selectPlan(item)}
-            >
-              <View style={styles.planCardContent}>
+            <View style={styles.planCard}>
+              {/* Ana İçerik - Tıklanabilir */}
+              <TouchableOpacity
+                style={styles.planCardContent}
+                onPress={() => selectPlan(item)}
+                activeOpacity={0.7}
+              >
                 <ThemedText style={styles.planDestination} numberOfLines={1} ellipsizeMode="tail">
                   {item.destination || 'İsimsiz Destinasyon'}
                 </ThemedText>
@@ -125,8 +197,32 @@ export default function RecommendedTripsScreen() {
                     {item.userId === userId ? 'Sizin tarafınızdan önerildi' : 'Başka bir kullanıcı tarafından önerildi'}
                   </ThemedText>
                 </View>
+              </TouchableOpacity>
+
+              {/* Beğeni Bilgisi ve Butonu - Ayrı bir bileşen */}
+              <View style={styles.likeContainer}>
+                <View style={styles.likeInfo}>
+                  <MaterialCommunityIcons name="heart" size={16} color="#e91e63" />
+                  <ThemedText style={styles.likeCount}>
+                    {item.likes || 0} beğeni
+                  </ThemedText>
+                </View>
+
+                {/* Beğeni Butonu - Ayrı bir TouchableOpacity */}
+                <TouchableOpacity
+                  style={styles.likeButton}
+                  onPress={() => handleLike(item)}
+                  activeOpacity={0.6}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} // Dokunma alanını genişlet
+                >
+                  <MaterialCommunityIcons
+                    name={isLikedByUser(item) ? "heart" : "heart-outline"}
+                    size={22}
+                    color={isLikedByUser(item) ? "#e91e63" : "#4c669f"}
+                  />
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+            </View>
           )}
         />
       ) : (
@@ -191,6 +287,9 @@ const styles = StyleSheet.create({
   },
   planCardContent: {
     padding: 16,
+    flex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   planDestination: {
     fontSize: 18,
@@ -240,5 +339,35 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     color: '#666',
+  },
+  likeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+  },
+  likeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  likeCount: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  likeButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.2)',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
 });

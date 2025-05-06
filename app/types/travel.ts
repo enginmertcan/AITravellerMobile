@@ -79,6 +79,8 @@ export interface TravelPlan {
   destination: string;        // Ana destinasyon/şehir adı
   rawResponse?: string;       // Ham AI yanıtı
   isRecommended?: boolean;    // Önerilen seyahat planı mı?
+  likes?: number;             // Beğeni sayısı
+  likedBy?: string[];         // Beğenen kullanıcıların ID'leri
 
   // Temel seyahat bilgileri
   startDate: string;           // Başlangıç tarihi
@@ -270,6 +272,8 @@ export const DEFAULT_TRAVEL_PLAN: TravelPlan = {
   isDomestic: false,
   userId: '',
   isRecommended: false,
+  likes: 0,
+  likedBy: [],
   // Opsiyonel alanlar
   days: 0,
   groupType: '',

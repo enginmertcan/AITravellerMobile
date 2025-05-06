@@ -807,6 +807,60 @@ export const TravelPlanService = {
   },
 
   /**
+   * Bir seyahat planını beğenme veya beğeniyi kaldırma
+   */
+  async toggleLike(id: string, userId: string): Promise<boolean> {
+    try {
+      if (!id?.trim() || !userId?.trim()) {
+        console.warn("Geçersiz seyahat planı ID'si veya kullanıcı ID'si");
+        return false;
+      }
+
+      const docRef = doc(db, TRAVEL_PLANS_COLLECTION, id);
+
+      // Önce planı getir
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        console.warn("Seyahat planı bulunamadı:", id);
+        return false;
+      }
+
+      const planData = docSnap.data();
+
+      // likedBy dizisini kontrol et, yoksa oluştur
+      const likedBy = planData.likedBy || [];
+
+      // Kullanıcı zaten beğenmiş mi kontrol et
+      const userIndex = likedBy.indexOf(userId);
+
+      if (userIndex > -1) {
+        // Kullanıcı zaten beğenmiş, beğeniyi kaldır
+        likedBy.splice(userIndex, 1);
+        console.log(`Kullanıcı beğeniyi kaldırdı: ${userId}`);
+      } else {
+        // Kullanıcı henüz beğenmemiş, beğeni ekle
+        likedBy.push(userId);
+        console.log(`Kullanıcı beğeni ekledi: ${userId}`);
+      }
+
+      // Beğeni sayısını güncelle ve veritabanını güncelle
+      await updateDoc(docRef, {
+        likedBy: likedBy,
+        likes: likedBy.length,
+        updatedAt: serverTimestamp()
+      });
+
+      console.log(`Seyahat planı beğeni durumu güncellendi. Yeni beğeni sayısı: ${likedBy.length}`);
+
+      return true;
+    } catch (error) {
+      console.error("Seyahat planı beğeni durumu güncelleme hatası:", error);
+      return false;
+    }
+  },
+
+  /**
    * Önerilen seyahat planlarını getirir
    */
   async getRecommendedTravelPlans(): Promise<Partial<TravelPlan>[]> {
@@ -865,6 +919,14 @@ export const TravelPlanService = {
       });
 
       console.log('Önerilen seyahat planları başarıyla alındı');
+
+      // Beğeni sayısına göre sırala (çoktan aza)
+      plans.sort((a, b) => {
+        const likesA = a.likes || 0;
+        const likesB = b.likes || 0;
+        return likesB - likesA;
+      });
+
       return plans;
     } catch (error) {
       console.error('Önerilen seyahat planları getirme hatası:', error);
