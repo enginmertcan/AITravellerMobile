@@ -764,8 +764,9 @@ export const TravelPlanService = {
 
   /**
    * Bir seyahat planını önerilen olarak işaretler veya öneriden kaldırır
+   * Sadece planı oluşturan kullanıcı bu işlemi yapabilir
    */
-  async toggleRecommendation(id: string, isRecommended: boolean): Promise<boolean> {
+  async toggleRecommendation(id: string, isRecommended: boolean, currentUserId?: string): Promise<boolean> {
     try {
       if (!id?.trim()) {
         console.warn("Geçersiz seyahat planı ID'si");
@@ -773,6 +774,22 @@ export const TravelPlanService = {
       }
 
       const docRef = doc(db, TRAVEL_PLANS_COLLECTION, id);
+
+      // Önce planı getir ve kullanıcı kontrolü yap
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        console.warn("Seyahat planı bulunamadı:", id);
+        return false;
+      }
+
+      const planData = docSnap.data();
+
+      // Eğer currentUserId verilmişse ve plan sahibi değilse işlemi reddet
+      if (currentUserId && planData.userId !== currentUserId) {
+        console.warn("Yetki hatası: Sadece planı oluşturan kullanıcı öneri durumunu değiştirebilir");
+        return false;
+      }
 
       // Sadece isRecommended alanını güncelle
       await updateDoc(docRef, {

@@ -724,6 +724,16 @@ export default function TripDetailsScreen() {
     if (!tripData.id) return;
 
     try {
+      // Kullanıcı kontrolü - sadece planı oluşturan kullanıcı değiştirebilir
+      if (tripData.userId !== userId) {
+        Alert.alert(
+          'Yetki Hatası',
+          'Sadece planı oluşturan kullanıcı öneri durumunu değiştirebilir.',
+          [{ text: 'Tamam' }]
+        );
+        return;
+      }
+
       const newRecommendedStatus = !(tripData.isRecommended || false);
       const message = newRecommendedStatus
         ? 'Bu seyahat planını önermek istediğinize emin misiniz? Diğer kullanıcılar bu planı görebilecek.'
@@ -743,7 +753,8 @@ export default function TripDetailsScreen() {
               setLoading(true);
               const success = await FirebaseService.TravelPlan.toggleRecommendation(
                 tripData.id as string,
-                newRecommendedStatus
+                newRecommendedStatus,
+                userId // Kullanıcı ID'sini gönder
               );
 
               if (success) {
@@ -757,8 +768,9 @@ export default function TripDetailsScreen() {
                 );
               } else {
                 Alert.alert(
-                  'Hata',
-                  'İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.'
+                  'Yetki Hatası',
+                  'Sadece planı oluşturan kullanıcı öneri durumunu değiştirebilir.',
+                  [{ text: 'Tamam' }]
                 );
                 setLoading(false);
               }
