@@ -248,6 +248,7 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.photoListHorizontal}
           extraData={tripPhotos} // Fotoğraflar değiştiğinde FlatList'i yeniden render et
+          nestedScrollEnabled={true}
         />
       );
     } else {

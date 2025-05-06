@@ -754,7 +754,10 @@ export default function TripDetailsScreen() {
 
   // Detay görünümü - seçilen planın detaylarını göster
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      nestedScrollEnabled={true}
+    >
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}

@@ -203,6 +203,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
               renderItem={renderCommentItem}
               keyExtractor={(item) => item.id}
               style={styles.commentsList}
+              nestedScrollEnabled={true}
             />
           ) : (
             <Text style={styles.noComments}>Henüz yorum yapılmamış. İlk yorumu siz yapın!</Text>
