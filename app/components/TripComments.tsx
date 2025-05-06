@@ -37,7 +37,22 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
     setLoading(true);
     try {
+      console.log(`Yorumlar yükleniyor, travelPlanId: ${travelPlanId}`);
       const commentsData = await FirebaseService.Comment.getCommentsByTravelPlanId(travelPlanId);
+      console.log(`${commentsData.length} yorum yüklendi`);
+
+      // Yorum fotoğraflarını kontrol et
+      commentsData.forEach((comment, index) => {
+        console.log(`Yorum ${index + 1} - ID: ${comment.id}`);
+        console.log(`  Fotoğraf var mı: ${comment.photoUrl || comment.photoData ? 'Evet' : 'Hayır'}`);
+        if (comment.photoUrl) {
+          console.log(`  photoUrl: ${comment.photoUrl.substring(0, 30)}...`);
+        }
+        if (comment.photoData) {
+          console.log(`  photoData uzunluğu: ${comment.photoData.length}`);
+        }
+      });
+
       setComments(commentsData);
     } catch (error) {
       console.error('Yorumları yükleme hatası:', error);
@@ -97,6 +112,16 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
   // Fotoğrafa tıklama işlemi
   const handlePhotoPress = (photo: { url: string, location?: string }) => {
+    console.log(`Fotoğrafa tıklandı: ${photo.url.substring(0, 30)}...`);
+    console.log(`Konum bilgisi: ${photo.location || 'Yok'}`);
+
+    // Fotoğraf URL'sinin geçerli olup olmadığını kontrol et
+    if (!photo.url || photo.url.trim() === '') {
+      console.error('Geçersiz fotoğraf URL\'si');
+      Alert.alert('Hata', 'Fotoğraf görüntülenemiyor.');
+      return;
+    }
+
     setSelectedPhotoForModal(photo);
     setModalVisible(true);
   };
@@ -107,23 +132,29 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
     setSubmitting(true);
     try {
-      let photoUrl = null;
       let photoData = null;
       let photoLocationValue = null;
 
       // Eğer fotoğraf seçilmişse, yükle
       if (selectedImage) {
         try {
+          console.log('Fotoğraf base64\'e dönüştürülüyor...');
+
           // Resmi base64'e dönüştür
           const base64Data = await FileSystem.readAsStringAsync(selectedImage, {
             encoding: FileSystem.EncodingType.Base64,
           });
 
-          photoData = base64Data;
+          console.log(`Base64 dönüşümü başarılı, veri uzunluğu: ${base64Data.length}`);
+
+          // Base64 verisi doğrudan kullanılabilir
+          photoData = `data:image/jpeg;base64,${base64Data}`;
+          console.log('Base64 verisi data:image formatına dönüştürüldü');
 
           // Konum bilgisi varsa ekle
           if (photoLocation && photoLocation.trim() !== '') {
             photoLocationValue = photoLocation.trim();
+            console.log(`Fotoğraf konum bilgisi: ${photoLocationValue}`);
           }
         } catch (error) {
           console.error('Fotoğraf dönüştürme hatası:', error);
@@ -143,17 +174,24 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
       // Sadece değerler varsa ekle (undefined değerleri eklemiyoruz)
       if (photoData) {
+        console.log('Yoruma fotoğraf verisi ekleniyor...');
         commentData.photoData = photoData;
       }
 
       if (photoLocationValue) {
+        console.log('Yoruma konum bilgisi ekleniyor...');
         commentData.photoLocation = photoLocationValue;
       }
 
-      await FirebaseService.Comment.addComment(commentData);
+      console.log('Yorum Firebase\'e gönderiliyor...');
+      const commentId = await FirebaseService.Comment.addComment(commentData);
+      console.log(`Yorum başarıyla eklendi, ID: ${commentId}`);
+
       setNewComment('');
       setSelectedImage(null);
       setPhotoLocation('');
+
+      console.log('Yorumlar yeniden yükleniyor...');
       await loadComments(); // Yorumları yeniden yükle
     } catch (error) {
       console.error('Yorum ekleme hatası:', error);
@@ -232,14 +270,42 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
     const isCurrentUser = userId === item.userId;
     const hasPhoto = item.photoUrl || item.photoData;
 
-    // Fotoğraf kaynağını belirle
+    // Fotoğraf kaynağını belirle - Basitleştirilmiş versiyon
     const getImageSource = () => {
-      if (item.photoData) {
-        return { uri: `data:image/jpeg;base64,${item.photoData}` };
-      } else if (item.photoUrl) {
-        return { uri: item.photoUrl };
+      console.log(`Fotoğraf kaynağı belirleniyor: ${item.id}`);
+
+      try {
+        // Önce photoUrl kontrolü (daha güvenilir)
+        if (item.photoUrl && item.photoUrl.trim() !== '') {
+          console.log(`  ${item.id} için URL kullanılıyor: ${item.photoUrl.substring(0, 30)}...`);
+          return { uri: item.photoUrl };
+        }
+
+        // Sonra photoData kontrolü
+        if (item.photoData && item.photoData.trim() !== '') {
+          console.log(`  ${item.id} için base64 verisi kullanılıyor (uzunluk: ${item.photoData.length})`);
+
+          // Base64 formatını kontrol et ve düzelt
+          let base64Data = item.photoData;
+
+          // Eğer data:image ile başlıyorsa, sadece base64 kısmını al
+          if (base64Data.startsWith('data:image')) {
+            console.log('  Veri data:image formatında, ayıklanıyor...');
+            const parts = base64Data.split('base64,');
+            if (parts.length > 1) {
+              base64Data = parts[1];
+            }
+          }
+
+          // React Native için doğru format
+          return { uri: `data:image/jpeg;base64,${base64Data}` };
+        }
+      } catch (error) {
+        console.error(`  Fotoğraf kaynağı belirleme hatası: ${error}`);
       }
-      return undefined;
+
+      console.log(`  ${item.id} için fotoğraf kaynağı bulunamadı, placeholder kullanılıyor`);
+      return { uri: 'https://via.placeholder.com/300x200/4c669f/ffffff?text=Resim+Yok' };
     };
 
     return (
@@ -280,15 +346,34 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
             {hasPhoto && (
               <TouchableOpacity
                 style={styles.photoContainer}
-                onPress={() => handlePhotoPress({
-                  url: item.photoUrl || `data:image/jpeg;base64,${item.photoData}`,
-                  location: item.photoLocation
-                })}
+                onPress={() => {
+                  console.log(`Fotoğrafa tıklandı: ${item.id}`);
+
+                  // getImageSource fonksiyonunu kullanarak aynı kaynağı kullan
+                  const imageSource = getImageSource();
+
+                  if (imageSource && imageSource.uri) {
+                    console.log(`Modal için fotoğraf URL'si: ${imageSource.uri.substring(0, 30)}...`);
+
+                    handlePhotoPress({
+                      url: imageSource.uri,
+                      location: item.photoLocation
+                    });
+                  } else {
+                    console.error('Geçerli fotoğraf kaynağı bulunamadı');
+                    Alert.alert('Hata', 'Fotoğraf görüntülenemiyor.');
+                  }
+                }}
               >
                 <Image
                   source={getImageSource()}
                   style={styles.commentPhoto}
                   resizeMode="cover"
+                  onError={(error) => {
+                    console.error(`Fotoğraf yükleme hatası (${item.id}):`, error.nativeEvent.error);
+                    Alert.alert('Hata', `Fotoğraf yüklenirken bir hata oluştu: ${error.nativeEvent.error}`);
+                  }}
+                  defaultSource={require('../assets/images/placeholder.png')}
                 />
                 {item.photoLocation && (
                   <View style={styles.photoLocationBadge}>
@@ -410,6 +495,22 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
                 source={{ uri: selectedPhotoForModal.url }}
                 style={styles.modalImage}
                 resizeMode="contain"
+                onError={(error) => {
+                  console.error('Modal fotoğraf yükleme hatası:', error.nativeEvent.error);
+
+                  // Hata mesajı göster
+                  Alert.alert(
+                    'Hata',
+                    'Fotoğraf yüklenirken bir hata oluştu. Lütfen tekrar deneyin.',
+                    [
+                      {
+                        text: 'Tamam',
+                        onPress: () => setModalVisible(false)
+                      }
+                    ]
+                  );
+                }}
+                defaultSource={require('../assets/images/placeholder.png')}
               />
               {selectedPhotoForModal.location && (
                 <View style={styles.modalLocationBadge}>

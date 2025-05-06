@@ -1504,6 +1504,16 @@ export const CommentService = {
 
       querySnapshot.forEach(doc => {
         const data = doc.data();
+        console.log(`Yorum verisi alındı, ID: ${doc.id}`);
+        console.log(`Yorum içeriği: ${data.content?.substring(0, 30)}...`);
+        console.log(`Fotoğraf var mı: ${data.photoUrl || data.photoData ? 'Evet' : 'Hayır'}`);
+
+        if (data.photoData) {
+          console.log(`photoData uzunluğu: ${data.photoData.length}`);
+        }
+        if (data.photoUrl) {
+          console.log(`photoUrl: ${data.photoUrl.substring(0, 30)}...`);
+        }
 
         // Timestamp'i Date'e dönüştür
         const createdAt = data.createdAt instanceof Timestamp
@@ -1513,6 +1523,40 @@ export const CommentService = {
         const updatedAt = data.updatedAt instanceof Timestamp
           ? data.updatedAt.toDate().toISOString()
           : data.updatedAt;
+
+        // Fotoğraf verilerini kontrol et - Basitleştirilmiş versiyon
+        if (data.photoData) {
+          try {
+            console.log(`Yorum ${doc.id} için photoData mevcut, uzunluk: ${data.photoData.length}`);
+
+            // Base64 verisi boş mu kontrol et
+            if (!data.photoData.trim()) {
+              console.log('Base64 verisi boş, siliniyor...');
+              delete data.photoData;
+            }
+          } catch (error) {
+            console.error(`Base64 veri kontrolü hatası: ${error}`);
+            // Hatalı veriyi temizle
+            delete data.photoData;
+          }
+        }
+
+        // PhotoUrl kontrolü - Basitleştirilmiş versiyon
+        if (data.photoUrl) {
+          try {
+            console.log(`Yorum ${doc.id} için photoUrl mevcut: ${data.photoUrl.substring(0, 30)}...`);
+
+            // URL boş mu kontrol et
+            if (!data.photoUrl.trim()) {
+              console.log('PhotoUrl boş, siliniyor...');
+              delete data.photoUrl;
+            }
+          } catch (error) {
+            console.error(`PhotoUrl kontrolü hatası: ${error}`);
+            // Hatalı veriyi temizle
+            delete data.photoUrl;
+          }
+        }
 
         comments.push({
           ...data as TripComment,
@@ -1538,6 +1582,32 @@ export const CommentService = {
   async addComment(comment: Omit<TripComment, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       console.log(`Yorum ekleniyor: ${comment.travelPlanId}`);
+      console.log(`Kullanıcı: ${comment.userName} (${comment.userId})`);
+      console.log(`İçerik: ${comment.content?.substring(0, 30)}...`);
+
+      // Fotoğraf verilerini kontrol et - Basitleştirilmiş versiyon
+      if (comment.photoData) {
+        try {
+          console.log(`Fotoğraf verisi var, uzunluk: ${comment.photoData.length}`);
+
+          // Base64 verisi boş mu kontrol et
+          if (!comment.photoData.trim()) {
+            console.log('Base64 verisi boş, siliniyor...');
+            delete comment.photoData;
+          }
+        } catch (error) {
+          console.error(`Fotoğraf verisi kontrolü hatası: ${error}`);
+          delete comment.photoData;
+        }
+      }
+
+      if (comment.photoUrl) {
+        console.log(`Fotoğraf URL'si var: ${comment.photoUrl.substring(0, 30)}...`);
+      }
+
+      if (comment.photoLocation) {
+        console.log(`Fotoğraf konum bilgisi: ${comment.photoLocation}`);
+      }
 
       if (!comment.travelPlanId?.trim() || !comment.userId?.trim()) {
         console.warn("Geçersiz seyahat planı ID'si veya kullanıcı ID'si");
@@ -1555,7 +1625,7 @@ export const CommentService = {
 
       // Firestore'a ekle
       const docRef = await addDoc(commentsRef, commentWithTimestamp);
-      console.log('Yorum eklendi:', docRef.id);
+      console.log('Yorum başarıyla eklendi, ID:', docRef.id);
 
       return docRef.id;
     } catch (error) {
