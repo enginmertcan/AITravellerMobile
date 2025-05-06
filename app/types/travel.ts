@@ -65,6 +65,9 @@ export interface TripComment {
   userName: string;       // Kullanıcı adı (görüntüleme için)
   userPhotoUrl?: string;  // Kullanıcı profil fotoğrafı (opsiyonel)
   content: string;        // Yorum içeriği
+  photoUrl?: string;      // Yorum fotoğrafı URL'i (opsiyonel)
+  photoData?: string;     // Yorum fotoğrafı base64 verisi (opsiyonel)
+  photoLocation?: string; // Fotoğrafın çekildiği konum (opsiyonel)
   rating?: number;        // Değerlendirme puanı (1-5 arası, opsiyonel)
   createdAt: string;      // Oluşturulma zamanı
   updatedAt?: string;     // Güncellenme zamanı (opsiyonel)
