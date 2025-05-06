@@ -38,8 +38,31 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
     setLoading(true);
     try {
       console.log(`Yorumlar yükleniyor, travelPlanId: ${travelPlanId}`);
+
+      // 1. Önce yorumları getir
       const commentsData = await FirebaseService.Comment.getCommentsByTravelPlanId(travelPlanId);
       console.log(`${commentsData.length} yorum yüklendi`);
+
+      // 2. Sonra yorum fotoğraflarını getir
+      console.log(`Yorum fotoğrafları getiriliyor...`);
+      const commentPhotos = await FirebaseService.CommentPhoto.getPhotosByTravelPlanId(travelPlanId);
+      console.log(`${commentPhotos.length} yorum fotoğrafı bulundu`);
+
+      // 3. Her yoruma ait fotoğrafları eşleştir
+      if (commentPhotos.length > 0) {
+        commentsData.forEach(comment => {
+          // Bu yoruma ait fotoğrafı bul
+          const commentPhoto = commentPhotos.find(photo => photo.commentId === comment.id);
+
+          if (commentPhoto) {
+            console.log(`Yorum ${comment.id} için fotoğraf bulundu`);
+
+            // Fotoğraf verilerini yoruma ekle
+            comment.photoData = commentPhoto.photoData;
+            comment.photoLocation = commentPhoto.photoLocation;
+          }
+        });
+      }
 
       // Yorum fotoğraflarını kontrol et
       commentsData.forEach((comment, index) => {
@@ -132,7 +155,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
     setSubmitting(true);
     try {
-      let photoData = null;
+      let base64Data = null;
       let photoLocationValue = null;
 
       // Eğer fotoğraf seçilmişse, yükle
@@ -141,15 +164,11 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
           console.log('Fotoğraf base64\'e dönüştürülüyor...');
 
           // Resmi base64'e dönüştür
-          const base64Data = await FileSystem.readAsStringAsync(selectedImage, {
+          base64Data = await FileSystem.readAsStringAsync(selectedImage, {
             encoding: FileSystem.EncodingType.Base64,
           });
 
           console.log(`Base64 dönüşümü başarılı, veri uzunluğu: ${base64Data.length}`);
-
-          // Base64 verisi doğrudan kullanılabilir
-          photoData = `data:image/jpeg;base64,${base64Data}`;
-          console.log('Base64 verisi data:image formatına dönüştürüldü');
 
           // Konum bilgisi varsa ekle
           if (photoLocation && photoLocation.trim() !== '') {
@@ -164,6 +183,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
         }
       }
 
+      // 1. Önce yorumu ekle (fotoğraf olmadan)
       const commentData: Omit<TripComment, 'id' | 'createdAt' | 'updatedAt'> = {
         travelPlanId,
         userId,
@@ -172,20 +192,29 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
         content: newComment.trim(),
       };
 
-      // Sadece değerler varsa ekle (undefined değerleri eklemiyoruz)
-      if (photoData) {
-        console.log('Yoruma fotoğraf verisi ekleniyor...');
-        commentData.photoData = photoData;
-      }
-
-      if (photoLocationValue) {
-        console.log('Yoruma konum bilgisi ekleniyor...');
-        commentData.photoLocation = photoLocationValue;
-      }
-
       console.log('Yorum Firebase\'e gönderiliyor...');
       const commentId = await FirebaseService.Comment.addComment(commentData);
       console.log(`Yorum başarıyla eklendi, ID: ${commentId}`);
+
+      // 2. Eğer fotoğraf varsa, ayrı koleksiyona ekle
+      if (base64Data) {
+        try {
+          console.log('Fotoğraf ayrı koleksiyona ekleniyor...');
+
+          // CommentPhotoService kullanarak fotoğrafı ekle
+          await FirebaseService.CommentPhoto.addCommentPhoto(
+            commentId,
+            travelPlanId,
+            base64Data,
+            photoLocationValue || undefined
+          );
+
+          console.log(`Fotoğraf başarıyla ayrı koleksiyona eklendi`);
+        } catch (photoError) {
+          console.error(`Fotoğraf ekleme hatası:`, photoError);
+          // Fotoğraf eklenemese bile yorumu silmiyoruz
+        }
+      }
 
       setNewComment('');
       setSelectedImage(null);
@@ -213,6 +242,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
     setSubmitting(true);
     try {
+      // Sadece içeriği güncelle, fotoğrafları değiştirme
       await FirebaseService.Comment.updateComment(commentId, {
         content: editText.trim(),
       });
@@ -239,6 +269,26 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
           onPress: async () => {
             setSubmitting(true);
             try {
+              // 1. Önce yoruma ait fotoğrafları sil
+              try {
+                console.log(`Yorum fotoğrafları kontrol ediliyor...`);
+                const photos = await FirebaseService.CommentPhoto.getPhotosByCommentId(commentId);
+
+                // Fotoğrafları sil
+                if (photos.length > 0) {
+                  console.log(`${photos.length} yorum fotoğrafı bulundu, siliniyor...`);
+
+                  for (const photo of photos) {
+                    await FirebaseService.CommentPhoto.deletePhoto(photo.id);
+                    console.log(`Fotoğraf silindi: ${photo.id}`);
+                  }
+                }
+              } catch (photoError) {
+                console.error(`Fotoğraf silme hatası:`, photoError);
+                // Fotoğraflar silinemese bile yorumu silmeye devam et
+              }
+
+              // 2. Sonra yorumu sil
               await FirebaseService.Comment.deleteComment(commentId);
               await loadComments(); // Yorumları yeniden yükle
             } catch (error) {
@@ -270,7 +320,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
     const isCurrentUser = userId === item.userId;
     const hasPhoto = item.photoUrl || item.photoData;
 
-    // Fotoğraf kaynağını belirle - Basitleştirilmiş versiyon
+    // Fotoğraf kaynağını belirle - Geliştirilmiş versiyon
     const getImageSource = () => {
       console.log(`Fotoğraf kaynağı belirleniyor: ${item.id}`);
 
@@ -305,7 +355,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
       }
 
       console.log(`  ${item.id} için fotoğraf kaynağı bulunamadı, placeholder kullanılıyor`);
-      return { uri: 'https://via.placeholder.com/300x200/4c669f/ffffff?text=Resim+Yok' };
+      return require('../assets/images/placeholder.png');
     };
 
     return (
@@ -352,13 +402,24 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
                   // getImageSource fonksiyonunu kullanarak aynı kaynağı kullan
                   const imageSource = getImageSource();
 
-                  if (imageSource && imageSource.uri) {
-                    console.log(`Modal için fotoğraf URL'si: ${imageSource.uri.substring(0, 30)}...`);
+                  if (imageSource) {
+                    if (imageSource.uri) {
+                      console.log(`Modal için fotoğraf URL'si: ${imageSource.uri.substring(0, 30)}...`);
 
-                    handlePhotoPress({
-                      url: imageSource.uri,
-                      location: item.photoLocation
-                    });
+                      handlePhotoPress({
+                        url: imageSource.uri,
+                        location: item.photoLocation
+                      });
+                    } else {
+                      // Yerel resim kaynağı için
+                      console.log('Modal için yerel fotoğraf kaynağı kullanılıyor');
+
+                      // Placeholder görüntüsünü kullan
+                      handlePhotoPress({
+                        url: 'https://via.placeholder.com/300x200/4c669f/ffffff?text=Resim+Yok',
+                        location: item.photoLocation
+                      });
+                    }
                   } else {
                     console.error('Geçerli fotoğraf kaynağı bulunamadı');
                     Alert.alert('Hata', 'Fotoğraf görüntülenemiyor.');

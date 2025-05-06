@@ -202,19 +202,85 @@ export default function TripDetailsScreen() {
           console.log('Seçilen plan itinerary başarıyla parse edildi');
 
           // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
-          if (parsedItinerary.visaInfo && !plan.visaInfo) {
+          if (parsedItinerary.visaInfo && (!plan.visaInfo || Object.keys(plan.visaInfo).length === 0)) {
             console.log('visaInfo alanı itinerary\'den çıkarılıyor (selectPlan)');
             plan.visaInfo = parsedItinerary.visaInfo;
+
+            // Ayrıca eski format alanlarını da doldur
+            if (parsedItinerary.visaInfo.visaRequirement) {
+              plan.visaRequirements = parsedItinerary.visaInfo.visaRequirement;
+            }
+            if (parsedItinerary.visaInfo.visaApplicationProcess) {
+              plan.visaApplicationProcess = parsedItinerary.visaInfo.visaApplicationProcess;
+            }
+            if (parsedItinerary.visaInfo.visaFee) {
+              plan.visaFees = parsedItinerary.visaInfo.visaFee;
+            }
           }
 
-          if (parsedItinerary.culturalDifferences && !plan.culturalDifferences) {
+          if (parsedItinerary.culturalDifferences) {
             console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (selectPlan)');
-            plan.culturalDifferences = parsedItinerary.culturalDifferences;
+
+            // Eğer string ise, objeye dönüştürmeyi dene
+            if (typeof parsedItinerary.culturalDifferences === 'string') {
+              try {
+                const culturalObj = safeParseJSON(parsedItinerary.culturalDifferences);
+                if (culturalObj) {
+                  plan.culturalDifferences = culturalObj;
+
+                  // Ayrıca eski format alanlarını da doldur
+                  if (culturalObj.lifestyleDifferences) {
+                    plan.lifestyleDifferences = culturalObj.lifestyleDifferences;
+                  }
+                  if (culturalObj.foodCultureDifferences) {
+                    plan.foodCultureDifferences = culturalObj.foodCultureDifferences;
+                  }
+                  if (culturalObj.socialNormsDifferences) {
+                    plan.socialNormsDifferences = culturalObj.socialNormsDifferences;
+                  }
+                } else {
+                  plan.culturalDifferences = parsedItinerary.culturalDifferences;
+                }
+              } catch (error) {
+                console.error('culturalDifferences parse hatası:', error);
+                plan.culturalDifferences = parsedItinerary.culturalDifferences;
+              }
+            } else {
+              plan.culturalDifferences = parsedItinerary.culturalDifferences;
+
+              // Ayrıca eski format alanlarını da doldur
+              if (parsedItinerary.culturalDifferences.lifestyleDifferences) {
+                plan.lifestyleDifferences = parsedItinerary.culturalDifferences.lifestyleDifferences;
+              }
+              if (parsedItinerary.culturalDifferences.foodCultureDifferences) {
+                plan.foodCultureDifferences = parsedItinerary.culturalDifferences.foodCultureDifferences;
+              }
+              if (parsedItinerary.culturalDifferences.socialNormsDifferences) {
+                plan.socialNormsDifferences = parsedItinerary.culturalDifferences.socialNormsDifferences;
+              }
+            }
           }
 
           if (parsedItinerary.localTips && !plan.localTips) {
             console.log('localTips alanı itinerary\'den çıkarılıyor (selectPlan)');
             plan.localTips = parsedItinerary.localTips;
+
+            // Ayrıca eski format alanlarını da doldur
+            if (parsedItinerary.localTips.localTransportationGuide) {
+              plan.localTransportationGuide = parsedItinerary.localTips.localTransportationGuide;
+            }
+            if (parsedItinerary.localTips.emergencyContacts) {
+              plan.emergencyContacts = parsedItinerary.localTips.emergencyContacts;
+            }
+            if (parsedItinerary.localTips.currencyAndPayment) {
+              plan.currencyAndPayment = parsedItinerary.localTips.currencyAndPayment;
+            }
+            if (parsedItinerary.localTips.communicationInfo) {
+              plan.communicationInfo = parsedItinerary.localTips.communicationInfo;
+            }
+            if (parsedItinerary.localTips.healthcareInfo) {
+              plan.healthcareInfo = parsedItinerary.localTips.healthcareInfo;
+            }
           }
 
           plan.itinerary = parsedItinerary;
@@ -390,19 +456,85 @@ export default function TripDetailsScreen() {
             const parsedItinerary = safeParseJSON(plan.itinerary);
             if (parsedItinerary) {
               // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
-              if (parsedItinerary.visaInfo && !plan.visaInfo) {
+              if (parsedItinerary.visaInfo && (!plan.visaInfo || Object.keys(plan.visaInfo).length === 0)) {
                 console.log('visaInfo alanı itinerary\'den çıkarılıyor (fetchWeatherData)');
                 plan.visaInfo = parsedItinerary.visaInfo;
+
+                // Ayrıca eski format alanlarını da doldur
+                if (parsedItinerary.visaInfo.visaRequirement) {
+                  plan.visaRequirements = parsedItinerary.visaInfo.visaRequirement;
+                }
+                if (parsedItinerary.visaInfo.visaApplicationProcess) {
+                  plan.visaApplicationProcess = parsedItinerary.visaInfo.visaApplicationProcess;
+                }
+                if (parsedItinerary.visaInfo.visaFee) {
+                  plan.visaFees = parsedItinerary.visaInfo.visaFee;
+                }
               }
 
-              if (parsedItinerary.culturalDifferences && !plan.culturalDifferences) {
+              if (parsedItinerary.culturalDifferences) {
                 console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (fetchWeatherData)');
-                plan.culturalDifferences = parsedItinerary.culturalDifferences;
+
+                // Eğer string ise, objeye dönüştürmeyi dene
+                if (typeof parsedItinerary.culturalDifferences === 'string') {
+                  try {
+                    const culturalObj = safeParseJSON(parsedItinerary.culturalDifferences);
+                    if (culturalObj) {
+                      plan.culturalDifferences = culturalObj;
+
+                      // Ayrıca eski format alanlarını da doldur
+                      if (culturalObj.lifestyleDifferences) {
+                        plan.lifestyleDifferences = culturalObj.lifestyleDifferences;
+                      }
+                      if (culturalObj.foodCultureDifferences) {
+                        plan.foodCultureDifferences = culturalObj.foodCultureDifferences;
+                      }
+                      if (culturalObj.socialNormsDifferences) {
+                        plan.socialNormsDifferences = culturalObj.socialNormsDifferences;
+                      }
+                    } else {
+                      plan.culturalDifferences = parsedItinerary.culturalDifferences;
+                    }
+                  } catch (error) {
+                    console.error('culturalDifferences parse hatası:', error);
+                    plan.culturalDifferences = parsedItinerary.culturalDifferences;
+                  }
+                } else {
+                  plan.culturalDifferences = parsedItinerary.culturalDifferences;
+
+                  // Ayrıca eski format alanlarını da doldur
+                  if (parsedItinerary.culturalDifferences.lifestyleDifferences) {
+                    plan.lifestyleDifferences = parsedItinerary.culturalDifferences.lifestyleDifferences;
+                  }
+                  if (parsedItinerary.culturalDifferences.foodCultureDifferences) {
+                    plan.foodCultureDifferences = parsedItinerary.culturalDifferences.foodCultureDifferences;
+                  }
+                  if (parsedItinerary.culturalDifferences.socialNormsDifferences) {
+                    plan.socialNormsDifferences = parsedItinerary.culturalDifferences.socialNormsDifferences;
+                  }
+                }
               }
 
               if (parsedItinerary.localTips && !plan.localTips) {
                 console.log('localTips alanı itinerary\'den çıkarılıyor (fetchWeatherData)');
                 plan.localTips = parsedItinerary.localTips;
+
+                // Ayrıca eski format alanlarını da doldur
+                if (parsedItinerary.localTips.localTransportationGuide) {
+                  plan.localTransportationGuide = parsedItinerary.localTips.localTransportationGuide;
+                }
+                if (parsedItinerary.localTips.emergencyContacts) {
+                  plan.emergencyContacts = parsedItinerary.localTips.emergencyContacts;
+                }
+                if (parsedItinerary.localTips.currencyAndPayment) {
+                  plan.currencyAndPayment = parsedItinerary.localTips.currencyAndPayment;
+                }
+                if (parsedItinerary.localTips.communicationInfo) {
+                  plan.communicationInfo = parsedItinerary.localTips.communicationInfo;
+                }
+                if (parsedItinerary.localTips.healthcareInfo) {
+                  plan.healthcareInfo = parsedItinerary.localTips.healthcareInfo;
+                }
               }
 
               if (Array.isArray(parsedItinerary)) {
@@ -462,19 +594,85 @@ export default function TripDetailsScreen() {
                 const parsedItinerary = safeParseJSON(plan.itinerary);
                 if (parsedItinerary) {
                   // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
-                  if (parsedItinerary.visaInfo && !plan.visaInfo) {
+                  if (parsedItinerary.visaInfo && (!plan.visaInfo || Object.keys(plan.visaInfo).length === 0)) {
                     console.log('visaInfo alanı itinerary\'den çıkarılıyor (loadData)');
                     plan.visaInfo = parsedItinerary.visaInfo;
+
+                    // Ayrıca eski format alanlarını da doldur
+                    if (parsedItinerary.visaInfo.visaRequirement) {
+                      plan.visaRequirements = parsedItinerary.visaInfo.visaRequirement;
+                    }
+                    if (parsedItinerary.visaInfo.visaApplicationProcess) {
+                      plan.visaApplicationProcess = parsedItinerary.visaInfo.visaApplicationProcess;
+                    }
+                    if (parsedItinerary.visaInfo.visaFee) {
+                      plan.visaFees = parsedItinerary.visaInfo.visaFee;
+                    }
                   }
 
-                  if (parsedItinerary.culturalDifferences && !plan.culturalDifferences) {
+                  if (parsedItinerary.culturalDifferences) {
                     console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (loadData)');
-                    plan.culturalDifferences = parsedItinerary.culturalDifferences;
+
+                    // Eğer string ise, objeye dönüştürmeyi dene
+                    if (typeof parsedItinerary.culturalDifferences === 'string') {
+                      try {
+                        const culturalObj = safeParseJSON(parsedItinerary.culturalDifferences);
+                        if (culturalObj) {
+                          plan.culturalDifferences = culturalObj;
+
+                          // Ayrıca eski format alanlarını da doldur
+                          if (culturalObj.lifestyleDifferences) {
+                            plan.lifestyleDifferences = culturalObj.lifestyleDifferences;
+                          }
+                          if (culturalObj.foodCultureDifferences) {
+                            plan.foodCultureDifferences = culturalObj.foodCultureDifferences;
+                          }
+                          if (culturalObj.socialNormsDifferences) {
+                            plan.socialNormsDifferences = culturalObj.socialNormsDifferences;
+                          }
+                        } else {
+                          plan.culturalDifferences = parsedItinerary.culturalDifferences;
+                        }
+                      } catch (error) {
+                        console.error('culturalDifferences parse hatası:', error);
+                        plan.culturalDifferences = parsedItinerary.culturalDifferences;
+                      }
+                    } else {
+                      plan.culturalDifferences = parsedItinerary.culturalDifferences;
+
+                      // Ayrıca eski format alanlarını da doldur
+                      if (parsedItinerary.culturalDifferences.lifestyleDifferences) {
+                        plan.lifestyleDifferences = parsedItinerary.culturalDifferences.lifestyleDifferences;
+                      }
+                      if (parsedItinerary.culturalDifferences.foodCultureDifferences) {
+                        plan.foodCultureDifferences = parsedItinerary.culturalDifferences.foodCultureDifferences;
+                      }
+                      if (parsedItinerary.culturalDifferences.socialNormsDifferences) {
+                        plan.socialNormsDifferences = parsedItinerary.culturalDifferences.socialNormsDifferences;
+                      }
+                    }
                   }
 
                   if (parsedItinerary.localTips && !plan.localTips) {
                     console.log('localTips alanı itinerary\'den çıkarılıyor (loadData)');
                     plan.localTips = parsedItinerary.localTips;
+
+                    // Ayrıca eski format alanlarını da doldur
+                    if (parsedItinerary.localTips.localTransportationGuide) {
+                      plan.localTransportationGuide = parsedItinerary.localTips.localTransportationGuide;
+                    }
+                    if (parsedItinerary.localTips.emergencyContacts) {
+                      plan.emergencyContacts = parsedItinerary.localTips.emergencyContacts;
+                    }
+                    if (parsedItinerary.localTips.currencyAndPayment) {
+                      plan.currencyAndPayment = parsedItinerary.localTips.currencyAndPayment;
+                    }
+                    if (parsedItinerary.localTips.communicationInfo) {
+                      plan.communicationInfo = parsedItinerary.localTips.communicationInfo;
+                    }
+                    if (parsedItinerary.localTips.healthcareInfo) {
+                      plan.healthcareInfo = parsedItinerary.localTips.healthcareInfo;
+                    }
                   }
 
                   plan.itinerary = parsedItinerary;
@@ -1209,19 +1407,85 @@ export default function TripDetailsScreen() {
                     console.log('İtinerary başarıyla parse edildi, format kontrol ediliyor...');
 
                     // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
-                    if (parsedItinerary.visaInfo && !tripData.visaInfo) {
+                    if (parsedItinerary.visaInfo && (!tripData.visaInfo || Object.keys(tripData.visaInfo).length === 0)) {
                       console.log('visaInfo alanı itinerary\'den çıkarılıyor (itineraryToUse)');
                       tripData.visaInfo = parsedItinerary.visaInfo;
+
+                      // Ayrıca eski format alanlarını da doldur
+                      if (parsedItinerary.visaInfo.visaRequirement) {
+                        tripData.visaRequirements = parsedItinerary.visaInfo.visaRequirement;
+                      }
+                      if (parsedItinerary.visaInfo.visaApplicationProcess) {
+                        tripData.visaApplicationProcess = parsedItinerary.visaInfo.visaApplicationProcess;
+                      }
+                      if (parsedItinerary.visaInfo.visaFee) {
+                        tripData.visaFees = parsedItinerary.visaInfo.visaFee;
+                      }
                     }
 
-                    if (parsedItinerary.culturalDifferences && !tripData.culturalDifferences) {
+                    if (parsedItinerary.culturalDifferences) {
                       console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (itineraryToUse)');
-                      tripData.culturalDifferences = parsedItinerary.culturalDifferences;
+
+                      // Eğer string ise, objeye dönüştürmeyi dene
+                      if (typeof parsedItinerary.culturalDifferences === 'string') {
+                        try {
+                          const culturalObj = safeParseJSON(parsedItinerary.culturalDifferences);
+                          if (culturalObj) {
+                            tripData.culturalDifferences = culturalObj;
+
+                            // Ayrıca eski format alanlarını da doldur
+                            if (culturalObj.lifestyleDifferences) {
+                              tripData.lifestyleDifferences = culturalObj.lifestyleDifferences;
+                            }
+                            if (culturalObj.foodCultureDifferences) {
+                              tripData.foodCultureDifferences = culturalObj.foodCultureDifferences;
+                            }
+                            if (culturalObj.socialNormsDifferences) {
+                              tripData.socialNormsDifferences = culturalObj.socialNormsDifferences;
+                            }
+                          } else {
+                            tripData.culturalDifferences = parsedItinerary.culturalDifferences;
+                          }
+                        } catch (error) {
+                          console.error('culturalDifferences parse hatası:', error);
+                          tripData.culturalDifferences = parsedItinerary.culturalDifferences;
+                        }
+                      } else {
+                        tripData.culturalDifferences = parsedItinerary.culturalDifferences;
+
+                        // Ayrıca eski format alanlarını da doldur
+                        if (parsedItinerary.culturalDifferences.lifestyleDifferences) {
+                          tripData.lifestyleDifferences = parsedItinerary.culturalDifferences.lifestyleDifferences;
+                        }
+                        if (parsedItinerary.culturalDifferences.foodCultureDifferences) {
+                          tripData.foodCultureDifferences = parsedItinerary.culturalDifferences.foodCultureDifferences;
+                        }
+                        if (parsedItinerary.culturalDifferences.socialNormsDifferences) {
+                          tripData.socialNormsDifferences = parsedItinerary.culturalDifferences.socialNormsDifferences;
+                        }
+                      }
                     }
 
                     if (parsedItinerary.localTips && !tripData.localTips) {
                       console.log('localTips alanı itinerary\'den çıkarılıyor (itineraryToUse)');
                       tripData.localTips = parsedItinerary.localTips;
+
+                      // Ayrıca eski format alanlarını da doldur
+                      if (parsedItinerary.localTips.localTransportationGuide) {
+                        tripData.localTransportationGuide = parsedItinerary.localTips.localTransportationGuide;
+                      }
+                      if (parsedItinerary.localTips.emergencyContacts) {
+                        tripData.emergencyContacts = parsedItinerary.localTips.emergencyContacts;
+                      }
+                      if (parsedItinerary.localTips.currencyAndPayment) {
+                        tripData.currencyAndPayment = parsedItinerary.localTips.currencyAndPayment;
+                      }
+                      if (parsedItinerary.localTips.communicationInfo) {
+                        tripData.communicationInfo = parsedItinerary.localTips.communicationInfo;
+                      }
+                      if (parsedItinerary.localTips.healthcareInfo) {
+                        tripData.healthcareInfo = parsedItinerary.localTips.healthcareInfo;
+                      }
                     }
 
                     // Direkt array ise kullan
