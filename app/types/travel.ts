@@ -58,6 +58,18 @@ export interface TripPhoto {
   uploadedAt: string;
 }
 
+export interface TripComment {
+  id: string;             // Yorum ID'si
+  travelPlanId: string;   // Hangi seyahat planına ait olduğu
+  userId: string;         // Yorumu yapan kullanıcı ID'si
+  userName: string;       // Kullanıcı adı (görüntüleme için)
+  userPhotoUrl?: string;  // Kullanıcı profil fotoğrafı (opsiyonel)
+  content: string;        // Yorum içeriği
+  rating?: number;        // Değerlendirme puanı (1-5 arası, opsiyonel)
+  createdAt: string;      // Oluşturulma zamanı
+  updatedAt?: string;     // Güncellenme zamanı (opsiyonel)
+}
+
 export interface TravelPlan {
   // Temel bilgiler
   id?: string;                // Firebase document ID

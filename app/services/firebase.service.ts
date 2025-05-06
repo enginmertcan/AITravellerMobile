@@ -14,11 +14,12 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, uploadBytesResumable, StorageReference } from "firebase/storage";
 import { db, storage } from "./firebaseConfig";
-import { TravelPlan, DEFAULT_TRAVEL_PLAN } from "../types/travel";
+import { TravelPlan, DEFAULT_TRAVEL_PLAN, TripComment } from "../types/travel";
 
 // Koleksiyon referansları
 const TRAVEL_PLANS_COLLECTION = "travelPlans";
 const USERS_COLLECTION = "users";
+const TRAVEL_PLANS_COMMENTS_COLLECTION = "travelPlans_comments";
 
 // Seyahat planlarını işleme servisi
 export const TravelPlanService = {
@@ -1234,10 +1235,157 @@ export const UserService = {
   }
 };
 
+// Yorum servisi
+export const CommentService = {
+  /**
+   * Bir seyahat planına ait yorumları getirir
+   */
+  async getCommentsByTravelPlanId(travelPlanId: string): Promise<TripComment[]> {
+    try {
+      console.log(`Seyahat planı yorumları getiriliyor: ${travelPlanId}`);
+
+      if (!travelPlanId?.trim()) {
+        console.warn("Geçersiz seyahat planı ID'si");
+        return [];
+      }
+
+      const commentsRef = collection(db, TRAVEL_PLANS_COMMENTS_COLLECTION);
+      const q = query(
+        commentsRef,
+        where("travelPlanId", "==", travelPlanId)
+      );
+
+      const querySnapshot = await getDocs(q);
+      console.log(`${querySnapshot.size} yorum bulundu`);
+
+      const comments: TripComment[] = [];
+
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+
+        // Timestamp'i Date'e dönüştür
+        const createdAt = data.createdAt instanceof Timestamp
+          ? data.createdAt.toDate().toISOString()
+          : data.createdAt || new Date().toISOString();
+
+        const updatedAt = data.updatedAt instanceof Timestamp
+          ? data.updatedAt.toDate().toISOString()
+          : data.updatedAt;
+
+        comments.push({
+          ...data as TripComment,
+          id: doc.id,
+          createdAt,
+          updatedAt
+        });
+      });
+
+      // Yorumları tarihe göre sırala (en yeniden en eskiye)
+      return comments.sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    } catch (error) {
+      console.error("Yorumları getirme hatası:", error);
+      return [];
+    }
+  },
+
+  /**
+   * Yeni bir yorum ekler
+   */
+  async addComment(comment: Omit<TripComment, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      console.log(`Yorum ekleniyor: ${comment.travelPlanId}`);
+
+      if (!comment.travelPlanId?.trim() || !comment.userId?.trim()) {
+        console.warn("Geçersiz seyahat planı ID'si veya kullanıcı ID'si");
+        throw new Error("Geçersiz seyahat planı ID'si veya kullanıcı ID'si");
+      }
+
+      const commentsRef = collection(db, TRAVEL_PLANS_COMMENTS_COLLECTION);
+
+      // Timestamp ekle
+      const commentWithTimestamp = {
+        ...comment,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      // Firestore'a ekle
+      const docRef = await addDoc(commentsRef, commentWithTimestamp);
+      console.log('Yorum eklendi:', docRef.id);
+
+      return docRef.id;
+    } catch (error) {
+      console.error("Yorum ekleme hatası:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Bir yorumu günceller
+   */
+  async updateComment(id: string, comment: Partial<TripComment>): Promise<boolean> {
+    try {
+      console.log(`Yorum güncelleniyor: ${id}`);
+
+      if (!id?.trim()) {
+        console.warn("Geçersiz yorum ID'si");
+        return false;
+      }
+
+      const commentRef = doc(db, TRAVEL_PLANS_COMMENTS_COLLECTION, id);
+
+      // updatedAt timestamp ekle
+      const updateData = {
+        ...comment,
+        updatedAt: serverTimestamp()
+      };
+
+      // ID'yi kaldır (Firestore'da zaten document ID olarak var)
+      if ('id' in updateData) {
+        delete updateData.id;
+      }
+
+      await updateDoc(commentRef, updateData);
+      console.log('Yorum güncellendi:', id);
+
+      return true;
+    } catch (error) {
+      console.error("Yorum güncelleme hatası:", error);
+      return false;
+    }
+  },
+
+  /**
+   * Bir yorumu siler
+   */
+  async deleteComment(id: string): Promise<boolean> {
+    try {
+      console.log(`Yorum siliniyor: ${id}`);
+
+      if (!id?.trim()) {
+        console.warn("Geçersiz yorum ID'si");
+        return false;
+      }
+
+      const commentRef = doc(db, TRAVEL_PLANS_COMMENTS_COLLECTION, id);
+      await deleteDoc(commentRef);
+      console.log('Yorum silindi:', id);
+
+      return true;
+    } catch (error) {
+      console.error("Yorum silme hatası:", error);
+      return false;
+    }
+  }
+};
+
 // Firebase servisi - tüm servisleri birleştir
 export const FirebaseService = {
   TravelPlan: TravelPlanService,
-  User: UserService
+  User: UserService,
+  Comment: CommentService
 };
 
 // Expo Router için default export gereklidir

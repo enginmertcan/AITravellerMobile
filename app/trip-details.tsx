@@ -10,6 +10,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { getWeatherForecast, WeatherData } from './services/weather.service';
 import WeatherCard from './components/WeatherCard';
 import TripPhotoUploader from './components/TripPhotoUploader';
+import TripComments from './components/TripComments';
 import * as Calendar from 'expo-calendar';
 
 export default function TripDetailsScreen() {
@@ -1514,6 +1515,19 @@ export default function TripDetailsScreen() {
                 onPhotoAdded={handlePhotoAdded}
                 setTripPhotos={setTripPhotos}
               />
+            </View>
+          )}
+
+          {/* Yorumlar Bölümü */}
+          {!showPlansList && tripData.id && (
+            <View style={styles.section}>
+              <View style={styles.sectionTitleContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <MaterialCommunityIcons name="comment-text-multiple" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  <ThemedText style={styles.sectionTitle} numberOfLines={2}>Yorumlar ve Deneyimler</ThemedText>
+                </View>
+              </View>
+              <TripComments travelPlanId={tripData.id} />
             </View>
           )}
 
