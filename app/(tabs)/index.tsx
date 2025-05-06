@@ -210,9 +210,11 @@ export default function HomeScreen() {
                 key={index}
                 style={styles.featureCard}
                 onPress={() => {
-                  // Yakın Yerler özelliği için özel yönlendirme
+                  // Özel yönlendirmeler
                   if (feature.title === 'Yakın Yerler') {
                     router.push('/nearby-places');
+                  } else if (feature.title === 'Öneriler') {
+                    router.push('/recommended-trips');
                   } else {
                     // Diğer özellikler için henüz bir sayfa yok, ileride eklenebilir
                     console.log(`${feature.title} özelliği tıklandı`);

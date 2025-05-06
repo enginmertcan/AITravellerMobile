@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, uploadBytesResumable, StorageReference } from "firebase/storage";
 import { db, storage } from "./firebaseConfig";
-import { TravelPlan, DEFAULT_TRAVEL_PLAN, TripComment } from "../types/travel";
+import { TravelPlan, DEFAULT_TRAVEL_PLAN, TripComment, safeParseJSON } from "../types/travel";
 
 // Koleksiyon referansları
 const TRAVEL_PLANS_COLLECTION = "travelPlans";
@@ -759,6 +759,99 @@ export const TravelPlanService = {
     } catch (error) {
       console.error("Seyahat planı güncelleme hatası:", error);
       return false;
+    }
+  },
+
+  /**
+   * Bir seyahat planını önerilen olarak işaretler veya öneriden kaldırır
+   */
+  async toggleRecommendation(id: string, isRecommended: boolean): Promise<boolean> {
+    try {
+      if (!id?.trim()) {
+        console.warn("Geçersiz seyahat planı ID'si");
+        return false;
+      }
+
+      const docRef = doc(db, TRAVEL_PLANS_COLLECTION, id);
+
+      // Sadece isRecommended alanını güncelle
+      await updateDoc(docRef, {
+        isRecommended: isRecommended,
+        updatedAt: serverTimestamp()
+      });
+
+      console.log(`Seyahat planı ${isRecommended ? 'önerilenlere eklendi' : 'önerilerden kaldırıldı'}:`, id);
+
+      return true;
+    } catch (error) {
+      console.error("Seyahat planı öneri durumu güncelleme hatası:", error);
+      return false;
+    }
+  },
+
+  /**
+   * Önerilen seyahat planlarını getirir
+   */
+  async getRecommendedTravelPlans(): Promise<Partial<TravelPlan>[]> {
+    try {
+      console.log('Önerilen seyahat planları çekiliyor...');
+
+      const travelPlansRef = collection(db, TRAVEL_PLANS_COLLECTION);
+
+      // Sadece önerilen planları getir
+      const q = query(
+        travelPlansRef,
+        where("isRecommended", "==", true)
+      );
+
+      console.log('Firestore sorgusu gerçekleştiriliyor...');
+      const querySnapshot = await getDocs(q);
+      console.log('Firestore sorgu sonucu:', querySnapshot.size, 'önerilen plan bulundu');
+
+      const plans: Partial<TravelPlan>[] = [];
+
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+
+        // Timestamp'i Date'e dönüştür
+        const createdAt = data.createdAt instanceof Timestamp
+          ? data.createdAt.toDate().toISOString()
+          : undefined;
+
+        const updatedAt = data.updatedAt instanceof Timestamp
+          ? data.updatedAt.toDate().toISOString()
+          : undefined;
+
+        // Itinerary'yi parse et
+        if (data.itinerary && typeof data.itinerary === 'string') {
+          try {
+            const parsedItinerary = safeParseJSON(data.itinerary);
+
+            // Eğer itinerary içinde localTips varsa ve ana objede yoksa, taşı
+            if (parsedItinerary) {
+              if (parsedItinerary.localTips && !data.localTips) {
+                console.log('Extracting localTips from itinerary for plan:', doc.id);
+                data.localTips = parsedItinerary.localTips;
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing itinerary for plan:', doc.id, error);
+          }
+        }
+
+        plans.push({
+          ...data as Partial<TravelPlan>,
+          id: doc.id,
+          createdAt,
+          updatedAt
+        });
+      });
+
+      console.log('Önerilen seyahat planları başarıyla alındı');
+      return plans;
+    } catch (error) {
+      console.error('Önerilen seyahat planları getirme hatası:', error);
+      return [];
     }
   },
 

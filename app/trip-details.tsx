@@ -719,6 +719,63 @@ export default function TripDetailsScreen() {
     }
   };
 
+  // Seyahat planını önerilen olarak işaretlemek veya kaldırmak için
+  const toggleRecommendation = async () => {
+    if (!tripData.id) return;
+
+    try {
+      const newRecommendedStatus = !(tripData.isRecommended || false);
+      const message = newRecommendedStatus
+        ? 'Bu seyahat planını önermek istediğinize emin misiniz? Diğer kullanıcılar bu planı görebilecek.'
+        : 'Bu seyahat planını önerilerden kaldırmak istediğinize emin misiniz?';
+
+      Alert.alert(
+        newRecommendedStatus ? 'Seyahat Planını Öner' : 'Öneriden Kaldır',
+        message,
+        [
+          {
+            text: 'İptal',
+            style: 'cancel',
+          },
+          {
+            text: 'Evet',
+            onPress: async () => {
+              setLoading(true);
+              const success = await FirebaseService.TravelPlan.toggleRecommendation(
+                tripData.id as string,
+                newRecommendedStatus
+              );
+
+              if (success) {
+                // Planı yeniden yükle
+                await loadSinglePlan(tripData.id as string);
+                Alert.alert(
+                  'Başarılı',
+                  newRecommendedStatus
+                    ? 'Seyahat planınız başarıyla önerilenlere eklendi.'
+                    : 'Seyahat planınız önerilerden kaldırıldı.'
+                );
+              } else {
+                Alert.alert(
+                  'Hata',
+                  'İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.'
+                );
+                setLoading(false);
+              }
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    } catch (error) {
+      console.error('Öneri durumu değiştirme hatası:', error);
+      Alert.alert(
+        'Hata',
+        'İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.'
+      );
+    }
+  };
+
   // Fotoğraf eklendiğinde planı yeniden yükle
   const handlePhotoAdded = async () => {
     console.log('Fotoğraf eklendi, plan yeniden yükleniyor...');
@@ -838,6 +895,21 @@ export default function TripDetailsScreen() {
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">Seyahat Planı</ThemedText>
+
+        {/* Öneri Butonu */}
+        {tripData.userId === userId && (
+          <TouchableOpacity
+            style={[styles.actionButton, tripData.isRecommended ? styles.recommendedButton : {}]}
+            onPress={toggleRecommendation}
+          >
+            <MaterialCommunityIcons
+              name={tripData.isRecommended ? "star" : "star-outline"}
+              size={22}
+              color={tripData.isRecommended ? "#FFD700" : "#fff"}
+            />
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           style={styles.refreshButton}
           onPress={handleRefresh}
@@ -1799,6 +1871,18 @@ const styles = StyleSheet.create({
     ...AppStyles.shadows.small,
   },
   refreshButton: {
+    marginLeft: 10,
+    backgroundColor: `${AppStyles.colors.primary}15`,
+    width: 40,
+    height: 40,
+    borderRadius: AppStyles.borderRadius.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: AppStyles.colors.dark.border,
+    ...AppStyles.shadows.small,
+  },
+  actionButton: {
     marginLeft: 'auto',
     backgroundColor: `${AppStyles.colors.primary}15`,
     width: 40,
@@ -1809,6 +1893,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
     ...AppStyles.shadows.small,
+  },
+  recommendedButton: {
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    borderColor: '#FFD700',
   },
   title: {
     ...AppStyles.typography.subtitle,

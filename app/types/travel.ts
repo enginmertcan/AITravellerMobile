@@ -78,6 +78,7 @@ export interface TravelPlan {
   id?: string;                // Firebase document ID
   destination: string;        // Ana destinasyon/şehir adı
   rawResponse?: string;       // Ham AI yanıtı
+  isRecommended?: boolean;    // Önerilen seyahat planı mı?
 
   // Temel seyahat bilgileri
   startDate: string;           // Başlangıç tarihi
@@ -268,6 +269,7 @@ export const DEFAULT_TRAVEL_PLAN: TravelPlan = {
   citizenship: '',
   isDomestic: false,
   userId: '',
+  isRecommended: false,
   // Opsiyonel alanlar
   days: 0,
   groupType: '',
