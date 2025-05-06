@@ -164,7 +164,12 @@ export async function getWeatherForecast(location: string, startDate: Date, days
   }
 }
 
-// Expo Router için default export gereklidir
-export default function WeatherServiceComponent() {
-  return null;
-}
+const WeatherService = {
+  getWeatherForecast,
+  formatDateToDDMMYYYY,
+  formatLocation,
+  getWeatherIcon,
+  validateWeatherData
+};
+
+export default WeatherService;

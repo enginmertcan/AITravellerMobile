@@ -36,4 +36,4 @@ function ApiConfigComponent() {
 ApiConfigComponent.API_CONFIG = API_CONFIG;
 ApiConfigComponent.API_ENDPOINTS = API_ENDPOINTS;
 
-export default ApiConfigComponent;
+export default apiConfig;

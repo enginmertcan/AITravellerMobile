@@ -33,16 +33,16 @@ export default function TabLayout() {
         options={{
           title: 'Keşfet',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="compass" size={size + 4} color={color} />
+            <MaterialCommunityIcons name="compass" size={24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="ai-planner"
+        name="plan-trip"
         options={{
-          title: 'AI Planlayıcı',
+          title: 'Planla',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="robot" size={size + 4} color={color} />
+            <MaterialCommunityIcons name="map-marker-path" size={24} color={color} />
           ),
         }}
       />
@@ -51,7 +51,7 @@ export default function TabLayout() {
         options={{
           title: 'Seyahatlerim',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="map-marker-path" size={size + 4} color={color} />
+            <MaterialCommunityIcons name="map-marker" size={24} color={color} />
           ),
         }}
       />
@@ -60,7 +60,7 @@ export default function TabLayout() {
         options={{
           title: 'Profil',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="account" size={size + 4} color={color} />
+            <MaterialCommunityIcons name="account" size={24} color={color} />
           ),
         }}
       />

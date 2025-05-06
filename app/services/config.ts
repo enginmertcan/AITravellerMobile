@@ -8,3 +8,13 @@ export const VISUAL_CROSSING_API_KEY = Constants.expoConfig?.extra?.weatherApiKe
 export const DEFAULT_SEARCH_RADIUS = 5000; // metre cinsinden (5 km)
 export const MAX_SEARCH_RADIUS = 10000; // maksimum arama yarıçapı (10 km)
 export const MAX_API_RETRIES = 2; // API isteklerini yeniden deneme sayısı
+
+const config = {
+  GOOGLE_PLACES_API_KEY,
+  VISUAL_CROSSING_API_KEY,
+  DEFAULT_SEARCH_RADIUS,
+  MAX_SEARCH_RADIUS,
+  MAX_API_RETRIES,
+};
+
+export default config;

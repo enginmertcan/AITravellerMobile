@@ -2,8 +2,15 @@ import * as Location from 'expo-location';
 import { DEFAULT_SEARCH_RADIUS, MAX_SEARCH_RADIUS, MAX_API_RETRIES } from './config';
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
 
-// Yer türlerine göre filtreleme için anahtar kelimeler ve ilişkili Google Places API türleri
-const TYPE_KEYWORDS = {
+// TYPE_KEYWORDS için type tanımı
+type PlaceType = 'tourist_attraction' | 'restaurant' | 'museum' | 'shopping_mall' | 'lodging' | 'park' | 'cafe' | 'bar' | 'bakery';
+
+interface TypeKeywords {
+  keywords: string[];
+  relatedTypes: string[];
+}
+
+const TYPE_KEYWORDS: Record<PlaceType, TypeKeywords> = {
   'tourist_attraction': {
     keywords: ['turist', 'gezi', 'görülecek', 'anıt', 'heykel', 'tarihi', 'landmark', 'attraction'],
     relatedTypes: ['tourist_attraction', 'point_of_interest', 'landmark', 'monument']
@@ -95,8 +102,10 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 const sortPlaces = (places: NearbyPlace[]): NearbyPlace[] => {
   return places.sort((a, b) => {
     // Önce puanı yüksek olanlar
-    if (b.rating !== a.rating) {
-      return b.rating - a.rating;
+    const ratingA = a.rating ?? 0;
+    const ratingB = b.rating ?? 0;
+    if (ratingB !== ratingA) {
+      return ratingB - ratingA;
     }
 
     // Puanlar eşitse, yakın olanlar
@@ -110,7 +119,7 @@ const sortPlaces = (places: NearbyPlace[]): NearbyPlace[] => {
  * @param type Filtrelenecek yer türü
  * @returns Filtrelenmiş yerler listesi
  */
-const filterPlacesByType = (places: any[], type: string): any[] => {
+const filterPlacesByType = (places: any[], type: PlaceType): any[] => {
   // Eğer hiç yer yoksa, boş dizi döndür
   if (!places || places.length === 0) {
     console.log('Filtrelenecek yer bulunamadı.');
@@ -138,7 +147,7 @@ const filterPlacesByType = (places: any[], type: string): any[] => {
     const relatedMatches = places.filter(place =>
       place.types &&
       Array.isArray(place.types) &&
-      place.types.some(t => relatedTypes.includes(t))
+      place.types.some((t: string) => relatedTypes.includes(t))
     );
 
     if (relatedMatches.length > 0) {
@@ -196,7 +205,7 @@ export const getCurrentLocation = async (): Promise<LocationData> => {
     return {
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
-      accuracy: location.coords.accuracy,
+      accuracy: location.coords.accuracy ?? undefined,
     };
   } catch (error) {
     console.error('Konum alınamadı:', error);
@@ -263,7 +272,7 @@ export const getNearbyPlaces = async (
     let url;
 
     // Tür bilgisini al
-    const typeInfo = TYPE_KEYWORDS[type];
+    const typeInfo = TYPE_KEYWORDS[type as PlaceType];
 
     // Turistik yerler ve müzeler için prominence (önem sırası) daha iyi sonuç verir
     if (type === 'tourist_attraction' || type === 'point_of_interest' || type === 'museum') {
@@ -347,7 +356,7 @@ export const getNearbyPlaces = async (
     }
 
     // Sonuçları filtrele ve dönüştür
-    const filteredResults = filterPlacesByType(data.results, type);
+    const filteredResults = filterPlacesByType(data.results, type as PlaceType);
 
     // Sonuçları dönüştür
     const mappedResults = filteredResults.map((place: any) => ({
@@ -513,3 +522,20 @@ export const getNearbyBakeries = async (): Promise<NearbyPlace[]> => {
     throw error;
   }
 };
+
+const NearbyPlacesService = {
+  getCurrentLocation,
+  getNearbyPlaces,
+  getNearbyTouristAttractions,
+  getNearbyRestaurants,
+  getNearbyMuseums,
+  getNearbyShoppingMalls,
+  getNearbyPointsOfInterest,
+  getNearbyParks,
+  getNearbyCafes,
+  getNearbyHotels,
+  getNearbyBars,
+  getNearbyBakeries,
+};
+
+export default NearbyPlacesService;
