@@ -1580,12 +1580,21 @@ export const CommentPhotoService = {
       // Fotoğraf ID'si oluştur
       const photoId = `photo_${commentId}_${new Date().getTime()}`;
 
+      // Base64 formatını kontrol et ve düzelt
+      let processedPhotoData = photoData;
+
+      // Eğer data:image ile başlamıyorsa, ekle
+      if (!processedPhotoData.startsWith('data:image')) {
+        processedPhotoData = `data:image/jpeg;base64,${processedPhotoData}`;
+        console.log('Base64 verisi data:image formatına dönüştürüldü');
+      }
+
       // Fotoğraf verilerini hazırla
       const photoInfo = {
         id: photoId,
         commentId,
         travelPlanId,
-        photoData,
+        photoData: processedPhotoData,
         photoLocation: photoLocation || "",
         uploadedAt: serverTimestamp()
       };
@@ -1633,6 +1642,17 @@ export const CommentPhotoService = {
           ? data.uploadedAt.toDate().toISOString()
           : data.uploadedAt || new Date().toISOString();
 
+        // Base64 formatını kontrol et
+        if (data.photoData) {
+          console.log(`Fotoğraf verisi mevcut, uzunluk: ${data.photoData.length}`);
+
+          // Eğer data:image ile başlamıyorsa, ekle
+          if (!data.photoData.startsWith('data:image')) {
+            data.photoData = `data:image/jpeg;base64,${data.photoData}`;
+            console.log('Base64 verisi data:image formatına dönüştürüldü');
+          }
+        }
+
         photos.push({
           ...data,
           id: doc.id,
@@ -1677,6 +1697,17 @@ export const CommentPhotoService = {
         const uploadedAt = data.uploadedAt instanceof Timestamp
           ? data.uploadedAt.toDate().toISOString()
           : data.uploadedAt || new Date().toISOString();
+
+        // Base64 formatını kontrol et
+        if (data.photoData) {
+          console.log(`Fotoğraf verisi mevcut, uzunluk: ${data.photoData.length}`);
+
+          // Eğer data:image ile başlamıyorsa, ekle
+          if (!data.photoData.startsWith('data:image')) {
+            data.photoData = `data:image/jpeg;base64,${data.photoData}`;
+            console.log('Base64 verisi data:image formatına dönüştürüldü');
+          }
+        }
 
         photos.push({
           ...data,

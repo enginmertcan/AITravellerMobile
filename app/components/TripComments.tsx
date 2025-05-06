@@ -50,7 +50,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
       // 3. Her yoruma ait fotoğrafları eşleştir
       if (commentPhotos.length > 0) {
-        commentsData.forEach(comment => {
+        for (const comment of commentsData) {
           // Bu yoruma ait fotoğrafı bul
           const commentPhoto = commentPhotos.find(photo => photo.commentId === comment.id);
 
@@ -58,10 +58,17 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
             console.log(`Yorum ${comment.id} için fotoğraf bulundu`);
 
             // Fotoğraf verilerini yoruma ekle
-            comment.photoData = commentPhoto.photoData;
-            comment.photoLocation = commentPhoto.photoLocation;
+            if (commentPhoto.photoData) {
+              comment.photoData = commentPhoto.photoData;
+              console.log(`Fotoğraf verisi eklendi, uzunluk: ${commentPhoto.photoData.length}`);
+            }
+
+            if (commentPhoto.photoLocation) {
+              comment.photoLocation = commentPhoto.photoLocation;
+              console.log(`Fotoğraf konum bilgisi eklendi: ${commentPhoto.photoLocation}`);
+            }
           }
-        });
+        }
       }
 
       // Yorum fotoğraflarını kontrol et
@@ -200,6 +207,12 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
       if (base64Data) {
         try {
           console.log('Fotoğraf ayrı koleksiyona ekleniyor...');
+
+          // Base64 verisi data:image formatında değilse ekle
+          if (!base64Data.startsWith('data:image')) {
+            base64Data = `data:image/jpeg;base64,${base64Data}`;
+            console.log('Base64 verisi data:image formatına dönüştürüldü');
+          }
 
           // CommentPhotoService kullanarak fotoğrafı ekle
           await FirebaseService.CommentPhoto.addCommentPhoto(
@@ -348,6 +361,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
           }
 
           // React Native için doğru format
+          console.log('  Base64 verisi URI formatına dönüştürülüyor');
           return { uri: `data:image/jpeg;base64,${base64Data}` };
         }
       } catch (error) {
