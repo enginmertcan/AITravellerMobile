@@ -1775,8 +1775,8 @@ export default function TripDetailsScreen() {
             </View>
           ) : null}
 
-          {/* Seyahat Fotoğrafları */}
-          {!showPlansList && tripData.id && userId && (
+          {/* Seyahat Fotoğrafları - Sadece planı oluşturan kullanıcı görebilir */}
+          {!showPlansList && tripData.id && userId && tripData.userId === userId && (
             <View style={styles.section}>
               <View style={styles.sectionTitleContainer}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
