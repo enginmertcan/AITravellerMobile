@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform, FlatList, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform, FlatList, Alert, Modal, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { TravelPlan, DEFAULT_TRAVEL_PLAN, Hotel, TripPhoto } from './types/travel';
+import { TravelPlan, DEFAULT_TRAVEL_PLAN, Hotel, TripPhoto, Activity } from './types/travel';
 import { safeParseJSON, parseTripPhotos } from './types/travel';
 import { FirebaseService } from './services/firebase.service';
 import { useAuth } from '@clerk/clerk-expo';
@@ -22,6 +22,11 @@ export default function TripDetailsScreen() {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [tripPhotos, setTripPhotos] = useState<TripPhoto[]>([]);
   const [calendarPermission, setCalendarPermission] = useState(false);
+
+  // Aktivite detayları için modal state'leri
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const screenWidth = Dimensions.get('window').width;
   const router = useRouter();
   const params = useLocalSearchParams();
   const { userId } = useAuth();
@@ -914,6 +919,108 @@ export default function TripDetailsScreen() {
           })()}
 
           {/* Gezi Planı */}
+          {/* Aktivite Detay Modalı */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={() => {
+              setModalVisible(false);
+            }}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <MaterialCommunityIcons name="close" size={24} color="#4c669f" />
+                </TouchableOpacity>
+
+                {selectedActivity && (
+                  <ScrollView style={styles.modalScrollView}>
+                    <View style={styles.modalHeader}>
+                      <ThemedText style={styles.modalTitle}>{selectedActivity.placeName}</ThemedText>
+                      {selectedActivity.time && (
+                        <ThemedText style={styles.modalTime}>{selectedActivity.time}</ThemedText>
+                      )}
+                    </View>
+
+                    <View style={styles.modalBody}>
+                      {selectedActivity.placeDetails && (
+                        <View style={styles.modalSection}>
+                          <ThemedText style={styles.modalSectionTitle}>Detaylar</ThemedText>
+                          <ThemedText style={styles.modalText}>{selectedActivity.placeDetails}</ThemedText>
+                        </View>
+                      )}
+
+                      {selectedActivity.ticketPricing && (
+                        <View style={styles.modalSection}>
+                          <ThemedText style={styles.modalSectionTitle}>Bilet Bilgisi</ThemedText>
+                          <ThemedText style={styles.modalText}>{selectedActivity.ticketPricing}</ThemedText>
+                        </View>
+                      )}
+
+                      {selectedActivity.timeToTravel && (
+                        <View style={styles.modalSection}>
+                          <ThemedText style={styles.modalSectionTitle}>Ulaşım Süresi</ThemedText>
+                          <ThemedText style={styles.modalText}>{selectedActivity.timeToTravel}</ThemedText>
+                        </View>
+                      )}
+
+                      {selectedActivity.timeToSpend && (
+                        <View style={styles.modalSection}>
+                          <ThemedText style={styles.modalSectionTitle}>Tahmini Ziyaret Süresi</ThemedText>
+                          <ThemedText style={styles.modalText}>{selectedActivity.timeToSpend}</ThemedText>
+                        </View>
+                      )}
+
+                      {selectedActivity.cost && (
+                        <View style={styles.modalSection}>
+                          <ThemedText style={styles.modalSectionTitle}>Maliyet</ThemedText>
+                          <ThemedText style={styles.modalText}>{selectedActivity.cost}</ThemedText>
+                        </View>
+                      )}
+
+                      {selectedActivity.tips && selectedActivity.tips.length > 0 && (
+                        <View style={styles.modalSection}>
+                          <ThemedText style={styles.modalSectionTitle}>İpuçları</ThemedText>
+                          {selectedActivity.tips.map((tip, index) => (
+                            <ThemedText key={index} style={styles.modalListItem}>
+                              <ThemedText style={styles.bulletPoint}>•</ThemedText> {tip}
+                            </ThemedText>
+                          ))}
+                        </View>
+                      )}
+
+                      {selectedActivity.warnings && selectedActivity.warnings.length > 0 && (
+                        <View style={styles.modalSection}>
+                          <ThemedText style={styles.modalSectionTitle}>Uyarılar</ThemedText>
+                          {selectedActivity.warnings.map((warning, index) => (
+                            <ThemedText key={index} style={styles.modalListItem}>
+                              <ThemedText style={styles.bulletPoint}>•</ThemedText> {warning}
+                            </ThemedText>
+                          ))}
+                        </View>
+                      )}
+
+                      {selectedActivity.alternatives && selectedActivity.alternatives.length > 0 && (
+                        <View style={styles.modalSection}>
+                          <ThemedText style={styles.modalSectionTitle}>Alternatifler</ThemedText>
+                          {selectedActivity.alternatives.map((alternative, index) => (
+                            <ThemedText key={index} style={styles.modalListItem}>
+                              <ThemedText style={styles.bulletPoint}>•</ThemedText> {alternative}
+                            </ThemedText>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  </ScrollView>
+                )}
+              </View>
+            </View>
+          </Modal>
+
           {(() => {
             // İtinerary'yi kontrol et ve doğru formatı bul
             let itineraryToUse = null;
@@ -985,7 +1092,14 @@ export default function TripDetailsScreen() {
                     <View key={dayIndex} style={styles.dayCard}>
                       <ThemedText style={styles.dayTitle}>{day.day}</ThemedText>
                       {day.plan && Array.isArray(day.plan) && day.plan.map((activity: any, actIndex: number) => (
-                        <View key={actIndex} style={styles.activityCard}>
+                        <TouchableOpacity
+                          key={actIndex}
+                          style={styles.activityCard}
+                          onPress={() => {
+                            setSelectedActivity(activity);
+                            setModalVisible(true);
+                          }}
+                        >
                           <ThemedText style={styles.activityTime} numberOfLines={1} ellipsizeMode="tail">{activity.time}</ThemedText>
                           <ThemedText style={styles.activityName} numberOfLines={1} ellipsizeMode="tail">{activity.placeName}</ThemedText>
                           <ThemedText style={styles.activityDetails} numberOfLines={3} ellipsizeMode="tail">{activity.placeDetails}</ThemedText>
@@ -995,7 +1109,11 @@ export default function TripDetailsScreen() {
                           {activity.timeToTravel && (
                             <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Ulaşım Süresi: {activity.timeToTravel}</ThemedText>
                           )}
-                        </View>
+                          <View style={styles.viewMoreContainer}>
+                            <ThemedText style={styles.viewMoreText}>Detayları Göster</ThemedText>
+                            <MaterialCommunityIcons name="chevron-right" size={16} color="#4c669f" />
+                          </View>
+                        </TouchableOpacity>
                       ))}
                     </View>
                   ))}
@@ -1652,10 +1770,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
   },
   header: {
-    padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 70 : 40,
+    padding: 20,
+    paddingTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
@@ -1997,5 +2116,98 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
+  },
+  // Aktivite detay modalı için stiller
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#111',
+    borderRadius: 16,
+    width: '100%',
+    maxHeight: '90%',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#4c669f',
+  },
+  closeButton: {
+    alignSelf: 'flex-end',
+    padding: 8,
+    marginBottom: 10,
+  },
+  modalScrollView: {
+    maxHeight: '100%',
+  },
+  modalHeader: {
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(76, 102, 159, 0.3)',
+    paddingBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+    marginBottom: 5,
+  },
+  modalTime: {
+    fontSize: 16,
+    color: '#4c669f',
+    fontFamily: 'SpaceMono',
+  },
+  modalBody: {
+    flex: 1,
+  },
+  modalSection: {
+    marginBottom: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    padding: 15,
+    borderRadius: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#4c669f',
+  },
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 10,
+    fontFamily: 'SpaceMono',
+  },
+  modalText: {
+    color: '#ccc',
+    fontFamily: 'SpaceMono',
+    lineHeight: 22,
+    fontSize: 15,
+  },
+  modalListItem: {
+    color: '#ccc',
+    marginBottom: 8,
+    marginLeft: 8,
+    fontFamily: 'SpaceMono',
+    lineHeight: 20,
+    fontSize: 15,
+  },
+  viewMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 8,
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignSelf: 'flex-end',
+  },
+  viewMoreText: {
+    color: '#4c669f',
+    fontSize: 14,
+    fontFamily: 'SpaceMono',
+    marginRight: 5,
+    fontWeight: '600',
   },
 });

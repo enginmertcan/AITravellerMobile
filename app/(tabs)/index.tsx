@@ -329,8 +329,9 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 70 : 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     backgroundColor: '#000',
+    paddingBottom: 16,
   },
   welcomeSection: {
     marginBottom: 20,
