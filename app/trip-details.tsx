@@ -194,6 +194,23 @@ export default function TripDetailsScreen() {
         const parsedItinerary = safeParseJSON(plan.itinerary);
         if (parsedItinerary) {
           console.log('Seçilen plan itinerary başarıyla parse edildi');
+
+          // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
+          if (parsedItinerary.visaInfo && !plan.visaInfo) {
+            console.log('visaInfo alanı itinerary\'den çıkarılıyor (selectPlan)');
+            plan.visaInfo = parsedItinerary.visaInfo;
+          }
+
+          if (parsedItinerary.culturalDifferences && !plan.culturalDifferences) {
+            console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (selectPlan)');
+            plan.culturalDifferences = parsedItinerary.culturalDifferences;
+          }
+
+          if (parsedItinerary.localTips && !plan.localTips) {
+            console.log('localTips alanı itinerary\'den çıkarılıyor (selectPlan)');
+            plan.localTips = parsedItinerary.localTips;
+          }
+
           plan.itinerary = parsedItinerary;
         }
       } catch (parseError) {
@@ -366,6 +383,22 @@ export default function TripDetailsScreen() {
           try {
             const parsedItinerary = safeParseJSON(plan.itinerary);
             if (parsedItinerary) {
+              // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
+              if (parsedItinerary.visaInfo && !plan.visaInfo) {
+                console.log('visaInfo alanı itinerary\'den çıkarılıyor (fetchWeatherData)');
+                plan.visaInfo = parsedItinerary.visaInfo;
+              }
+
+              if (parsedItinerary.culturalDifferences && !plan.culturalDifferences) {
+                console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (fetchWeatherData)');
+                plan.culturalDifferences = parsedItinerary.culturalDifferences;
+              }
+
+              if (parsedItinerary.localTips && !plan.localTips) {
+                console.log('localTips alanı itinerary\'den çıkarılıyor (fetchWeatherData)');
+                plan.localTips = parsedItinerary.localTips;
+              }
+
               if (Array.isArray(parsedItinerary)) {
                 durationDays = Math.max(1, parsedItinerary.length);
               } else if (parsedItinerary.itinerary && Array.isArray(parsedItinerary.itinerary)) {
@@ -422,6 +455,22 @@ export default function TripDetailsScreen() {
               try {
                 const parsedItinerary = safeParseJSON(plan.itinerary);
                 if (parsedItinerary) {
+                  // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
+                  if (parsedItinerary.visaInfo && !plan.visaInfo) {
+                    console.log('visaInfo alanı itinerary\'den çıkarılıyor (loadData)');
+                    plan.visaInfo = parsedItinerary.visaInfo;
+                  }
+
+                  if (parsedItinerary.culturalDifferences && !plan.culturalDifferences) {
+                    console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (loadData)');
+                    plan.culturalDifferences = parsedItinerary.culturalDifferences;
+                  }
+
+                  if (parsedItinerary.localTips && !plan.localTips) {
+                    console.log('localTips alanı itinerary\'den çıkarılıyor (loadData)');
+                    plan.localTips = parsedItinerary.localTips;
+                  }
+
                   plan.itinerary = parsedItinerary;
                 }
               } catch (error) {
@@ -507,6 +556,23 @@ export default function TripDetailsScreen() {
             const parsedItinerary = safeParseJSON(plan.itinerary);
             if (parsedItinerary) {
               console.log('İtinerary başarıyla parse edildi');
+
+              // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
+              if (parsedItinerary.visaInfo && !plan.visaInfo) {
+                console.log('visaInfo alanı itinerary\'den çıkarılıyor');
+                plan.visaInfo = parsedItinerary.visaInfo;
+              }
+
+              if (parsedItinerary.culturalDifferences && !plan.culturalDifferences) {
+                console.log('culturalDifferences alanı itinerary\'den çıkarılıyor');
+                plan.culturalDifferences = parsedItinerary.culturalDifferences;
+              }
+
+              if (parsedItinerary.localTips && !plan.localTips) {
+                console.log('localTips alanı itinerary\'den çıkarılıyor');
+                plan.localTips = parsedItinerary.localTips;
+              }
+
               plan.itinerary = parsedItinerary;
             } else {
               console.error('İtinerary parse edilemedi');
@@ -873,6 +939,22 @@ export default function TripDetailsScreen() {
 
                   if (parsedItinerary) {
                     console.log('İtinerary başarıyla parse edildi, format kontrol ediliyor...');
+
+                    // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
+                    if (parsedItinerary.visaInfo && !tripData.visaInfo) {
+                      console.log('visaInfo alanı itinerary\'den çıkarılıyor (itineraryToUse)');
+                      tripData.visaInfo = parsedItinerary.visaInfo;
+                    }
+
+                    if (parsedItinerary.culturalDifferences && !tripData.culturalDifferences) {
+                      console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (itineraryToUse)');
+                      tripData.culturalDifferences = parsedItinerary.culturalDifferences;
+                    }
+
+                    if (parsedItinerary.localTips && !tripData.localTips) {
+                      console.log('localTips alanı itinerary\'den çıkarılıyor (itineraryToUse)');
+                      tripData.localTips = parsedItinerary.localTips;
+                    }
 
                     // Direkt array ise kullan
                     if (Array.isArray(parsedItinerary)) {

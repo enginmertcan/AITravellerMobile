@@ -137,12 +137,59 @@ export const TravelPlanService = {
         }
       }
 
-      // Web formatında itinerary oluştur - tam olarak web uygulamasının beklediği format
-      // Web uygulaması için itinerary formatı: { hotelOptions: [...], itinerary: [...] }
-      const itineraryString = JSON.stringify({
+      // visaInfo, culturalDifferences ve localTips alanlarını itinerary'ye ekle
+      const itineraryObj: any = {
         hotelOptions: hotelOptionsArray,
         itinerary: itineraryArray
-      });
+      };
+
+      // visaInfo alanını ekle
+      if (formattedPlan.visaInfo) {
+        console.log('visaInfo alanı itinerary\'ye ekleniyor');
+        if (typeof formattedPlan.visaInfo === 'string') {
+          try {
+            itineraryObj.visaInfo = JSON.parse(formattedPlan.visaInfo);
+          } catch (error) {
+            console.error('visaInfo parse hatası:', error);
+            itineraryObj.visaInfo = formattedPlan.visaInfo;
+          }
+        } else {
+          itineraryObj.visaInfo = formattedPlan.visaInfo;
+        }
+      }
+
+      // culturalDifferences alanını ekle
+      if (formattedPlan.culturalDifferences) {
+        console.log('culturalDifferences alanı itinerary\'ye ekleniyor');
+        if (typeof formattedPlan.culturalDifferences === 'string') {
+          try {
+            itineraryObj.culturalDifferences = JSON.parse(formattedPlan.culturalDifferences);
+          } catch (error) {
+            console.error('culturalDifferences parse hatası:', error);
+            itineraryObj.culturalDifferences = formattedPlan.culturalDifferences;
+          }
+        } else {
+          itineraryObj.culturalDifferences = formattedPlan.culturalDifferences;
+        }
+      }
+
+      // localTips alanını ekle
+      if (formattedPlan.localTips) {
+        console.log('localTips alanı itinerary\'ye ekleniyor');
+        if (typeof formattedPlan.localTips === 'string') {
+          try {
+            itineraryObj.localTips = JSON.parse(formattedPlan.localTips);
+          } catch (error) {
+            console.error('localTips parse hatası:', error);
+            itineraryObj.localTips = formattedPlan.localTips;
+          }
+        } else {
+          itineraryObj.localTips = formattedPlan.localTips;
+        }
+      }
+
+      // Web formatında itinerary oluştur - tam olarak web uygulamasının beklediği format
+      const itineraryString = JSON.stringify(itineraryObj);
 
       // İtinerary'yi string olarak ayarla
       formattedPlan.itinerary = itineraryString;
@@ -193,11 +240,59 @@ export const TravelPlanService = {
             }
           }
 
-          // Web formatında itinerary oluştur
-          formattedPlan.itinerary = JSON.stringify({
+          // visaInfo, culturalDifferences ve localTips alanlarını itinerary'ye ekle
+          const itineraryData: any = {
             hotelOptions: hotelOptionsArray,
             itinerary: itineraryArray
-          });
+          };
+
+          // visaInfo alanını ekle
+          if (formattedPlan.visaInfo) {
+            console.log('visaInfo alanı itinerary\'ye ekleniyor');
+            if (typeof formattedPlan.visaInfo === 'string') {
+              try {
+                itineraryData.visaInfo = JSON.parse(formattedPlan.visaInfo);
+              } catch (error) {
+                console.error('visaInfo parse hatası:', error);
+                itineraryData.visaInfo = formattedPlan.visaInfo;
+              }
+            } else {
+              itineraryData.visaInfo = formattedPlan.visaInfo;
+            }
+          }
+
+          // culturalDifferences alanını ekle
+          if (formattedPlan.culturalDifferences) {
+            console.log('culturalDifferences alanı itinerary\'ye ekleniyor');
+            if (typeof formattedPlan.culturalDifferences === 'string') {
+              try {
+                itineraryData.culturalDifferences = JSON.parse(formattedPlan.culturalDifferences);
+              } catch (error) {
+                console.error('culturalDifferences parse hatası:', error);
+                itineraryData.culturalDifferences = formattedPlan.culturalDifferences;
+              }
+            } else {
+              itineraryData.culturalDifferences = formattedPlan.culturalDifferences;
+            }
+          }
+
+          // localTips alanını ekle
+          if (formattedPlan.localTips) {
+            console.log('localTips alanı itinerary\'ye ekleniyor');
+            if (typeof formattedPlan.localTips === 'string') {
+              try {
+                itineraryData.localTips = JSON.parse(formattedPlan.localTips);
+              } catch (error) {
+                console.error('localTips parse hatası:', error);
+                itineraryData.localTips = formattedPlan.localTips;
+              }
+            } else {
+              itineraryData.localTips = formattedPlan.localTips;
+            }
+          }
+
+          // Web formatında itinerary oluştur
+          formattedPlan.itinerary = JSON.stringify(itineraryData);
         } else {
           // Diğer durumlarda direkt JSON'a dönüştür
           formattedPlan.itinerary = JSON.stringify(formattedPlan.itinerary);
@@ -460,6 +555,33 @@ export const TravelPlanService = {
           ? data.updatedAt.toDate().toISOString()
           : undefined;
 
+        // Özel işleme: itinerary içindeki visaInfo, culturalDifferences ve localTips alanlarını çıkar
+        if (data.itinerary && typeof data.itinerary === 'string') {
+          try {
+            const parsedItinerary = JSON.parse(data.itinerary);
+            if (parsedItinerary && typeof parsedItinerary === 'object') {
+              // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
+              // ve üst seviye alanlara taşı
+              if (parsedItinerary.visaInfo && !data.visaInfo) {
+                console.log('Extracting visaInfo from itinerary for plan:', doc.id);
+                data.visaInfo = parsedItinerary.visaInfo;
+              }
+
+              if (parsedItinerary.culturalDifferences && !data.culturalDifferences) {
+                console.log('Extracting culturalDifferences from itinerary for plan:', doc.id);
+                data.culturalDifferences = parsedItinerary.culturalDifferences;
+              }
+
+              if (parsedItinerary.localTips && !data.localTips) {
+                console.log('Extracting localTips from itinerary for plan:', doc.id);
+                data.localTips = parsedItinerary.localTips;
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing itinerary for plan:', doc.id, error);
+          }
+        }
+
         plans.push({
           ...data as Partial<TravelPlan>,
           id: doc.id,
@@ -567,6 +689,33 @@ export const TravelPlanService = {
       const updatedAt = data.updatedAt instanceof Timestamp
         ? data.updatedAt.toDate().toISOString()
         : undefined;
+
+      // Özel işleme: itinerary içindeki visaInfo, culturalDifferences ve localTips alanlarını çıkar
+      if (data.itinerary && typeof data.itinerary === 'string') {
+        try {
+          const parsedItinerary = JSON.parse(data.itinerary);
+          if (parsedItinerary && typeof parsedItinerary === 'object') {
+            // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
+            // ve üst seviye alanlara taşı
+            if (parsedItinerary.visaInfo && !data.visaInfo) {
+              console.log('Extracting visaInfo from itinerary');
+              data.visaInfo = parsedItinerary.visaInfo;
+            }
+
+            if (parsedItinerary.culturalDifferences && !data.culturalDifferences) {
+              console.log('Extracting culturalDifferences from itinerary');
+              data.culturalDifferences = parsedItinerary.culturalDifferences;
+            }
+
+            if (parsedItinerary.localTips && !data.localTips) {
+              console.log('Extracting localTips from itinerary');
+              data.localTips = parsedItinerary.localTips;
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing itinerary:', error);
+        }
+      }
 
       return {
         ...data as Partial<TravelPlan>,
