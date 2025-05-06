@@ -1,30 +1,38 @@
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { colors, safeAreaInsets, borderRadius } from '@/constants/AppStyles';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const theme = isDark ? colors.dark : colors.light;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#000',
-          borderTopColor: '#222',
+          backgroundColor: theme.card,
+          borderTopColor: theme.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 70,
+          height: safeAreaInsets.tabBar,
           paddingBottom: Platform.OS === 'ios' ? 30 : 12,
           paddingTop: 12,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 10,
         },
-        tabBarActiveTintColor: '#4c669f',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: '600',
           fontFamily: 'SpaceMono',
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
         },
       }}
     >
