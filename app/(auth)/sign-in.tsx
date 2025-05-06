@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { useWarmUpBrowser } from '@/hooks/useWarmUpBrowser';
+import Constants from 'expo-constants';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -26,32 +27,52 @@ export default function SignInScreen() {
   }
 
   const onSignInWithGoogle = async () => {
+    if (!signIn || !setActive) {
+      Alert.alert('Hata', 'Kimlik doğrulama servisi başlatılamadı.');
+      return;
+    }
+
     try {
+      const redirectUrl = `${Constants.expoConfig?.scheme}://oauth-native-callback`;
+      
       const completeSignIn = await signIn.create({
         strategy: "oauth_google",
-        redirectUrl: "your-app-scheme://oauth-native-callback",
+        redirectUrl,
       });
 
-      await WebBrowser.openAuthSessionAsync(
-        completeSignIn.authorizeUrl,
-        "your-app-scheme://oauth-native-callback"
+      // Tip dönüşümü ile güvenli erişim
+      const authUrl = (completeSignIn as any).firstFactorVerification?.verificationUrl || 
+                     (completeSignIn as any).url || 
+                     (completeSignIn as any).authorizeUrl;
+
+      if (!authUrl) {
+        throw new Error('Authentication URL not found');
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        redirectUrl
       );
 
-      const { createdSessionId } = await completeSignIn.refresh();
-
-      if (createdSessionId) {
-        await setActive({ session: createdSessionId });
-        // Navigasyon işlemini setTimeout içinde yaparak, bileşenin monte edilmesini bekleyelim
-        setTimeout(() => {
+      if (result.type === 'success') {
+        const { createdSessionId } = completeSignIn;
+        if (createdSessionId) {
+          await setActive({ session: createdSessionId });
           router.replace('/(tabs)');
-        }, 0);
+        }
       }
     } catch (err) {
+      console.error('Google sign in error:', err);
       Alert.alert('Hata', 'Google ile giriş yapılırken bir hata oluştu.');
     }
   };
 
   const onSignInWithEmail = async () => {
+    if (!signIn || !setActive) {
+      Alert.alert('Hata', 'Kimlik doğrulama servisi başlatılamadı.');
+      return;
+    }
+
     if (!email || !password) {
       Alert.alert('Hata', 'Lütfen email ve şifrenizi girin.');
       return;
@@ -64,12 +85,12 @@ export default function SignInScreen() {
         password,
       });
 
-      await setActive({ session: completeSignIn.createdSessionId });
-      // Navigasyon işlemini setTimeout içinde yaparak, bileşenin monte edilmesini bekleyelim
-      setTimeout(() => {
+      if (completeSignIn.createdSessionId) {
+        await setActive({ session: completeSignIn.createdSessionId });
         router.replace('/(tabs)');
-      }, 0);
+      }
     } catch (err: any) {
+      console.error('Email sign in error:', err);
       Alert.alert(
         'Hata',
         err.errors?.[0]?.message || 'Giriş yapılırken bir hata oluştu.'

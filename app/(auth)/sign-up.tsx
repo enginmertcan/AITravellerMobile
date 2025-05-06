@@ -23,6 +23,11 @@ export default function SignUpScreen() {
   }
 
   const onSignUp = async () => {
+    if (!signUp || !setActive) {
+      Alert.alert('Hata', 'Kimlik doğrulama servisi başlatılamadı.');
+      return;
+    }
+
     if (!firstName || !lastName || !email || !password) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
       return;

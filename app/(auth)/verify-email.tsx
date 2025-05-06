@@ -13,6 +13,11 @@ export default function VerifyEmailScreen() {
   const [loading, setLoading] = useState(false);
 
   const onVerify = async () => {
+    if (!signUp || !setActive) {
+      Alert.alert('Hata', 'Kimlik doğrulama servisi başlatılamadı.');
+      return;
+    }
+
     if (!code) {
       Alert.alert('Hata', 'Lütfen doğrulama kodunu girin.');
       return;
@@ -21,16 +26,18 @@ export default function VerifyEmailScreen() {
     try {
       setLoading(true);
 
-      const completeSignUp = await signUp?.attemptEmailAddressVerification({
+      const completeSignUp = await signUp.attemptEmailAddressVerification({
         code,
       });
 
+      if (!completeSignUp?.createdSessionId) {
+        throw new Error('Session ID not found');
+      }
+
       await setActive({ session: completeSignUp.createdSessionId });
-      // Navigasyon işlemini setTimeout içinde yaparak, bileşenin monte edilmesini bekleyelim
-      setTimeout(() => {
-        router.replace('/(tabs)');
-      }, 0);
+      router.replace('/(tabs)');
     } catch (err: any) {
+      console.error('Verification error:', err);
       Alert.alert(
         'Hata',
         err.errors?.[0]?.message || 'Doğrulama sırasında bir hata oluştu.'
@@ -41,10 +48,16 @@ export default function VerifyEmailScreen() {
   };
 
   const resendCode = async () => {
+    if (!signUp) {
+      Alert.alert('Hata', 'Kimlik doğrulama servisi başlatılamadı.');
+      return;
+    }
+
     try {
-      await signUp?.prepareEmailAddressVerification({ strategy: "email_code" });
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       Alert.alert('Başarılı', 'Yeni doğrulama kodu gönderildi.');
     } catch (err: any) {
+      console.error('Resend code error:', err);
       Alert.alert(
         'Hata',
         err.errors?.[0]?.message || 'Kod gönderilirken bir hata oluştu.'

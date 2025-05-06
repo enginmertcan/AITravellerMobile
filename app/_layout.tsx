@@ -1,11 +1,11 @@
-import { ClerkProvider } from "@clerk/clerk-expo";
-import { Stack } from 'expo-router';
-import * as SecureStore from "expo-secure-store";
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { useEffect } from 'react';
+import { Stack } from 'expo-router';
+import { ClerkProvider } from '@clerk/clerk-expo';
+import * as SecureStore from 'expo-secure-store';
+import { useFonts } from 'expo-font';
+import { SplashScreen } from 'expo-splash-screen';
+import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
+import { useColorScheme } from 'react-native';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -13,16 +13,18 @@ SplashScreen.preventAutoHideAsync();
 const tokenCache = {
   async getToken(key: string) {
     try {
-      return SecureStore.getItemAsync(key);
+      const token = await SecureStore.getItemAsync(key);
+      return token;
     } catch (err) {
+      console.error('Token get error:', err);
       return null;
     }
   },
   async saveToken(key: string, value: string) {
     try {
-      return SecureStore.setItemAsync(key, value);
+      await SecureStore.setItemAsync(key, value);
     } catch (err) {
-      return;
+      console.error('Token save error:', err);
     }
   },
 };
@@ -46,9 +48,16 @@ export default function RootLayout() {
     return null; // Fontlar yüklenmeden önce hiçbir şey render etme
   }
 
+  const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  
+  if (!clerkPublishableKey) {
+    console.error('Clerk publishable key is missing!');
+    return null;
+  }
+
   return (
     <ClerkProvider
-      publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY as string}
+      publishableKey={clerkPublishableKey}
       tokenCache={tokenCache}
     >
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
