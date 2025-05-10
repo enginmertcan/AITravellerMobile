@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, Alert, Modal, Dimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, Alert, Modal, Dimensions, Image } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -11,6 +11,9 @@ import { getWeatherForecast, WeatherData } from './services/weather.service';
 import WeatherCard from './components/WeatherCard';
 import TripPhotoUploader from './components/TripPhotoUploader';
 import TripComments from './components/TripComments';
+import HotelDetailModal from './components/HotelDetailModal';
+import HotelPhotosService from './services/HotelPhotosService';
+import AIHotelPhotosService from './services/ai-hotel-photos.service';
 import * as Calendar from 'expo-calendar';
 import AppStyles from '@/constants/AppStyles';
 
@@ -27,6 +30,11 @@ export default function TripDetailsScreen() {
   // Aktivite detayları için modal state'leri
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+
+  // Otel detayları için modal state'leri
+  const [hotelModalVisible, setHotelModalVisible] = useState(false);
+  const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
+
   const screenWidth = Dimensions.get('window').width;
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -1417,24 +1425,184 @@ export default function TripDetailsScreen() {
               console.log('İtinerary içindeki hotelOptions kullanılıyor');
             }
 
+            // Otel detaylarını göstermek için fonksiyon
+            const handleHotelPress = async (hotel: Hotel) => {
+              try {
+                // Otelin bulunduğu şehri belirle
+                const city = hotel.hotelAddress?.split(',')[1]?.trim() || tripData.destination || 'Istanbul';
+
+                // Ek fotoğrafları getir
+                if (!hotel.additionalImages || !Array.isArray(hotel.additionalImages) || hotel.additionalImages.length < 5) {
+                  console.log(`Otel için ek fotoğraflar getiriliyor: ${hotel.hotelName}, ${city}`);
+
+                  // OpenAI tarafından önerilen oteller için AIHotelPhotosService kullan
+                  if (hotel.isAIRecommended || hotel.hotelName.includes('AI Recommended')) {
+                    console.log(`AI tarafından önerilen otel için fotoğraflar getiriliyor: ${hotel.hotelName}`);
+                    const updatedHotel = await AIHotelPhotosService.enhanceHotelWithPhotos(hotel, city);
+                    setSelectedHotel(updatedHotel);
+                  } else {
+                    // Normal oteller için HotelPhotosService kullan
+                    const updatedHotel = await HotelPhotosService.enhanceHotelWithPhotos(hotel, city);
+                    setSelectedHotel(updatedHotel);
+                  }
+                } else {
+                  setSelectedHotel(hotel);
+                }
+
+                // Modalı göster
+                setHotelModalVisible(true);
+              } catch (error) {
+                console.error('Otel detayları gösterme hatası:', error);
+                // Hata durumunda orijinal oteli göster
+                setSelectedHotel(hotel);
+                setHotelModalVisible(true);
+              }
+            };
+
+            // Otel fotoğraflarını hazırla
+            const prepareHotelImages = (hotel: Hotel) => {
+              // Eğer additionalImages yoksa, boş bir dizi oluştur
+              if (!hotel.additionalImages) {
+                hotel.additionalImages = [];
+              }
+
+              // Tüm fotoğrafları obje formatında tutacak yeni bir dizi oluştur
+              const processedImages: { url: string; caption?: string }[] = [];
+
+              // Mevcut additionalImages'ı işle
+              if (hotel.additionalImages && Array.isArray(hotel.additionalImages)) {
+                hotel.additionalImages.forEach(img => {
+                  if (typeof img === 'string') {
+                    processedImages.push({ url: img });
+                  } else if (typeof img === 'object' && img && img.url) {
+                    processedImages.push(img);
+                  }
+                });
+              }
+
+              // Ana görselleri ekle (eğer zaten eklenmemişse)
+              if (hotel.imageUrl && !processedImages.some(img => img.url === hotel.imageUrl)) {
+                processedImages.unshift({ url: hotel.imageUrl });
+              }
+
+              if (hotel.hotelImageUrl && !processedImages.some(img => img.url === hotel.hotelImageUrl)) {
+                processedImages.unshift({ url: hotel.hotelImageUrl });
+              }
+
+              // Güncellenen fotoğraf dizisini atama
+              hotel.additionalImages = processedImages;
+
+              return hotel;
+            };
+
             if (Array.isArray(hotelOptionsToUse) && hotelOptionsToUse.length > 0) {
+              // Her otel için fotoğrafları hazırla
+              hotelOptionsToUse = hotelOptionsToUse.map(prepareHotelImages);
+
               return (
                 <View style={styles.section}>
-                  <ThemedText style={styles.sectionTitle}>Konaklama Seçenekleri</ThemedText>
-                  {hotelOptionsToUse.map((hotel: any, index: number) => (
-                    <View key={index} style={styles.card}>
-                      <ThemedText style={styles.hotelName} numberOfLines={1} ellipsizeMode="tail">{hotel.hotelName}</ThemedText>
-                      <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">{hotel.hotelAddress}</ThemedText>
-                      <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Fiyat: {hotel.priceRange || hotel.price || 'Belirtilmemiş'}</ThemedText>
-                      <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Değerlendirme: {hotel.rating}</ThemedText>
-                      <ThemedText style={styles.description} numberOfLines={4} ellipsizeMode="tail">{hotel.description}</ThemedText>
+                  <View style={styles.sectionTitleContainer}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <MaterialCommunityIcons name="bed" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                      <ThemedText style={styles.sectionTitle} numberOfLines={2}>Konaklama Seçenekleri</ThemedText>
                     </View>
+                  </View>
+
+                  {hotelOptionsToUse.map((hotel: Hotel, index: number) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.card}
+                      onPress={() => handleHotelPress(hotel)}
+                    >
+                      {/* Otel Başlık ve Değerlendirme */}
+                      <View style={styles.hotelHeader}>
+                        <ThemedText style={styles.hotelName} numberOfLines={1} ellipsizeMode="tail">
+                          {hotel.hotelName}
+                        </ThemedText>
+                        <View style={styles.ratingContainer}>
+                          <MaterialCommunityIcons name="star" size={16} color="#FFD700" />
+                          <ThemedText style={styles.ratingText}>{hotel.rating || '?'}</ThemedText>
+                        </View>
+                      </View>
+
+                      {/* Otel Fotoğrafları */}
+                      {(hotel.imageUrl || hotel.hotelImageUrl || (hotel.additionalImages && hotel.additionalImages.length > 0)) && (
+                        <View style={styles.hotelImageContainer}>
+                          <FlatList
+                            data={
+                              // Tip güvenliği için additionalImages'ı obje dizisi olarak kullan
+                              hotel.additionalImages && hotel.additionalImages.length > 0
+                                ? hotel.additionalImages as { url: string; caption?: string }[]
+                                : [{ url: hotel.imageUrl || hotel.hotelImageUrl || 'https://via.placeholder.com/300x200?text=Otel+Görseli+Yok' }]
+                            }
+                            keyExtractor={(_, imgIndex) => `hotel-${index}-image-${imgIndex}`}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            renderItem={({ item, index: imgIndex }) => {
+                              if (!item || !item.url) return null;
+                              const imageUrl = item.url;
+                              return (
+                                <View style={styles.hotelImageWrapper}>
+                                  <Image
+                                    source={{ uri: imageUrl }}
+                                    style={styles.hotelImage}
+                                    resizeMode="cover"
+                                  />
+                                  {imgIndex === 0 && hotel.additionalImages && hotel.additionalImages.length > 1 && (
+                                    <View style={styles.morePhotosOverlay}>
+                                      <MaterialCommunityIcons name="image-multiple" size={18} color="#fff" />
+                                      <ThemedText style={styles.morePhotosText}>
+                                        +{hotel.additionalImages.length - 1} fotoğraf
+                                      </ThemedText>
+                                    </View>
+                                  )}
+                                </View>
+                              );
+                            }}
+                            contentContainerStyle={styles.hotelImageList}
+                          />
+                        </View>
+                      )}
+
+                      {/* Otel Bilgileri */}
+                      <View style={styles.hotelInfoContainer}>
+                        <View style={styles.hotelInfoRow}>
+                          <MaterialCommunityIcons name="map-marker" size={16} color="#4c669f" style={styles.hotelInfoIcon} />
+                          <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">
+                            {hotel.hotelAddress}
+                          </ThemedText>
+                        </View>
+
+                        <View style={styles.hotelInfoRow}>
+                          <MaterialCommunityIcons name="currency-usd" size={16} color="#4c669f" style={styles.hotelInfoIcon} />
+                          <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">
+                            {hotel.priceRange || hotel.price || 'Belirtilmemiş'}
+                          </ThemedText>
+                        </View>
+                      </View>
+
+                      <ThemedText style={styles.description} numberOfLines={3} ellipsizeMode="tail">
+                        {hotel.description}
+                      </ThemedText>
+
+                      <View style={styles.viewMoreContainer}>
+                        <ThemedText style={styles.viewMoreText}>Detayları Göster</ThemedText>
+                        <MaterialCommunityIcons name="chevron-right" size={16} color="#4c669f" />
+                      </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
               );
             }
             return null;
           })()}
+
+          {/* Otel Detay Modalı */}
+          <HotelDetailModal
+            visible={hotelModalVisible}
+            hotel={selectedHotel}
+            onClose={() => setHotelModalVisible(false)}
+          />
 
           {/* Gezi Planı */}
           {/* Aktivite Detay Modalı */}
@@ -2363,6 +2531,84 @@ const styles = StyleSheet.create({
     borderBottomColor: AppStyles.colors.dark.border,
     paddingBottom: AppStyles.spacing.md,
     marginBottom: AppStyles.spacing.sm,
+  },
+  // Otel başlık stili
+  hotelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  // Değerlendirme container stili
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  // Değerlendirme text stili
+  ratingText: {
+    marginLeft: 4,
+    fontWeight: '700',
+    color: '#FFD700',
+    fontSize: 14,
+  },
+  // Otel fotoğraf container stili
+  hotelImageContainer: {
+    marginVertical: 10,
+    width: '100%',
+  },
+  // Otel fotoğraf listesi stili
+  hotelImageList: {
+    paddingVertical: 5,
+  },
+  // Otel fotoğraf wrapper stili
+  hotelImageWrapper: {
+    width: 150,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  // Otel fotoğraf stili
+  hotelImage: {
+    width: '100%',
+    height: '100%',
+  },
+  // Daha fazla fotoğraf overlay stili
+  morePhotosOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Daha fazla fotoğraf text stili
+  morePhotosText: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  // Otel bilgi container stili
+  hotelInfoContainer: {
+    marginVertical: 10,
+  },
+  // Otel bilgi satır stili
+  hotelInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  // Otel bilgi ikon stili
+  hotelInfoIcon: {
+    marginRight: 8,
   },
   bulletPoint: {
     color: AppStyles.colors.primary,

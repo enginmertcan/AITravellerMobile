@@ -37,12 +37,14 @@ export interface Hotel {
   price?: string;
   imageUrl?: string;
   hotelImageUrl?: string;
+  additionalImages?: string[] | { url: string; caption?: string }[];
   geoCoordinates?: GeoCoordinates;
   rating?: number;
   description: string;
   bestTimeToVisit?: string;
   features?: string[];
   surroundings?: string;
+  isAIRecommended?: boolean; // OpenAI tarafından önerilen otel mi?
 }
 
 export interface TripPhoto {
