@@ -14,6 +14,7 @@ import TripComments from './components/TripComments';
 import HotelDetailModal from './components/HotelDetailModal';
 import HotelPhotosService from './services/HotelPhotosService';
 import AIHotelPhotosService from './services/ai-hotel-photos.service';
+import ActivityPhotosService from './services/ActivityPhotosService';
 import * as Calendar from 'expo-calendar';
 import AppStyles from '@/constants/AppStyles';
 
@@ -30,6 +31,13 @@ export default function TripDetailsScreen() {
   // Aktivite detayları için modal state'leri
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [activityPhotos, setActivityPhotos] = useState<any[]>([]);
+  const [activityPhotosLoading, setActivityPhotosLoading] = useState(false);
+
+  // Fotoğraf görüntüleme modalı için state'ler
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
 
   // Otel detayları için modal state'leri
   const [hotelModalVisible, setHotelModalVisible] = useState(false);
@@ -1700,9 +1708,116 @@ export default function TripDetailsScreen() {
                           ))}
                         </View>
                       )}
+
+                      {/* Aktivite Fotoğrafları Bölümü */}
+                      <View style={styles.modalSection}>
+                        <ThemedText style={styles.modalSectionTitle}>Fotoğraflar</ThemedText>
+
+                        {activityPhotosLoading ? (
+                          <View style={styles.photosLoadingContainer}>
+                            <ActivityIndicator size="large" color="#4c669f" />
+                            <ThemedText style={styles.photosLoadingText}>Fotoğraflar yükleniyor...</ThemedText>
+                          </View>
+                        ) : activityPhotos.length > 0 ? (
+                          <FlatList
+                            data={activityPhotos}
+                            keyExtractor={(item, index) => `activity-photo-${index}`}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            renderItem={({ item, index }) => (
+                              <TouchableOpacity
+                                style={styles.activityPhotoContainer}
+                                onPress={() => {
+                                  setSelectedPhoto(item.imageUrl);
+                                  setSelectedPhotoIndex(index);
+                                  setPhotoModalVisible(true);
+                                }}
+                              >
+                                <Image
+                                  source={{ uri: item.imageUrl }}
+                                  style={styles.activityPhoto}
+                                  resizeMode="cover"
+                                />
+                              </TouchableOpacity>
+                            )}
+                            contentContainerStyle={styles.activityPhotoList}
+                          />
+                        ) : (
+                          <ThemedText style={styles.noPhotosText}>
+                            Bu aktivite için fotoğraf bulunamadı.
+                          </ThemedText>
+                        )}
+                      </View>
                     </View>
                   </ScrollView>
                 )}
+
+                {/* Fotoğraf Görüntüleme Modalı */}
+                <Modal
+                  animationType="fade"
+                  transparent={true}
+                  visible={photoModalVisible}
+                  onRequestClose={() => setPhotoModalVisible(false)}
+                >
+                  <View style={styles.photoModalOverlay}>
+                    <TouchableOpacity
+                      style={styles.photoModalCloseButton}
+                      onPress={() => setPhotoModalVisible(false)}
+                    >
+                      <MaterialCommunityIcons name="close" size={28} color="#fff" />
+                    </TouchableOpacity>
+
+                    {selectedPhoto && (
+                      <View style={styles.photoModalContent}>
+                        <Image
+                          source={{ uri: selectedPhoto }}
+                          style={styles.fullScreenPhoto}
+                          resizeMode="contain"
+                        />
+
+                        {/* Navigasyon Butonları */}
+                        {activityPhotos.length > 1 && (
+                          <View style={styles.photoNavigation}>
+                            <TouchableOpacity
+                              style={[styles.photoNavButton, selectedPhotoIndex === 0 && styles.photoNavButtonDisabled]}
+                              onPress={() => {
+                                if (selectedPhotoIndex > 0) {
+                                  const newIndex = selectedPhotoIndex - 1;
+                                  setSelectedPhotoIndex(newIndex);
+                                  setSelectedPhoto(activityPhotos[newIndex].imageUrl);
+                                }
+                              }}
+                              disabled={selectedPhotoIndex === 0}
+                            >
+                              <MaterialCommunityIcons name="chevron-left" size={36} color="#fff" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[styles.photoNavButton, selectedPhotoIndex === activityPhotos.length - 1 && styles.photoNavButtonDisabled]}
+                              onPress={() => {
+                                if (selectedPhotoIndex < activityPhotos.length - 1) {
+                                  const newIndex = selectedPhotoIndex + 1;
+                                  setSelectedPhotoIndex(newIndex);
+                                  setSelectedPhoto(activityPhotos[newIndex].imageUrl);
+                                }
+                              }}
+                              disabled={selectedPhotoIndex === activityPhotos.length - 1}
+                            >
+                              <MaterialCommunityIcons name="chevron-right" size={36} color="#fff" />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+
+                        {/* Fotoğraf Bilgisi */}
+                        <View style={styles.photoInfo}>
+                          <ThemedText style={styles.photoInfoText}>
+                            {selectedActivity?.placeName} - {selectedPhotoIndex + 1}/{activityPhotos.length}
+                          </ThemedText>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </Modal>
               </View>
             </View>
           </Modal>
@@ -1847,9 +1962,25 @@ export default function TripDetailsScreen() {
                         <TouchableOpacity
                           key={actIndex}
                           style={styles.activityCard}
-                          onPress={() => {
+                          onPress={async () => {
                             setSelectedActivity(activity);
                             setModalVisible(true);
+
+                            // Aktivite fotoğraflarını yükle
+                            if (activity.placeName && tripData.destination) {
+                              setActivityPhotosLoading(true);
+                              try {
+                                const photos = await ActivityPhotosService.loadActivityPhotos(
+                                  activity.placeName,
+                                  tripData.destination
+                                );
+                                setActivityPhotos(photos);
+                              } catch (error) {
+                                console.error('Aktivite fotoğrafları yükleme hatası:', error);
+                              } finally {
+                                setActivityPhotosLoading(false);
+                              }
+                            }
                           }}
                         >
                           <ThemedText style={styles.activityTime} numberOfLines={1} ellipsizeMode="tail">{activity.time}</ThemedText>
@@ -3046,5 +3177,93 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     marginRight: 5,
     fontWeight: '600',
+  },
+
+  // Aktivite Fotoğrafları Stilleri
+  photosLoadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    height: 150,
+  },
+  photosLoadingText: {
+    marginTop: 10,
+    color: AppStyles.colors.dark.textMuted,
+    fontFamily: 'SpaceMono',
+  },
+  activityPhotoContainer: {
+    width: 150,
+    height: 120,
+    borderRadius: 8,
+    marginRight: 10,
+    overflow: 'hidden',
+    ...AppStyles.shadows.small,
+  },
+  activityPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  activityPhotoList: {
+    paddingVertical: 10,
+  },
+  noPhotosText: {
+    color: AppStyles.colors.dark.textMuted,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    padding: 20,
+    fontFamily: 'SpaceMono',
+  },
+
+  // Fotoğraf Görüntüleme Modalı Stilleri
+  photoModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalCloseButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  photoModalContent: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenPhoto: {
+    width: '100%',
+    height: '80%',
+  },
+  photoNavigation: {
+    position: 'absolute',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  photoNavButton: {
+    padding: 10,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  photoNavButtonDisabled: {
+    opacity: 0.3,
+  },
+  photoInfo: {
+    position: 'absolute',
+    bottom: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  photoInfoText: {
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+    fontSize: 14,
   },
 });
