@@ -33,7 +33,7 @@ export const colors = {
   primaryDark: '#3b5998',
   secondary: '#192f6a',
   accent: '#ff4444',
-  
+
   // Dark theme
   dark: {
     background: '#000',
@@ -44,8 +44,9 @@ export const colors = {
     textMuted: '#999',
     border: 'rgba(76, 102, 159, 0.2)',
     overlay: 'rgba(0, 0, 0, 0.7)',
+    tabBar: '#000', // Siyah tab bar
   },
-  
+
   // Light theme
   light: {
     background: '#f9f9f9',
@@ -56,6 +57,7 @@ export const colors = {
     textMuted: '#999',
     border: 'rgba(0, 0, 0, 0.1)',
     overlay: 'rgba(0, 0, 0, 0.5)',
+    tabBar: '#000', // Açık temada da siyah tab bar
   },
 };
 
@@ -88,7 +90,7 @@ export const shadows = {
 export const safeAreaInsets = {
   top: Platform.OS === 'ios' ? 50 : 30,
   bottom: Platform.OS === 'ios' ? 34 : 16,
-  tabBar: Platform.OS === 'ios' ? 88 : 70,
+  tabBar: Platform.OS === 'ios' ? 80 : 65, // Daha düşük tab bar yüksekliği
 };
 
 // Common text styles

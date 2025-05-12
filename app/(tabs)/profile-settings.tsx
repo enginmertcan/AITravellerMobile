@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import AppStyles from '@/constants/AppStyles';
 
 export default function ProfileSettingsScreen() {
   const { user } = useUser();
@@ -14,6 +16,9 @@ export default function ProfileSettingsScreen() {
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [lastName, setLastName] = useState(user?.lastName || '');
   const [username, setUsername] = useState(user?.username || '');
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const theme = isDark ? AppStyles.colors.dark : AppStyles.colors.light;
 
   const handleUpdateProfile = async () => {
     try {
@@ -89,7 +94,16 @@ export default function ProfileSettingsScreen() {
         colors={['#4c669f', '#3b5998', '#192f6a']}
         style={styles.header}
       >
-        <ThemedText style={styles.headerTitle}>Profil Ayarları</ThemedText>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <ThemedText style={styles.headerTitle}>Profil Ayarları</ThemedText>
+          <View style={{width: 24}} />
+        </View>
       </LinearGradient>
 
       <View style={styles.content}>
@@ -108,7 +122,7 @@ export default function ProfileSettingsScreen() {
 
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Kişisel Bilgiler</ThemedText>
-          
+
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
@@ -191,21 +205,34 @@ export default function ProfileSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: AppStyles.colors.dark.background,
   },
   header: {
-    padding: 32,
-    paddingTop: 60,
+    padding: 16,
+    paddingTop: AppStyles.safeAreaInsets.top,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
+    textAlign: 'center',
   },
   content: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: AppStyles.colors.dark.background,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -20,
@@ -238,18 +265,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#333',
+    color: AppStyles.colors.dark.text,
   },
   inputContainer: {
     marginBottom: 20,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: AppStyles.colors.dark.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     fontSize: 16,
-    color: '#333',
+    color: AppStyles.colors.dark.text,
+    borderWidth: 1,
+    borderColor: AppStyles.colors.dark.border,
   },
   button: {
     flexDirection: 'row',
@@ -270,10 +299,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: AppStyles.colors.dark.card,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: AppStyles.colors.dark.border,
   },
   emailInfo: {
     flex: 1,
@@ -282,7 +313,7 @@ const styles = StyleSheet.create({
   },
   emailText: {
     fontSize: 16,
-    color: '#333',
+    color: AppStyles.colors.dark.text,
     marginRight: 8,
   },
   verifiedBadge: {
@@ -303,10 +334,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: AppStyles.colors.dark.card,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: AppStyles.colors.dark.border,
   },
   menuItemContent: {
     flexDirection: 'row',
@@ -315,6 +348,6 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 16,
     marginLeft: 12,
-    color: '#333',
+    color: AppStyles.colors.dark.text,
   },
-}); 
+});

@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, Platform } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Platform, ScrollView } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,13 +7,13 @@ export default function AIPlannerScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <ThemedText style={styles.title}>AI Seyahat Planlayıcı</ThemedText>
+        <ThemedText style={styles.title}>Seyahat Planları</ThemedText>
         <ThemedText style={styles.subtitle}>
-          Yapay zeka destekli kişiselleştirilmiş seyahat planları
+          Planlarınızı oluşturun veya mevcut planlarınızı görüntüleyin
         </ThemedText>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <TouchableOpacity
           style={styles.card}
           onPress={() => router.push('/plan-trip')}
@@ -23,7 +23,7 @@ export default function AIPlannerScreen() {
               <MaterialCommunityIcons name="plus-circle-outline" size={40} color="#4c669f" />
             </View>
             <ThemedText style={styles.cardTitle}>
-              Yeni Seyahat Planı Oluştur
+              Yeni Seyahat Planı
             </ThemedText>
           </View>
 
@@ -37,6 +37,32 @@ export default function AIPlannerScreen() {
             onPress={() => router.push('/plan-trip')}
           >
             <ThemedText style={styles.cardButtonText}>Başla</ThemedText>
+            <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.card, styles.secondaryCard]}
+          onPress={() => router.push('/(tabs)/trip-details')}
+        >
+          <View style={styles.cardHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: '#192f6a20' }]}>
+              <MaterialCommunityIcons name="view-list-outline" size={40} color="#192f6a" />
+            </View>
+            <ThemedText style={styles.cardTitle}>
+              Mevcut Planlarım
+            </ThemedText>
+          </View>
+
+          <ThemedText style={styles.cardDescription}>
+            Oluşturduğunuz tüm seyahat planlarınızı görüntüleyin, düzenleyin veya paylaşın.
+          </ThemedText>
+
+          <TouchableOpacity
+            style={[styles.cardButton, styles.secondaryButton]}
+            onPress={() => router.push('/(tabs)/trip-details')}
+          >
+            <ThemedText style={styles.cardButtonText}>Planları Görüntüle</ThemedText>
             <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
           </TouchableOpacity>
         </TouchableOpacity>
@@ -94,7 +120,7 @@ export default function AIPlannerScreen() {
             Daha fazla bilgi için yardım bölümünü ziyaret edin.
           </ThemedText>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -138,6 +164,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(76, 102, 159, 0.1)',
   },
+  secondaryCard: {
+    borderColor: 'rgba(25, 47, 106, 0.1)',
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -180,6 +209,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  secondaryButton: {
+    backgroundColor: '#192f6a',
+    shadowColor: '#192f6a',
+  },
   cardButtonText: {
     color: '#fff',
     fontSize: 16,
@@ -201,60 +234,58 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(76, 102, 159, 0.1)',
   },
   featuresTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#fff',
-    marginBottom: 20,
+    marginBottom: 16,
     fontFamily: 'SpaceMono',
   },
   featuresList: {
-    gap: 20,
+    marginTop: 8,
   },
   featureRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 16,
   },
   featureItem: {
-    flexDirection: 'column',
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    width: '48%',
-    backgroundColor: 'rgba(17, 17, 17, 0.6)',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(76, 102, 159, 0.1)',
+    marginHorizontal: 4,
   },
   featureIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginRight: 12,
     borderWidth: 1,
     borderColor: 'rgba(76, 102, 159, 0.2)',
   },
   featureText: {
     fontSize: 14,
-    color: '#fff',
+    color: '#ccc',
+    flex: 1,
     fontFamily: 'SpaceMono',
-    textAlign: 'center',
   },
   infoCard: {
-    backgroundColor: 'rgba(76, 102, 159, 0.1)',
-    borderRadius: 16,
-    padding: 16,
     flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: 'rgba(76, 102, 159, 0.05)',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'flex-start',
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(76, 102, 159, 0.2)',
+    borderColor: 'rgba(76, 102, 159, 0.1)',
   },
   infoText: {
+    color: '#999',
     fontSize: 14,
-    color: '#ccc',
-    fontFamily: 'SpaceMono',
     marginLeft: 12,
     flex: 1,
     lineHeight: 20,
+    fontFamily: 'SpaceMono',
   },
 });

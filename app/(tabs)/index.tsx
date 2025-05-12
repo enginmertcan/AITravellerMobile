@@ -269,6 +269,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
+    marginBottom: 2, // Hafif bir alt boşluk ekleyerek daha iyi görünüm
   },
   travelPlanImageContainer: {
     height: 120,
@@ -362,6 +363,8 @@ const styles = StyleSheet.create({
     padding: AppStyles.spacing.md,
     marginBottom: AppStyles.spacing.lg,
     ...AppStyles.shadows.small,
+    borderWidth: 1,
+    borderColor: AppStyles.colors.dark.border,
   },
   searchText: {
     marginLeft: AppStyles.spacing.sm,
@@ -387,6 +390,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: AppStyles.colors.dark.card,
     ...AppStyles.shadows.small,
+    borderWidth: 1,
+    borderColor: AppStyles.colors.dark.border,
   },
   iconContainer: {
     width: 48,
@@ -416,6 +421,8 @@ const styles = StyleSheet.create({
     padding: AppStyles.spacing.md,
     backgroundColor: AppStyles.colors.dark.card,
     ...AppStyles.shadows.small,
+    borderWidth: 1,
+    borderColor: AppStyles.colors.dark.border,
   },
   featureTitle: {
     ...AppStyles.typography.body,

@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Platform, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -48,25 +48,25 @@ export default function ProfileScreen() {
     {
       icon: 'account-outline',
       title: 'Hesap Bilgileri',
-      route: '/account',
+      route: '/(tabs)/profile-settings',
       color: '#4c669f',
     },
     {
       icon: 'bell-outline',
       title: 'Bildirimler',
-      route: '/notifications',
+      onPress: () => Alert.alert('Bilgi', 'Bu özellik yakında kullanıma açılacak!'),
       color: '#3b5998',
     },
     {
       icon: 'cog-outline',
       title: 'Ayarlar',
-      route: '/settings',
+      onPress: () => Alert.alert('Bilgi', 'Bu özellik yakında kullanıma açılacak!'),
       color: '#192f6a',
     },
     {
       icon: 'help-circle-outline',
       title: 'Yardım',
-      route: '/help',
+      onPress: () => Alert.alert('Bilgi', 'Bu özellik yakında kullanıma açılacak!'),
       color: '#4c669f',
     },
   ];
@@ -118,7 +118,7 @@ export default function ProfileScreen() {
                 styles.menuItem,
                 index === menuItems.length - 1 ? styles.menuItemLast : null
               ]}
-              onPress={() => router.push(item.route)}
+              onPress={() => item.route ? router.push(item.route) : item.onPress()}
             >
               <View style={[styles.iconContainer, { backgroundColor: item.color + '15' }]}>
                 <MaterialCommunityIcons name={item.icon} size={24} color={item.color} />
@@ -165,6 +165,8 @@ const styles = StyleSheet.create({
   userInfoCard: {
     ...AppStyles.layout.card,
     padding: AppStyles.spacing.lg,
+    borderWidth: 1,
+    borderColor: AppStyles.colors.dark.border,
   },
   userInfo: {
     flexDirection: 'row',
@@ -238,6 +240,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: AppStyles.spacing.lg,
     padding: 0,
+    borderWidth: 1,
+    borderColor: AppStyles.colors.dark.border,
   },
   menuItem: {
     flexDirection: 'row',
