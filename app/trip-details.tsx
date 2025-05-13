@@ -373,6 +373,92 @@ export default function TripDetailsScreen() {
       }
     }
 
+    // tripSummary alanını kontrol et ve eksikse oluştur
+    if (!processedPlan.tripSummary || typeof processedPlan.tripSummary === 'string' || Object.keys(processedPlan.tripSummary).length === 0) {
+      console.log('tripSummary alanı eksik veya string formatında, yeni oluşturuluyor...');
+
+      // String formatındaysa parse etmeyi dene
+      if (typeof processedPlan.tripSummary === 'string') {
+        try {
+          const parsedSummary = safeParseJSON(processedPlan.tripSummary);
+          if (parsedSummary) {
+            processedPlan.tripSummary = parsedSummary;
+            console.log('tripSummary string formatından objeye dönüştürüldü');
+          } else {
+            // Parse edilemezse boş bir obje oluştur
+            processedPlan.tripSummary = { duration: "", travelers: "", budget: "" };
+          }
+        } catch (error) {
+          console.error('tripSummary parse hatası:', error);
+          // Parse edilemezse boş bir obje oluştur
+          processedPlan.tripSummary = { duration: "", travelers: "", budget: "" };
+        }
+      } else {
+        // Hiç yoksa boş bir obje oluştur
+        processedPlan.tripSummary = { duration: "", travelers: "", budget: "" };
+      }
+
+      // Süre bilgisini belirle
+      let durationValue = "Belirtilmemiş";
+
+      // Ana objede duration (string veya sayı olabilir)
+      if (processedPlan.duration) {
+        if (typeof processedPlan.duration === 'number') {
+          durationValue = String(processedPlan.duration);
+        } else if (typeof processedPlan.duration === 'string') {
+          // "3 days" gibi string'den sayıyı çıkar
+          const durationMatch = processedPlan.duration.match(/\d+/);
+          if (durationMatch) {
+            durationValue = durationMatch[0];
+          } else {
+            durationValue = processedPlan.duration.replace('days', '').replace('day', '').trim();
+          }
+        }
+      }
+      // days alanı (sayı veya string olabilir)
+      else if (processedPlan.days) {
+        if (typeof processedPlan.days === 'number') {
+          durationValue = String(processedPlan.days);
+        } else if (typeof processedPlan.days === 'string') {
+          const daysMatch = String(processedPlan.days).match(/\d+/);
+          if (daysMatch) {
+            durationValue = daysMatch[0];
+          } else {
+            durationValue = processedPlan.days;
+          }
+        }
+      }
+
+      // Yolcu bilgisini belirle
+      let travelersValue = "Belirtilmemiş";
+
+      // groupType ve numberOfPeople birleşimi
+      if (processedPlan.groupType && processedPlan.numberOfPeople) {
+        travelersValue = `${processedPlan.groupType} (${processedPlan.numberOfPeople})`;
+      }
+      // Sadece groupType
+      else if (processedPlan.groupType) {
+        travelersValue = processedPlan.groupType;
+      }
+      // Sadece numberOfPeople
+      else if (processedPlan.numberOfPeople) {
+        travelersValue = processedPlan.numberOfPeople;
+      }
+
+      // Bütçe bilgisini belirle
+      const budgetValue = processedPlan.budget || "Belirtilmemiş";
+
+      // tripSummary alanını doldur
+      processedPlan.tripSummary = {
+        ...processedPlan.tripSummary,
+        duration: durationValue,
+        travelers: travelersValue,
+        budget: budgetValue
+      };
+
+      console.log('Yeni tripSummary oluşturuldu:', processedPlan.tripSummary);
+    }
+
     // Kültürel farklılıkları kontrol et
     if (processedPlan.culturalDifferences && typeof processedPlan.culturalDifferences === 'string') {
       try {
@@ -980,6 +1066,86 @@ export default function TripDetailsScreen() {
           }
         }
 
+        // tripSummary alanını kontrol et ve eksikse oluştur
+        if (!processedPlan.tripSummary || typeof processedPlan.tripSummary === 'string' || Object.keys(processedPlan.tripSummary).length === 0) {
+          console.log('tripSummary alanı eksik veya string formatında, yeni oluşturuluyor...');
+
+          // String formatındaysa parse etmeyi dene
+          if (typeof processedPlan.tripSummary === 'string') {
+            try {
+              processedPlan.tripSummary = safeParseJSON(processedPlan.tripSummary);
+              console.log('tripSummary string formatından objeye dönüştürüldü');
+            } catch (error) {
+              console.error('tripSummary parse hatası:', error);
+              // Parse edilemezse yeni bir obje oluştur
+              processedPlan.tripSummary = { duration: "", travelers: "", budget: "" };
+            }
+          } else {
+            // Hiç yoksa yeni bir obje oluştur
+            processedPlan.tripSummary = { duration: "", travelers: "", budget: "" };
+          }
+
+          // Süre bilgisini belirle
+          let durationValue = "Belirtilmemiş";
+
+          // Ana objede duration (string veya sayı olabilir)
+          if (processedPlan.duration) {
+            if (typeof processedPlan.duration === 'number') {
+              durationValue = String(processedPlan.duration);
+            } else if (typeof processedPlan.duration === 'string') {
+              // "3 days" gibi string'den sayıyı çıkar
+              const durationMatch = processedPlan.duration.match(/\d+/);
+              if (durationMatch) {
+                durationValue = durationMatch[0];
+              } else {
+                durationValue = processedPlan.duration.replace('days', '').replace('day', '').trim();
+              }
+            }
+          }
+          // days alanı (sayı veya string olabilir)
+          else if (processedPlan.days) {
+            if (typeof processedPlan.days === 'number') {
+              durationValue = String(processedPlan.days);
+            } else if (typeof processedPlan.days === 'string') {
+              const daysMatch = String(processedPlan.days).match(/\d+/);
+              if (daysMatch) {
+                durationValue = daysMatch[0];
+              } else {
+                durationValue = processedPlan.days;
+              }
+            }
+          }
+
+          // Yolcu bilgisini belirle
+          let travelersValue = "Belirtilmemiş";
+
+          // groupType ve numberOfPeople birleşimi
+          if (processedPlan.groupType && processedPlan.numberOfPeople) {
+            travelersValue = `${processedPlan.groupType} (${processedPlan.numberOfPeople})`;
+          }
+          // Sadece groupType
+          else if (processedPlan.groupType) {
+            travelersValue = processedPlan.groupType;
+          }
+          // Sadece numberOfPeople
+          else if (processedPlan.numberOfPeople) {
+            travelersValue = processedPlan.numberOfPeople;
+          }
+
+          // Bütçe bilgisini belirle
+          const budgetValue = processedPlan.budget || "Belirtilmemiş";
+
+          // tripSummary alanını doldur
+          processedPlan.tripSummary = {
+            ...processedPlan.tripSummary,
+            duration: durationValue,
+            travelers: travelersValue,
+            budget: budgetValue
+          };
+
+          console.log('Yeni tripSummary oluşturuldu:', processedPlan.tripSummary);
+        }
+
         // Kültürel farklılıkları kontrol et
         if (processedPlan.culturalDifferences && typeof processedPlan.culturalDifferences === 'string') {
           try {
@@ -1408,17 +1574,33 @@ export default function TripDetailsScreen() {
             </View>
           )}
 
-          {/* Seyahat Özeti */}
-          {tripData.tripSummary && (
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Seyahat Özeti</ThemedText>
-              <View style={styles.card}>
-                <ThemedText style={styles.infoItem}>Süre: {tripData.tripSummary.duration} gün</ThemedText>
-                <ThemedText style={styles.infoItem}>Seyahat Edenler: {tripData.tripSummary.travelers}</ThemedText>
-                <ThemedText style={styles.infoItem}>Bütçe: {tripData.tripSummary.budget}</ThemedText>
+         {/* Temel Seyahat Bilgileri */}
+          <View style={styles.section}>
+            <View style={styles.sectionTitleContainer}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <MaterialCommunityIcons name="information-outline" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                <ThemedText style={styles.sectionTitle} numberOfLines={2}>Seyahat Bilgileri</ThemedText>
               </View>
             </View>
-          )}
+            <View style={styles.card}>
+              <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">Destinasyon: {tripData.destination}</ThemedText>
+              {tripData.startDate && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Başlangıç Tarihi: {tripData.startDate}</ThemedText>}
+              {tripData.duration && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Süre: {tripData.duration} gün</ThemedText>}
+              {tripData.budget && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Bütçe: {tripData.budget}</ThemedText>}
+              {tripData.groupType && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Grup Tipi: {tripData.groupType}</ThemedText>}
+              {tripData.numberOfPeople && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Kişi Sayısı: {tripData.numberOfPeople}</ThemedText>}
+              {tripData.bestTimeToVisit && <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">En İyi Ziyaret Zamanı: {tripData.bestTimeToVisit}</ThemedText>}
+
+              {/* Takvime Ekle Butonu */}
+              <TouchableOpacity
+                style={styles.calendarButton}
+                onPress={addToCalendar}
+              >
+                <MaterialCommunityIcons name="calendar-plus" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <ThemedText style={styles.calendarButtonText}>Takvime Ekle</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* Otel Seçenekleri */}
           {tripData.hotelOptions && (() => {
@@ -1721,7 +1903,7 @@ export default function TripDetailsScreen() {
                         ) : activityPhotos.length > 0 ? (
                           <FlatList
                             data={activityPhotos}
-                            keyExtractor={(item, index) => `activity-photo-${index}`}
+                            keyExtractor={(_, index) => `activity-photo-${index}`}
                             horizontal
                             showsHorizontalScrollIndicator={false}
                             renderItem={({ item, index }) => (
@@ -2531,33 +2713,7 @@ export default function TripDetailsScreen() {
             return null;
           })()}
 
-          {/* Temel Seyahat Bilgileri */}
-          <View style={styles.section}>
-            <View style={styles.sectionTitleContainer}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                <MaterialCommunityIcons name="information-outline" size={22} color="#4c669f" style={{ marginRight: 8 }} />
-                <ThemedText style={styles.sectionTitle} numberOfLines={2}>Seyahat Bilgileri</ThemedText>
-              </View>
-            </View>
-            <View style={styles.card}>
-              <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">Destinasyon: {tripData.destination}</ThemedText>
-              {tripData.startDate && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Başlangıç Tarihi: {tripData.startDate}</ThemedText>}
-              {tripData.duration && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Süre: {tripData.duration} gün</ThemedText>}
-              {tripData.budget && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Bütçe: {tripData.budget}</ThemedText>}
-              {tripData.groupType && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Grup Tipi: {tripData.groupType}</ThemedText>}
-              {tripData.numberOfPeople && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Kişi Sayısı: {tripData.numberOfPeople}</ThemedText>}
-              {tripData.bestTimeToVisit && <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">En İyi Ziyaret Zamanı: {tripData.bestTimeToVisit}</ThemedText>}
-
-              {/* Takvime Ekle Butonu */}
-              <TouchableOpacity
-                style={styles.calendarButton}
-                onPress={addToCalendar}
-              >
-                <MaterialCommunityIcons name="calendar-plus" size={20} color="#fff" style={{ marginRight: 8 }} />
-                <ThemedText style={styles.calendarButtonText}>Takvime Ekle</ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
+          
 
           {/* Hava Durumu */}
           {weatherLoading ? (

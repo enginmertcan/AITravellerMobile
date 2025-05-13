@@ -6,7 +6,6 @@ import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { BlurView } from 'expo-blur';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { TravelPlanService } from '@/app/services/firebase.service';
 import { TravelPlan } from '@/app/types/travel';
@@ -36,32 +35,49 @@ export default function HomeScreen() {
   const isDark = colorScheme === 'dark';
 
   // Seyahat planlarını çek
-  const fetchTravelPlans = async () => {
+  const fetchTravelPlans = useCallback(async () => {
     try {
-      setLoading(true);
       console.log('Kullanıcının seyahat planları çekiliyor...');
-      if (userId) {
+      if (userId && isSignedIn) {
         const plans = await TravelPlanService.getUserTravelPlans(userId);
         setTravelPlans(plans);
         console.log(`${plans.length} seyahat planı bulundu.`);
+      } else {
+        setTravelPlans([]);
       }
     } catch (error) {
       console.error('Seyahat planları çekilirken hata oluştu:', error);
+      setTravelPlans([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, isSignedIn, TravelPlanService]);
 
   useEffect(() => {
-    fetchTravelPlans();
-  }, [userId]);
+    const loadData = async () => {
+      if (isSignedIn && userId) {
+        setLoading(true);
+        await fetchTravelPlans();
+      } else {
+        setTravelPlans([]);
+        setLoading(false);
+      }
+    };
 
-  const onRefresh = useCallback(() => {
+    loadData();
+  }, [isSignedIn, userId, fetchTravelPlans]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    fetchTravelPlans().then(() => {
-      setRefreshing(false);
-    });
-  }, [userId]);
+    if (isSignedIn && userId) {
+      setLoading(true);
+      await fetchTravelPlans();
+    } else {
+      setTravelPlans([]);
+      setLoading(false);
+    }
+    setRefreshing(false);
+  }, [isSignedIn, userId, fetchTravelPlans]);
 
   const features: Feature[] = [
     {
@@ -136,19 +152,15 @@ export default function HomeScreen() {
         <View style={styles.travelPlansContainer}>
           <View style={styles.travelPlansHeader}>
             <ThemedText style={styles.sectionTitle}>Seyahat Planlarım</ThemedText>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/ai-planner')}>
-              <ThemedText style={styles.seeAllText}>Yeni Ekle</ThemedText>
+            <TouchableOpacity onPress={() => router.push('/travelPlansList')}>
+              <ThemedText style={styles.seeAllText}>Tümünü Gör</ThemedText>
             </TouchableOpacity>
           </View>
 
           {loading ? (
-            <ActivityIndicator size="large" color="#4c669f" style={styles.loader} />
+            <ActivityIndicator size="large" color={isDark ? AppStyles.colors.primary : AppStyles.colors.primary} style={styles.loader} />
           ) : travelPlans.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.travelPlansScroll}
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.travelPlansList}>
               {travelPlans.map((plan, index) => (
                 <TouchableOpacity
                   key={plan.id || index}
@@ -172,13 +184,10 @@ export default function HomeScreen() {
             </ScrollView>
           ) : (
             <View style={styles.noPlansContainer}>
-              <MaterialCommunityIcons name="map-search" size={50} color="#ccc" />
-              <ThemedText style={styles.noPlansText}>Henüz seyahat planı yok</ThemedText>
-              <TouchableOpacity
-                style={styles.createPlanButton}
-                onPress={() => router.push('/(tabs)/ai-planner')}
-              >
-                <ThemedText style={styles.createPlanButtonText}>Plan Oluştur</ThemedText>
+              <MaterialCommunityIcons name="briefcase-outline" size={48} color={AppStyles.colors.dark.textMuted} />
+              <ThemedText style={styles.noPlansText}>Henüz bir seyahat planın yok.</ThemedText>
+              <TouchableOpacity style={styles.createPlanButton} onPress={() => router.push('/createPlan')}>
+                <ThemedText style={styles.createPlanButtonText}>Yeni Plan Oluştur</ThemedText>
               </TouchableOpacity>
             </View>
           )}
@@ -191,7 +200,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={index}
                 style={styles.quickActionCard}
-                onPress={() => router.push('/(tabs)/ai-planner')}
+                onPress={() => router.push('/ai-planner')}
               >
                 <View style={[styles.iconContainer, { backgroundColor: action.color + '15' }]}>
                   <MaterialCommunityIcons name={action.icon} size={26} color={action.color} />
@@ -210,13 +219,11 @@ export default function HomeScreen() {
                 key={index}
                 style={styles.featureCard}
                 onPress={() => {
-                  // Özel yönlendirmeler
                   if (feature.title === 'Yakın Yerler') {
                     router.push('/nearby-places');
                   } else if (feature.title === 'Öneriler') {
                     router.push('/recommended-trips');
                   } else {
-                    // Diğer özellikler için henüz bir sayfa yok, ileride eklenebilir
                     console.log(`${feature.title} özelliği tıklandı`);
                   }
                 }}
@@ -255,7 +262,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  travelPlansScroll: {
+  travelPlansList: {
     paddingVertical: AppStyles.spacing.sm,
     marginHorizontal: -AppStyles.spacing.lg,
     paddingHorizontal: AppStyles.spacing.lg,
@@ -269,7 +276,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
-    marginBottom: 2, // Hafif bir alt boşluk ekleyerek daha iyi görünüm
+    marginBottom: 2,
   },
   travelPlanImageContainer: {
     height: 120,
