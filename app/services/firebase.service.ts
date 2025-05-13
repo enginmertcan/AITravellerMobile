@@ -107,6 +107,37 @@ export const TravelPlanService = {
       }
     }
 
+    // tripSummary alanını kontrol et ve eksikse oluştur
+    if (!formattedPlan.tripSummary || typeof formattedPlan.tripSummary !== 'object') {
+      console.log('tripSummary alanı oluşturuluyor...');
+
+      // Süre bilgisini belirle
+      let durationValue = formattedPlan.duration || "Belirtilmemiş";
+      if (typeof durationValue === 'number') {
+        durationValue = `${durationValue} gün`;
+      }
+
+      // Yolcu bilgisini belirle
+      let travelersValue = "Belirtilmemiş";
+      if (formattedPlan.groupType && formattedPlan.numberOfPeople) {
+        travelersValue = `${formattedPlan.groupType} (${formattedPlan.numberOfPeople})`;
+      } else if (formattedPlan.groupType) {
+        travelersValue = formattedPlan.groupType;
+      } else if (formattedPlan.numberOfPeople) {
+        travelersValue = formattedPlan.numberOfPeople;
+      }
+
+      // Bütçe bilgisini belirle
+      const budgetValue = formattedPlan.budget || "Belirtilmemiş";
+
+      // tripSummary alanını oluştur
+      formattedPlan.tripSummary = {
+        duration: durationValue,
+        travelers: travelersValue,
+        budget: budgetValue
+      };
+    }
+
     // Günlük planları (Day 1, Day 2, Day 3) itinerary alanına taşı
     const dayKeys = Object.keys(formattedPlan).filter(key => key.startsWith('Day '));
 
@@ -344,7 +375,25 @@ export const TravelPlanService = {
 
     // Kültürel farklılıklar ve yerel ipuçları için eksik alanları tamamla
     // Önce culturalDifferences'ı kontrol et
-    if (formattedPlan.culturalDifferences && typeof formattedPlan.culturalDifferences === 'object') {
+    if (!formattedPlan.culturalDifferences || typeof formattedPlan.culturalDifferences === 'string' && formattedPlan.culturalDifferences.trim() === '') {
+      console.log('culturalDifferences alanı oluşturuluyor...');
+
+      // Varsayılan culturalDifferences objesi oluştur
+      const culturalDifferencesObj = {
+        culturalDifferences: "Bilgi bulunmuyor",
+        lifestyleDifferences: "Bilgi bulunmuyor",
+        foodCultureDifferences: "Bilgi bulunmuyor",
+        socialNormsDifferences: "Bilgi bulunmuyor",
+        religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+        localTraditionsAndCustoms: "Bilgi bulunmuyor",
+        culturalEventsAndFestivals: "Bilgi bulunmuyor",
+        localCommunicationTips: "Bilgi bulunmuyor"
+      };
+
+      // TypeScript hatası nedeniyle any tipine dönüştür
+      (formattedPlan as any).culturalDifferences = culturalDifferencesObj;
+    }
+    else if (typeof formattedPlan.culturalDifferences === 'object') {
       const culturalDifferences = formattedPlan.culturalDifferences as any;
 
       // Eksik alanları tamamla
@@ -380,9 +429,67 @@ export const TravelPlanService = {
         culturalDifferences.localCommunicationTips = "Bilgi bulunmuyor";
       }
     }
+    else if (typeof formattedPlan.culturalDifferences === 'string' && formattedPlan.culturalDifferences.trim() !== '') {
+      // String ise ve boş değilse, objeye dönüştürmeyi dene
+      try {
+        const parsedCulturalDifferences = JSON.parse(formattedPlan.culturalDifferences);
+        if (parsedCulturalDifferences && typeof parsedCulturalDifferences === 'object') {
+          formattedPlan.culturalDifferences = parsedCulturalDifferences;
+        } else {
+          // Parse edilemezse, string'i culturalDifferences alanına koy
+          const culturalDifferencesObj = {
+            culturalDifferences: formattedPlan.culturalDifferences,
+            lifestyleDifferences: "Bilgi bulunmuyor",
+            foodCultureDifferences: "Bilgi bulunmuyor",
+            socialNormsDifferences: "Bilgi bulunmuyor",
+            religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+            localTraditionsAndCustoms: "Bilgi bulunmuyor",
+            culturalEventsAndFestivals: "Bilgi bulunmuyor",
+            localCommunicationTips: "Bilgi bulunmuyor"
+          };
+
+          // TypeScript hatası nedeniyle any tipine dönüştür
+          (formattedPlan as any).culturalDifferences = culturalDifferencesObj;
+        }
+      } catch (error) {
+        console.error('culturalDifferences parse hatası:', error);
+        // Parse edilemezse, string'i culturalDifferences alanına koy
+        const culturalDifferencesObj = {
+          culturalDifferences: formattedPlan.culturalDifferences,
+          lifestyleDifferences: "Bilgi bulunmuyor",
+          foodCultureDifferences: "Bilgi bulunmuyor",
+          socialNormsDifferences: "Bilgi bulunmuyor",
+          religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+          localTraditionsAndCustoms: "Bilgi bulunmuyor",
+          culturalEventsAndFestivals: "Bilgi bulunmuyor",
+          localCommunicationTips: "Bilgi bulunmuyor"
+        };
+
+        // TypeScript hatası nedeniyle any tipine dönüştür
+        (formattedPlan as any).culturalDifferences = culturalDifferencesObj;
+      }
+    }
 
     // Yerel ipuçları için eksik alanları tamamla
-    if (formattedPlan.localTips && typeof formattedPlan.localTips === 'object') {
+    if (!formattedPlan.localTips || typeof formattedPlan.localTips === 'string' && formattedPlan.localTips.trim() === '') {
+      console.log('localTips alanı oluşturuluyor...');
+
+      // Varsayılan localTips objesi oluştur
+      const localTipsObj = {
+        localTransportationGuide: "Bilgi bulunmuyor",
+        emergencyContacts: "Acil durumlarda 112'yi arayın",
+        currencyAndPayment: "Türk Lirası (TL) kullanılmaktadır",
+        communicationInfo: "Bilgi bulunmuyor",
+        healthcareInfo: "Bilgi bulunmuyor",
+        localCuisineAndFoodTips: "Bilgi bulunmuyor",
+        safetyTips: "Bilgi bulunmuyor",
+        localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+      };
+
+      // TypeScript hatası nedeniyle any tipine dönüştür
+      (formattedPlan as any).localTips = localTipsObj;
+    }
+    else if (typeof formattedPlan.localTips === 'object') {
       const localTips = formattedPlan.localTips as any;
 
       // Eksik alanları tamamla
@@ -416,6 +523,46 @@ export const TravelPlanService = {
 
       if (!localTips.localLanguageAndCommunicationTips) {
         localTips.localLanguageAndCommunicationTips = "Bilgi bulunmuyor";
+      }
+    }
+    else if (typeof formattedPlan.localTips === 'string' && formattedPlan.localTips.trim() !== '') {
+      // String ise ve boş değilse, objeye dönüştürmeyi dene
+      try {
+        const parsedLocalTips = JSON.parse(formattedPlan.localTips);
+        if (parsedLocalTips && typeof parsedLocalTips === 'object') {
+          formattedPlan.localTips = parsedLocalTips;
+        } else {
+          // Parse edilemezse, string'i localTransportationGuide alanına koy
+          const localTipsObj = {
+            localTransportationGuide: formattedPlan.localTips,
+            emergencyContacts: "Acil durumlarda 112'yi arayın",
+            currencyAndPayment: "Türk Lirası (TL) kullanılmaktadır",
+            communicationInfo: "Bilgi bulunmuyor",
+            healthcareInfo: "Bilgi bulunmuyor",
+            localCuisineAndFoodTips: "Bilgi bulunmuyor",
+            safetyTips: "Bilgi bulunmuyor",
+            localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+          };
+
+          // TypeScript hatası nedeniyle any tipine dönüştür
+          (formattedPlan as any).localTips = localTipsObj;
+        }
+      } catch (error) {
+        console.error('localTips parse hatası:', error);
+        // Parse edilemezse, string'i localTransportationGuide alanına koy
+        const localTipsObj = {
+          localTransportationGuide: formattedPlan.localTips,
+          emergencyContacts: "Acil durumlarda 112'yi arayın",
+          currencyAndPayment: "Türk Lirası (TL) kullanılmaktadır",
+          communicationInfo: "Bilgi bulunmuyor",
+          healthcareInfo: "Bilgi bulunmuyor",
+          localCuisineAndFoodTips: "Bilgi bulunmuyor",
+          safetyTips: "Bilgi bulunmuyor",
+          localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+        };
+
+        // TypeScript hatası nedeniyle any tipine dönüştür
+        (formattedPlan as any).localTips = localTipsObj;
       }
     }
 
@@ -583,8 +730,237 @@ export const TravelPlanService = {
           }
         }
 
+        // Web uygulamasından gelen string formatındaki culturalDifferences ve localTips alanlarını parse et
+        if (data.culturalDifferences && typeof data.culturalDifferences === 'string') {
+          try {
+            console.log('Parsing culturalDifferences string from web app for plan:', doc.id);
+            console.log('Original culturalDifferences string:', data.culturalDifferences);
+
+            // Önce string içindeki kaçış karakterlerini temizle
+            let cleanString = data.culturalDifferences
+              .replace(/\\"/g, '"')  // Kaçış karakterli çift tırnakları düzelt
+              .replace(/^"(.*)"$/, '$1'); // Başta ve sonda çift tırnak varsa kaldır
+
+            // Eğer string JSON formatında değilse, düzelt
+            if (!cleanString.startsWith('{')) {
+              cleanString = `{${cleanString}}`;
+            }
+
+            console.log('Cleaned culturalDifferences string:', cleanString);
+
+            try {
+              const parsedCulturalDifferences = JSON.parse(cleanString);
+              if (parsedCulturalDifferences && typeof parsedCulturalDifferences === 'object') {
+                console.log('Successfully parsed culturalDifferences as object');
+                data.culturalDifferences = parsedCulturalDifferences;
+              }
+            } catch (innerError) {
+              console.error('Error parsing cleaned culturalDifferences string:', innerError);
+
+              // Alternatif çözüm: Direkt olarak obje oluştur
+              console.log('Creating culturalDifferences object manually');
+              data.culturalDifferences = {
+                culturalDifferences: data.culturalDifferences,
+                lifestyleDifferences: data.lifestyleDifferences || "Bilgi bulunmuyor",
+                foodCultureDifferences: data.foodCultureDifferences || "Bilgi bulunmuyor",
+                socialNormsDifferences: data.socialNormsDifferences || "Bilgi bulunmuyor",
+                religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+                localTraditionsAndCustoms: "Bilgi bulunmuyor",
+                culturalEventsAndFestivals: "Bilgi bulunmuyor",
+                localCommunicationTips: "Bilgi bulunmuyor"
+              };
+            }
+          } catch (error) {
+            console.error('Error in culturalDifferences processing for plan:', doc.id, error);
+
+            // Hata durumunda manuel obje oluştur
+            data.culturalDifferences = {
+              culturalDifferences: typeof data.culturalDifferences === 'string' ? data.culturalDifferences : "Bilgi bulunmuyor",
+              lifestyleDifferences: data.lifestyleDifferences || "Bilgi bulunmuyor",
+              foodCultureDifferences: data.foodCultureDifferences || "Bilgi bulunmuyor",
+              socialNormsDifferences: data.socialNormsDifferences || "Bilgi bulunmuyor",
+              religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+              localTraditionsAndCustoms: "Bilgi bulunmuyor",
+              culturalEventsAndFestivals: "Bilgi bulunmuyor",
+              localCommunicationTips: "Bilgi bulunmuyor"
+            };
+          }
+        } else if (!data.culturalDifferences) {
+          // culturalDifferences yoksa oluştur
+          console.log('Creating new culturalDifferences object for plan:', doc.id);
+          data.culturalDifferences = {
+            culturalDifferences: "Bilgi bulunmuyor",
+            lifestyleDifferences: data.lifestyleDifferences || "Bilgi bulunmuyor",
+            foodCultureDifferences: data.foodCultureDifferences || "Bilgi bulunmuyor",
+            socialNormsDifferences: data.socialNormsDifferences || "Bilgi bulunmuyor",
+            religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+            localTraditionsAndCustoms: "Bilgi bulunmuyor",
+            culturalEventsAndFestivals: "Bilgi bulunmuyor",
+            localCommunicationTips: "Bilgi bulunmuyor"
+          };
+        }
+
+        if (data.localTips && typeof data.localTips === 'string') {
+          try {
+            console.log('Parsing localTips string from web app for plan:', doc.id);
+            console.log('Original localTips string:', data.localTips);
+
+            // Önce string içindeki kaçış karakterlerini temizle
+            let cleanString = data.localTips
+              .replace(/\\"/g, '"')  // Kaçış karakterli çift tırnakları düzelt
+              .replace(/^"(.*)"$/, '$1'); // Başta ve sonda çift tırnak varsa kaldır
+
+            // Eğer string JSON formatında değilse, düzelt
+            if (!cleanString.startsWith('{')) {
+              cleanString = `{${cleanString}}`;
+            }
+
+            console.log('Cleaned localTips string:', cleanString);
+
+            try {
+              const parsedLocalTips = JSON.parse(cleanString);
+              if (parsedLocalTips && typeof parsedLocalTips === 'object') {
+                console.log('Successfully parsed localTips as object');
+                data.localTips = parsedLocalTips;
+              }
+            } catch (innerError) {
+              console.error('Error parsing cleaned localTips string:', innerError);
+
+              // Alternatif çözüm: Direkt olarak obje oluştur
+              console.log('Creating localTips object manually');
+              data.localTips = {
+                localTransportationGuide: data.localTransportationGuide || data.localTips || "Bilgi bulunmuyor",
+                emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
+                currencyAndPayment: data.currencyAndPayment || "Bilgi bulunmuyor",
+                communicationInfo: data.communicationInfo || "Bilgi bulunmuyor",
+                healthcareInfo: data.healthcareInfo || "Bilgi bulunmuyor",
+                localCuisineAndFoodTips: "Bilgi bulunmuyor",
+                safetyTips: "Bilgi bulunmuyor",
+                localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+              };
+            }
+          } catch (error) {
+            console.error('Error in localTips processing for plan:', doc.id, error);
+
+            // Hata durumunda manuel obje oluştur
+            data.localTips = {
+              localTransportationGuide: data.localTransportationGuide || (typeof data.localTips === 'string' ? data.localTips : "Bilgi bulunmuyor"),
+              emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
+              currencyAndPayment: data.currencyAndPayment || "Bilgi bulunmuyor",
+              communicationInfo: data.communicationInfo || "Bilgi bulunmuyor",
+              healthcareInfo: data.healthcareInfo || "Bilgi bulunmuyor",
+              localCuisineAndFoodTips: "Bilgi bulunmuyor",
+              safetyTips: "Bilgi bulunmuyor",
+              localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+            };
+          }
+        } else if (!data.localTips) {
+          // localTips yoksa oluştur
+          console.log('Creating new localTips object for plan:', doc.id);
+          data.localTips = {
+            localTransportationGuide: data.localTransportationGuide || "Bilgi bulunmuyor",
+            emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
+            currencyAndPayment: data.currencyAndPayment || "Bilgi bulunmuyor",
+            communicationInfo: data.communicationInfo || "Bilgi bulunmuyor",
+            healthcareInfo: data.healthcareInfo || "Bilgi bulunmuyor",
+            localCuisineAndFoodTips: "Bilgi bulunmuyor",
+            safetyTips: "Bilgi bulunmuyor",
+            localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+          };
+        }
+
+        // Vize bilgilerini de parse et
+        if (data.visaInfo && typeof data.visaInfo === 'string') {
+          try {
+            console.log('Parsing visaInfo string from web app for plan:', doc.id);
+            const parsedVisaInfo = JSON.parse(data.visaInfo);
+            if (parsedVisaInfo && typeof parsedVisaInfo === 'object') {
+              data.visaInfo = parsedVisaInfo;
+            }
+          } catch (error) {
+            console.error('Error parsing visaInfo string for plan:', doc.id, error);
+          }
+        }
+
+        // tripSummary alanını da parse et
+        if (data.tripSummary && typeof data.tripSummary === 'string') {
+          try {
+            console.log('Parsing tripSummary string from web app for plan:', doc.id);
+            const parsedTripSummary = JSON.parse(data.tripSummary);
+            if (parsedTripSummary && typeof parsedTripSummary === 'object') {
+              data.tripSummary = parsedTripSummary;
+            }
+          } catch (error) {
+            console.error('Error parsing tripSummary string for plan:', doc.id, error);
+          }
+        }
+
+        // Eksik alanları tamamla
+        const processedData = { ...data };
+
+        // tripSummary alanını kontrol et ve eksikse oluştur
+        if (!processedData.tripSummary || typeof processedData.tripSummary === 'string' && processedData.tripSummary.trim() === '') {
+          console.log('tripSummary alanı oluşturuluyor (getUserTravelPlans)...');
+
+          // Süre bilgisini belirle
+          let durationValue = processedData.duration || "Belirtilmemiş";
+          if (typeof durationValue === 'number') {
+            durationValue = `${durationValue} gün`;
+          }
+
+          // Yolcu bilgisini belirle
+          let travelersValue = "Belirtilmemiş";
+          if (processedData.groupType && processedData.numberOfPeople) {
+            travelersValue = `${processedData.groupType} (${processedData.numberOfPeople})`;
+          } else if (processedData.groupType) {
+            travelersValue = processedData.groupType;
+          } else if (processedData.numberOfPeople) {
+            travelersValue = processedData.numberOfPeople;
+          }
+
+          // Bütçe bilgisini belirle
+          const budgetValue = processedData.budget || "Belirtilmemiş";
+
+          // tripSummary alanını oluştur
+          processedData.tripSummary = {
+            duration: durationValue,
+            travelers: travelersValue,
+            budget: budgetValue
+          };
+        }
+
+        // culturalDifferences alanını kontrol et ve eksikse oluştur
+        if (!processedData.culturalDifferences) {
+          console.log('culturalDifferences alanı oluşturuluyor (getUserTravelPlans)...');
+          processedData.culturalDifferences = {
+            culturalDifferences: "Bilgi bulunmuyor",
+            lifestyleDifferences: "Bilgi bulunmuyor",
+            foodCultureDifferences: "Bilgi bulunmuyor",
+            socialNormsDifferences: "Bilgi bulunmuyor",
+            religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+            localTraditionsAndCustoms: "Bilgi bulunmuyor",
+            culturalEventsAndFestivals: "Bilgi bulunmuyor",
+            localCommunicationTips: "Bilgi bulunmuyor"
+          };
+        }
+
+        // localTips alanını kontrol et ve eksikse oluştur
+        if (!processedData.localTips) {
+          console.log('localTips alanı oluşturuluyor (getUserTravelPlans)...');
+          processedData.localTips = {
+            localTransportationGuide: "Bilgi bulunmuyor",
+            emergencyContacts: "Acil durumlarda 112'yi arayın",
+            currencyAndPayment: "Türk Lirası (TL) kullanılmaktadır",
+            communicationInfo: "Bilgi bulunmuyor",
+            healthcareInfo: "Bilgi bulunmuyor",
+            localCuisineAndFoodTips: "Bilgi bulunmuyor",
+            safetyTips: "Bilgi bulunmuyor",
+            localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+          };
+        }
+
         plans.push({
-          ...data as Partial<TravelPlan>,
+          ...processedData as Partial<TravelPlan>,
           id: doc.id,
           createdAt,
           updatedAt
@@ -718,8 +1094,237 @@ export const TravelPlanService = {
         }
       }
 
+      // Web uygulamasından gelen string formatındaki culturalDifferences ve localTips alanlarını parse et
+      if (data.culturalDifferences && typeof data.culturalDifferences === 'string') {
+        try {
+          console.log('Parsing culturalDifferences string from web app');
+          console.log('Original culturalDifferences string:', data.culturalDifferences);
+
+          // Önce string içindeki kaçış karakterlerini temizle
+          let cleanString = data.culturalDifferences
+            .replace(/\\"/g, '"')  // Kaçış karakterli çift tırnakları düzelt
+            .replace(/^"(.*)"$/, '$1'); // Başta ve sonda çift tırnak varsa kaldır
+
+          // Eğer string JSON formatında değilse, düzelt
+          if (!cleanString.startsWith('{')) {
+            cleanString = `{${cleanString}}`;
+          }
+
+          console.log('Cleaned culturalDifferences string:', cleanString);
+
+          try {
+            const parsedCulturalDifferences = JSON.parse(cleanString);
+            if (parsedCulturalDifferences && typeof parsedCulturalDifferences === 'object') {
+              console.log('Successfully parsed culturalDifferences as object');
+              data.culturalDifferences = parsedCulturalDifferences;
+            }
+          } catch (innerError) {
+            console.error('Error parsing cleaned culturalDifferences string:', innerError);
+
+            // Alternatif çözüm: Direkt olarak obje oluştur
+            console.log('Creating culturalDifferences object manually');
+            data.culturalDifferences = {
+              culturalDifferences: data.culturalDifferences,
+              lifestyleDifferences: data.lifestyleDifferences || "Bilgi bulunmuyor",
+              foodCultureDifferences: data.foodCultureDifferences || "Bilgi bulunmuyor",
+              socialNormsDifferences: data.socialNormsDifferences || "Bilgi bulunmuyor",
+              religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+              localTraditionsAndCustoms: "Bilgi bulunmuyor",
+              culturalEventsAndFestivals: "Bilgi bulunmuyor",
+              localCommunicationTips: "Bilgi bulunmuyor"
+            };
+          }
+        } catch (error) {
+          console.error('Error in culturalDifferences processing:', error);
+
+          // Hata durumunda manuel obje oluştur
+          data.culturalDifferences = {
+            culturalDifferences: typeof data.culturalDifferences === 'string' ? data.culturalDifferences : "Bilgi bulunmuyor",
+            lifestyleDifferences: data.lifestyleDifferences || "Bilgi bulunmuyor",
+            foodCultureDifferences: data.foodCultureDifferences || "Bilgi bulunmuyor",
+            socialNormsDifferences: data.socialNormsDifferences || "Bilgi bulunmuyor",
+            religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+            localTraditionsAndCustoms: "Bilgi bulunmuyor",
+            culturalEventsAndFestivals: "Bilgi bulunmuyor",
+            localCommunicationTips: "Bilgi bulunmuyor"
+          };
+        }
+      } else if (!data.culturalDifferences) {
+        // culturalDifferences yoksa oluştur
+        console.log('Creating new culturalDifferences object');
+        data.culturalDifferences = {
+          culturalDifferences: "Bilgi bulunmuyor",
+          lifestyleDifferences: data.lifestyleDifferences || "Bilgi bulunmuyor",
+          foodCultureDifferences: data.foodCultureDifferences || "Bilgi bulunmuyor",
+          socialNormsDifferences: data.socialNormsDifferences || "Bilgi bulunmuyor",
+          religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+          localTraditionsAndCustoms: "Bilgi bulunmuyor",
+          culturalEventsAndFestivals: "Bilgi bulunmuyor",
+          localCommunicationTips: "Bilgi bulunmuyor"
+        };
+      }
+
+      if (data.localTips && typeof data.localTips === 'string') {
+        try {
+          console.log('Parsing localTips string from web app');
+          console.log('Original localTips string:', data.localTips);
+
+          // Önce string içindeki kaçış karakterlerini temizle
+          let cleanString = data.localTips
+            .replace(/\\"/g, '"')  // Kaçış karakterli çift tırnakları düzelt
+            .replace(/^"(.*)"$/, '$1'); // Başta ve sonda çift tırnak varsa kaldır
+
+          // Eğer string JSON formatında değilse, düzelt
+          if (!cleanString.startsWith('{')) {
+            cleanString = `{${cleanString}}`;
+          }
+
+          console.log('Cleaned localTips string:', cleanString);
+
+          try {
+            const parsedLocalTips = JSON.parse(cleanString);
+            if (parsedLocalTips && typeof parsedLocalTips === 'object') {
+              console.log('Successfully parsed localTips as object');
+              data.localTips = parsedLocalTips;
+            }
+          } catch (innerError) {
+            console.error('Error parsing cleaned localTips string:', innerError);
+
+            // Alternatif çözüm: Direkt olarak obje oluştur
+            console.log('Creating localTips object manually');
+            data.localTips = {
+              localTransportationGuide: data.localTransportationGuide || data.localTips || "Bilgi bulunmuyor",
+              emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
+              currencyAndPayment: data.currencyAndPayment || "Bilgi bulunmuyor",
+              communicationInfo: data.communicationInfo || "Bilgi bulunmuyor",
+              healthcareInfo: data.healthcareInfo || "Bilgi bulunmuyor",
+              localCuisineAndFoodTips: "Bilgi bulunmuyor",
+              safetyTips: "Bilgi bulunmuyor",
+              localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+            };
+          }
+        } catch (error) {
+          console.error('Error in localTips processing:', error);
+
+          // Hata durumunda manuel obje oluştur
+          data.localTips = {
+            localTransportationGuide: data.localTransportationGuide || (typeof data.localTips === 'string' ? data.localTips : "Bilgi bulunmuyor"),
+            emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
+            currencyAndPayment: data.currencyAndPayment || "Bilgi bulunmuyor",
+            communicationInfo: data.communicationInfo || "Bilgi bulunmuyor",
+            healthcareInfo: data.healthcareInfo || "Bilgi bulunmuyor",
+            localCuisineAndFoodTips: "Bilgi bulunmuyor",
+            safetyTips: "Bilgi bulunmuyor",
+            localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+          };
+        }
+      } else if (!data.localTips) {
+        // localTips yoksa oluştur
+        console.log('Creating new localTips object');
+        data.localTips = {
+          localTransportationGuide: data.localTransportationGuide || "Bilgi bulunmuyor",
+          emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
+          currencyAndPayment: data.currencyAndPayment || "Bilgi bulunmuyor",
+          communicationInfo: data.communicationInfo || "Bilgi bulunmuyor",
+          healthcareInfo: data.healthcareInfo || "Bilgi bulunmuyor",
+          localCuisineAndFoodTips: "Bilgi bulunmuyor",
+          safetyTips: "Bilgi bulunmuyor",
+          localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+        };
+      }
+
+      // Vize bilgilerini de parse et
+      if (data.visaInfo && typeof data.visaInfo === 'string') {
+        try {
+          console.log('Parsing visaInfo string from web app');
+          const parsedVisaInfo = JSON.parse(data.visaInfo);
+          if (parsedVisaInfo && typeof parsedVisaInfo === 'object') {
+            data.visaInfo = parsedVisaInfo;
+          }
+        } catch (error) {
+          console.error('Error parsing visaInfo string:', error);
+        }
+      }
+
+      // tripSummary alanını da parse et
+      if (data.tripSummary && typeof data.tripSummary === 'string') {
+        try {
+          console.log('Parsing tripSummary string from web app');
+          const parsedTripSummary = JSON.parse(data.tripSummary);
+          if (parsedTripSummary && typeof parsedTripSummary === 'object') {
+            data.tripSummary = parsedTripSummary;
+          }
+        } catch (error) {
+          console.error('Error parsing tripSummary string:', error);
+        }
+      }
+
+      // Eksik alanları tamamla
+      const processedData = { ...data };
+
+      // tripSummary alanını kontrol et ve eksikse oluştur
+      if (!processedData.tripSummary || typeof processedData.tripSummary === 'string' && processedData.tripSummary.trim() === '') {
+        console.log('tripSummary alanı oluşturuluyor (getTravelPlanById)...');
+
+        // Süre bilgisini belirle
+        let durationValue = processedData.duration || "Belirtilmemiş";
+        if (typeof durationValue === 'number') {
+          durationValue = `${durationValue} gün`;
+        }
+
+        // Yolcu bilgisini belirle
+        let travelersValue = "Belirtilmemiş";
+        if (processedData.groupType && processedData.numberOfPeople) {
+          travelersValue = `${processedData.groupType} (${processedData.numberOfPeople})`;
+        } else if (processedData.groupType) {
+          travelersValue = processedData.groupType;
+        } else if (processedData.numberOfPeople) {
+          travelersValue = processedData.numberOfPeople;
+        }
+
+        // Bütçe bilgisini belirle
+        const budgetValue = processedData.budget || "Belirtilmemiş";
+
+        // tripSummary alanını oluştur
+        processedData.tripSummary = {
+          duration: durationValue,
+          travelers: travelersValue,
+          budget: budgetValue
+        };
+      }
+
+      // culturalDifferences alanını kontrol et ve eksikse oluştur
+      if (!processedData.culturalDifferences) {
+        console.log('culturalDifferences alanı oluşturuluyor (getTravelPlanById)...');
+        processedData.culturalDifferences = {
+          culturalDifferences: "Bilgi bulunmuyor",
+          lifestyleDifferences: "Bilgi bulunmuyor",
+          foodCultureDifferences: "Bilgi bulunmuyor",
+          socialNormsDifferences: "Bilgi bulunmuyor",
+          religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+          localTraditionsAndCustoms: "Bilgi bulunmuyor",
+          culturalEventsAndFestivals: "Bilgi bulunmuyor",
+          localCommunicationTips: "Bilgi bulunmuyor"
+        };
+      }
+
+      // localTips alanını kontrol et ve eksikse oluştur
+      if (!processedData.localTips) {
+        console.log('localTips alanı oluşturuluyor (getTravelPlanById)...');
+        processedData.localTips = {
+          localTransportationGuide: "Bilgi bulunmuyor",
+          emergencyContacts: "Acil durumlarda 112'yi arayın",
+          currencyAndPayment: "Türk Lirası (TL) kullanılmaktadır",
+          communicationInfo: "Bilgi bulunmuyor",
+          healthcareInfo: "Bilgi bulunmuyor",
+          localCuisineAndFoodTips: "Bilgi bulunmuyor",
+          safetyTips: "Bilgi bulunmuyor",
+          localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+        };
+      }
+
       return {
-        ...data as Partial<TravelPlan>,
+        ...processedData as Partial<TravelPlan>,
         id: docSnap.id,
         createdAt,
         updatedAt
@@ -905,14 +1510,253 @@ export const TravelPlanService = {
                 console.log('Extracting localTips from itinerary for plan:', doc.id);
                 data.localTips = parsedItinerary.localTips;
               }
+
+              if (parsedItinerary.culturalDifferences && !data.culturalDifferences) {
+                console.log('Extracting culturalDifferences from itinerary for plan:', doc.id);
+                data.culturalDifferences = parsedItinerary.culturalDifferences;
+              }
+
+              if (parsedItinerary.visaInfo && !data.visaInfo) {
+                console.log('Extracting visaInfo from itinerary for plan:', doc.id);
+                data.visaInfo = parsedItinerary.visaInfo;
+              }
             }
           } catch (error) {
             console.error('Error parsing itinerary for plan:', doc.id, error);
           }
         }
 
+        // Web uygulamasından gelen string formatındaki culturalDifferences ve localTips alanlarını parse et
+        if (data.culturalDifferences && typeof data.culturalDifferences === 'string') {
+          try {
+            console.log('Parsing culturalDifferences string from web app for plan:', doc.id);
+            console.log('Original culturalDifferences string:', data.culturalDifferences);
+
+            // Önce string içindeki kaçış karakterlerini temizle
+            let cleanString = data.culturalDifferences
+              .replace(/\\"/g, '"')  // Kaçış karakterli çift tırnakları düzelt
+              .replace(/^"(.*)"$/, '$1'); // Başta ve sonda çift tırnak varsa kaldır
+
+            // Eğer string JSON formatında değilse, düzelt
+            if (!cleanString.startsWith('{')) {
+              cleanString = `{${cleanString}}`;
+            }
+
+            console.log('Cleaned culturalDifferences string:', cleanString);
+
+            try {
+              const parsedCulturalDifferences = JSON.parse(cleanString);
+              if (parsedCulturalDifferences && typeof parsedCulturalDifferences === 'object') {
+                console.log('Successfully parsed culturalDifferences as object');
+                data.culturalDifferences = parsedCulturalDifferences;
+              }
+            } catch (innerError) {
+              console.error('Error parsing cleaned culturalDifferences string:', innerError);
+
+              // Alternatif çözüm: Direkt olarak obje oluştur
+              console.log('Creating culturalDifferences object manually');
+              data.culturalDifferences = {
+                culturalDifferences: data.culturalDifferences,
+                lifestyleDifferences: data.lifestyleDifferences || "Bilgi bulunmuyor",
+                foodCultureDifferences: data.foodCultureDifferences || "Bilgi bulunmuyor",
+                socialNormsDifferences: data.socialNormsDifferences || "Bilgi bulunmuyor",
+                religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+                localTraditionsAndCustoms: "Bilgi bulunmuyor",
+                culturalEventsAndFestivals: "Bilgi bulunmuyor",
+                localCommunicationTips: "Bilgi bulunmuyor"
+              };
+            }
+          } catch (error) {
+            console.error('Error in culturalDifferences processing for plan:', doc.id, error);
+
+            // Hata durumunda manuel obje oluştur
+            data.culturalDifferences = {
+              culturalDifferences: typeof data.culturalDifferences === 'string' ? data.culturalDifferences : "Bilgi bulunmuyor",
+              lifestyleDifferences: data.lifestyleDifferences || "Bilgi bulunmuyor",
+              foodCultureDifferences: data.foodCultureDifferences || "Bilgi bulunmuyor",
+              socialNormsDifferences: data.socialNormsDifferences || "Bilgi bulunmuyor",
+              religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+              localTraditionsAndCustoms: "Bilgi bulunmuyor",
+              culturalEventsAndFestivals: "Bilgi bulunmuyor",
+              localCommunicationTips: "Bilgi bulunmuyor"
+            };
+          }
+        } else if (!data.culturalDifferences) {
+          // culturalDifferences yoksa oluştur
+          console.log('Creating new culturalDifferences object for plan:', doc.id);
+          data.culturalDifferences = {
+            culturalDifferences: "Bilgi bulunmuyor",
+            lifestyleDifferences: data.lifestyleDifferences || "Bilgi bulunmuyor",
+            foodCultureDifferences: data.foodCultureDifferences || "Bilgi bulunmuyor",
+            socialNormsDifferences: data.socialNormsDifferences || "Bilgi bulunmuyor",
+            religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+            localTraditionsAndCustoms: "Bilgi bulunmuyor",
+            culturalEventsAndFestivals: "Bilgi bulunmuyor",
+            localCommunicationTips: "Bilgi bulunmuyor"
+          };
+        }
+
+        if (data.localTips && typeof data.localTips === 'string') {
+          try {
+            console.log('Parsing localTips string from web app for plan:', doc.id);
+            console.log('Original localTips string:', data.localTips);
+
+            // Önce string içindeki kaçış karakterlerini temizle
+            let cleanString = data.localTips
+              .replace(/\\"/g, '"')  // Kaçış karakterli çift tırnakları düzelt
+              .replace(/^"(.*)"$/, '$1'); // Başta ve sonda çift tırnak varsa kaldır
+
+            // Eğer string JSON formatında değilse, düzelt
+            if (!cleanString.startsWith('{')) {
+              cleanString = `{${cleanString}}`;
+            }
+
+            console.log('Cleaned localTips string:', cleanString);
+
+            try {
+              const parsedLocalTips = JSON.parse(cleanString);
+              if (parsedLocalTips && typeof parsedLocalTips === 'object') {
+                console.log('Successfully parsed localTips as object');
+                data.localTips = parsedLocalTips;
+              }
+            } catch (innerError) {
+              console.error('Error parsing cleaned localTips string:', innerError);
+
+              // Alternatif çözüm: Direkt olarak obje oluştur
+              console.log('Creating localTips object manually');
+              data.localTips = {
+                localTransportationGuide: data.localTransportationGuide || data.localTips || "Bilgi bulunmuyor",
+                emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
+                currencyAndPayment: data.currencyAndPayment || "Bilgi bulunmuyor",
+                communicationInfo: data.communicationInfo || "Bilgi bulunmuyor",
+                healthcareInfo: data.healthcareInfo || "Bilgi bulunmuyor",
+                localCuisineAndFoodTips: "Bilgi bulunmuyor",
+                safetyTips: "Bilgi bulunmuyor",
+                localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+              };
+            }
+          } catch (error) {
+            console.error('Error in localTips processing for plan:', doc.id, error);
+
+            // Hata durumunda manuel obje oluştur
+            data.localTips = {
+              localTransportationGuide: data.localTransportationGuide || (typeof data.localTips === 'string' ? data.localTips : "Bilgi bulunmuyor"),
+              emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
+              currencyAndPayment: data.currencyAndPayment || "Bilgi bulunmuyor",
+              communicationInfo: data.communicationInfo || "Bilgi bulunmuyor",
+              healthcareInfo: data.healthcareInfo || "Bilgi bulunmuyor",
+              localCuisineAndFoodTips: "Bilgi bulunmuyor",
+              safetyTips: "Bilgi bulunmuyor",
+              localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+            };
+          }
+        } else if (!data.localTips) {
+          // localTips yoksa oluştur
+          console.log('Creating new localTips object for plan:', doc.id);
+          data.localTips = {
+            localTransportationGuide: data.localTransportationGuide || "Bilgi bulunmuyor",
+            emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
+            currencyAndPayment: data.currencyAndPayment || "Bilgi bulunmuyor",
+            communicationInfo: data.communicationInfo || "Bilgi bulunmuyor",
+            healthcareInfo: data.healthcareInfo || "Bilgi bulunmuyor",
+            localCuisineAndFoodTips: "Bilgi bulunmuyor",
+            safetyTips: "Bilgi bulunmuyor",
+            localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+          };
+        }
+
+        // Vize bilgilerini de parse et
+        if (data.visaInfo && typeof data.visaInfo === 'string') {
+          try {
+            console.log('Parsing visaInfo string from web app for plan:', doc.id);
+            const parsedVisaInfo = JSON.parse(data.visaInfo);
+            if (parsedVisaInfo && typeof parsedVisaInfo === 'object') {
+              data.visaInfo = parsedVisaInfo;
+            }
+          } catch (error) {
+            console.error('Error parsing visaInfo string for plan:', doc.id, error);
+          }
+        }
+
+        // tripSummary alanını da parse et
+        if (data.tripSummary && typeof data.tripSummary === 'string') {
+          try {
+            console.log('Parsing tripSummary string from web app for plan:', doc.id);
+            const parsedTripSummary = JSON.parse(data.tripSummary);
+            if (parsedTripSummary && typeof parsedTripSummary === 'object') {
+              data.tripSummary = parsedTripSummary;
+            }
+          } catch (error) {
+            console.error('Error parsing tripSummary string for plan:', doc.id, error);
+          }
+        }
+
+        // Eksik alanları tamamla
+        const processedData = { ...data };
+
+        // tripSummary alanını kontrol et ve eksikse oluştur
+        if (!processedData.tripSummary || typeof processedData.tripSummary === 'string' && processedData.tripSummary.trim() === '') {
+          console.log('tripSummary alanı oluşturuluyor (getRecommendedTravelPlans)...');
+
+          // Süre bilgisini belirle
+          let durationValue = processedData.duration || "Belirtilmemiş";
+          if (typeof durationValue === 'number') {
+            durationValue = `${durationValue} gün`;
+          }
+
+          // Yolcu bilgisini belirle
+          let travelersValue = "Belirtilmemiş";
+          if (processedData.groupType && processedData.numberOfPeople) {
+            travelersValue = `${processedData.groupType} (${processedData.numberOfPeople})`;
+          } else if (processedData.groupType) {
+            travelersValue = processedData.groupType;
+          } else if (processedData.numberOfPeople) {
+            travelersValue = processedData.numberOfPeople;
+          }
+
+          // Bütçe bilgisini belirle
+          const budgetValue = processedData.budget || "Belirtilmemiş";
+
+          // tripSummary alanını oluştur
+          processedData.tripSummary = {
+            duration: durationValue,
+            travelers: travelersValue,
+            budget: budgetValue
+          };
+        }
+
+        // culturalDifferences alanını kontrol et ve eksikse oluştur
+        if (!processedData.culturalDifferences) {
+          console.log('culturalDifferences alanı oluşturuluyor (getRecommendedTravelPlans)...');
+          processedData.culturalDifferences = {
+            culturalDifferences: "Bilgi bulunmuyor",
+            lifestyleDifferences: "Bilgi bulunmuyor",
+            foodCultureDifferences: "Bilgi bulunmuyor",
+            socialNormsDifferences: "Bilgi bulunmuyor",
+            religiousAndCulturalSensitivities: "Bilgi bulunmuyor",
+            localTraditionsAndCustoms: "Bilgi bulunmuyor",
+            culturalEventsAndFestivals: "Bilgi bulunmuyor",
+            localCommunicationTips: "Bilgi bulunmuyor"
+          };
+        }
+
+        // localTips alanını kontrol et ve eksikse oluştur
+        if (!processedData.localTips) {
+          console.log('localTips alanı oluşturuluyor (getRecommendedTravelPlans)...');
+          processedData.localTips = {
+            localTransportationGuide: "Bilgi bulunmuyor",
+            emergencyContacts: "Acil durumlarda 112'yi arayın",
+            currencyAndPayment: "Türk Lirası (TL) kullanılmaktadır",
+            communicationInfo: "Bilgi bulunmuyor",
+            healthcareInfo: "Bilgi bulunmuyor",
+            localCuisineAndFoodTips: "Bilgi bulunmuyor",
+            safetyTips: "Bilgi bulunmuyor",
+            localLanguageAndCommunicationTips: "Bilgi bulunmuyor"
+          };
+        }
+
         plans.push({
-          ...data as Partial<TravelPlan>,
+          ...processedData as Partial<TravelPlan>,
           id: doc.id,
           createdAt,
           updatedAt

@@ -1073,15 +1073,21 @@ export default function TripDetailsScreen() {
           // String formatındaysa parse etmeyi dene
           if (typeof processedPlan.tripSummary === 'string') {
             try {
-              processedPlan.tripSummary = safeParseJSON(processedPlan.tripSummary);
-              console.log('tripSummary string formatından objeye dönüştürüldü');
+              const parsedSummary = safeParseJSON(processedPlan.tripSummary);
+              if (parsedSummary) {
+                processedPlan.tripSummary = parsedSummary;
+                console.log('tripSummary string formatından objeye dönüştürüldü');
+              } else {
+                // Parse edilemezse boş bir obje oluştur
+                processedPlan.tripSummary = { duration: "", travelers: "", budget: "" };
+              }
             } catch (error) {
               console.error('tripSummary parse hatası:', error);
-              // Parse edilemezse yeni bir obje oluştur
+              // Parse edilemezse boş bir obje oluştur
               processedPlan.tripSummary = { duration: "", travelers: "", budget: "" };
             }
           } else {
-            // Hiç yoksa yeni bir obje oluştur
+            // Hiç yoksa boş bir obje oluştur
             processedPlan.tripSummary = { duration: "", travelers: "", budget: "" };
           }
 
@@ -1149,21 +1155,35 @@ export default function TripDetailsScreen() {
         // Kültürel farklılıkları kontrol et
         if (processedPlan.culturalDifferences && typeof processedPlan.culturalDifferences === 'string') {
           try {
+            console.log('Kültürel farklılıklar string formatı:', processedPlan.culturalDifferences);
             processedPlan.culturalDifferences = safeParseJSON(processedPlan.culturalDifferences);
-            console.log('Kültürel farklılıklar string formatından objeye dönüştürüldü');
+            console.log('Kültürel farklılıklar string formatından objeye dönüştürüldü:',
+              JSON.stringify(processedPlan.culturalDifferences));
           } catch (error) {
             console.error('Kültürel farklılıklar parse hatası:', error);
           }
+        } else if (processedPlan.culturalDifferences && typeof processedPlan.culturalDifferences === 'object') {
+          console.log('Kültürel farklılıklar zaten obje formatında:',
+            JSON.stringify(processedPlan.culturalDifferences));
+        } else {
+          console.log('Kültürel farklılıklar bulunamadı veya geçersiz format');
         }
 
         // Yerel ipuçlarını kontrol et
         if (processedPlan.localTips && typeof processedPlan.localTips === 'string') {
           try {
+            console.log('Yerel ipuçları string formatı:', processedPlan.localTips);
             processedPlan.localTips = safeParseJSON(processedPlan.localTips);
-            console.log('Yerel ipuçları string formatından objeye dönüştürüldü');
+            console.log('Yerel ipuçları string formatından objeye dönüştürüldü:',
+              JSON.stringify(processedPlan.localTips));
           } catch (error) {
             console.error('Yerel ipuçları parse hatası:', error);
           }
+        } else if (processedPlan.localTips && typeof processedPlan.localTips === 'object') {
+          console.log('Yerel ipuçları zaten obje formatında:',
+            JSON.stringify(processedPlan.localTips));
+        } else {
+          console.log('Yerel ipuçları bulunamadı veya geçersiz format');
         }
 
         // UI'ı güncelle
@@ -2054,7 +2074,8 @@ export default function TripDetailsScreen() {
                       if (typeof parsedItinerary.culturalDifferences === 'string') {
                         try {
                           const culturalObj = safeParseJSON(parsedItinerary.culturalDifferences);
-                          if (culturalObj) {
+                          if (culturalObj && typeof culturalObj === 'object') {
+                            console.log('culturalDifferences string içinden obje olarak parse edildi');
                             tripData.culturalDifferences = culturalObj;
 
                             // Ayrıca eski format alanlarını da doldur
@@ -2068,13 +2089,16 @@ export default function TripDetailsScreen() {
                               tripData.socialNormsDifferences = culturalObj.socialNormsDifferences;
                             }
                           } else {
+                            console.log('culturalDifferences string olarak kullanılıyor');
                             tripData.culturalDifferences = parsedItinerary.culturalDifferences;
                           }
                         } catch (error) {
                           console.error('culturalDifferences parse hatası:', error);
+                          console.log('culturalDifferences string olarak kullanılıyor (parse hatası)');
                           tripData.culturalDifferences = parsedItinerary.culturalDifferences;
                         }
-                      } else {
+                      } else if (typeof parsedItinerary.culturalDifferences === 'object') {
+                        console.log('culturalDifferences obje olarak kullanılıyor');
                         tripData.culturalDifferences = parsedItinerary.culturalDifferences;
 
                         // Ayrıca eski format alanlarını da doldur
@@ -2090,25 +2114,62 @@ export default function TripDetailsScreen() {
                       }
                     }
 
-                    if (parsedItinerary.localTips && !tripData.localTips) {
+                    if (parsedItinerary.localTips) {
                       console.log('localTips alanı itinerary\'den çıkarılıyor (itineraryToUse)');
-                      tripData.localTips = parsedItinerary.localTips;
 
-                      // Ayrıca eski format alanlarını da doldur
-                      if (parsedItinerary.localTips.localTransportationGuide) {
-                        tripData.localTransportationGuide = parsedItinerary.localTips.localTransportationGuide;
-                      }
-                      if (parsedItinerary.localTips.emergencyContacts) {
-                        tripData.emergencyContacts = parsedItinerary.localTips.emergencyContacts;
-                      }
-                      if (parsedItinerary.localTips.currencyAndPayment) {
-                        tripData.currencyAndPayment = parsedItinerary.localTips.currencyAndPayment;
-                      }
-                      if (parsedItinerary.localTips.communicationInfo) {
-                        tripData.communicationInfo = parsedItinerary.localTips.communicationInfo;
-                      }
-                      if (parsedItinerary.localTips.healthcareInfo) {
-                        tripData.healthcareInfo = parsedItinerary.localTips.healthcareInfo;
+                      // Eğer string ise, objeye dönüştürmeyi dene
+                      if (typeof parsedItinerary.localTips === 'string') {
+                        try {
+                          const localTipsObj = safeParseJSON(parsedItinerary.localTips);
+                          if (localTipsObj && typeof localTipsObj === 'object') {
+                            console.log('localTips string içinden obje olarak parse edildi');
+                            tripData.localTips = localTipsObj;
+
+                            // Ayrıca eski format alanlarını da doldur
+                            if (localTipsObj.localTransportationGuide) {
+                              tripData.localTransportationGuide = localTipsObj.localTransportationGuide;
+                            }
+                            if (localTipsObj.emergencyContacts) {
+                              tripData.emergencyContacts = localTipsObj.emergencyContacts;
+                            }
+                            if (localTipsObj.currencyAndPayment) {
+                              tripData.currencyAndPayment = localTipsObj.currencyAndPayment;
+                            }
+                            if (localTipsObj.communicationInfo) {
+                              tripData.communicationInfo = localTipsObj.communicationInfo;
+                            }
+                            if (localTipsObj.healthcareInfo) {
+                              tripData.healthcareInfo = localTipsObj.healthcareInfo;
+                            }
+                          } else {
+                            console.log('localTips string olarak kullanılıyor');
+                            tripData.localTips = parsedItinerary.localTips;
+                          }
+                        } catch (error) {
+                          console.error('localTips parse hatası:', error);
+                          console.log('localTips string olarak kullanılıyor (parse hatası)');
+                          tripData.localTips = parsedItinerary.localTips;
+                        }
+                      } else if (typeof parsedItinerary.localTips === 'object') {
+                        console.log('localTips obje olarak kullanılıyor');
+                        tripData.localTips = parsedItinerary.localTips;
+
+                        // Ayrıca eski format alanlarını da doldur
+                        if (parsedItinerary.localTips.localTransportationGuide) {
+                          tripData.localTransportationGuide = parsedItinerary.localTips.localTransportationGuide;
+                        }
+                        if (parsedItinerary.localTips.emergencyContacts) {
+                          tripData.emergencyContacts = parsedItinerary.localTips.emergencyContacts;
+                        }
+                        if (parsedItinerary.localTips.currencyAndPayment) {
+                          tripData.currencyAndPayment = parsedItinerary.localTips.currencyAndPayment;
+                        }
+                        if (parsedItinerary.localTips.communicationInfo) {
+                          tripData.communicationInfo = parsedItinerary.localTips.communicationInfo;
+                        }
+                        if (parsedItinerary.localTips.healthcareInfo) {
+                          tripData.healthcareInfo = parsedItinerary.localTips.healthcareInfo;
+                        }
                       }
                     }
 
@@ -2304,12 +2365,13 @@ export default function TripDetailsScreen() {
           {/* Kültürel Farklılıklar */}
           {(() => {
             // culturalDifferences'ı kontrol et ve doğru formatı bul
-            let culturalDifferencesData = null;
+            let culturalDifferencesData: any = null;
             let hasCulturalData = false;
 
             // String olarak geldiyse parse et
             if (tripData.culturalDifferences && typeof tripData.culturalDifferences === 'string') {
               try {
+                // Önce JSON olarak parse etmeyi dene
                 culturalDifferencesData = safeParseJSON(tripData.culturalDifferences);
                 console.log('culturalDifferences JSON olarak parse edildi');
                 hasCulturalData = true;
@@ -2324,10 +2386,19 @@ export default function TripDetailsScreen() {
             else if (tripData.culturalDifferences && typeof tripData.culturalDifferences === 'object') {
               culturalDifferencesData = tripData.culturalDifferences;
               hasCulturalData = true;
+              console.log('culturalDifferences obje olarak kullanılıyor:', JSON.stringify(culturalDifferencesData));
+
+              // Objenin içeriğini kontrol et
+              console.log('culturalDifferences içeriği:');
+              Object.keys(culturalDifferencesData).forEach(key => {
+                console.log(`- ${key}: ${culturalDifferencesData[key]}`);
+              });
             }
 
             // Eksik alanları tamamla
             if (culturalDifferencesData) {
+              console.log('culturalDifferencesData içeriği doldurulmadan önce:', JSON.stringify(culturalDifferencesData));
+
               // Temel kültürel farklılıklar
               if (!culturalDifferencesData.culturalDifferences) {
                 culturalDifferencesData.culturalDifferences = "Bilgi bulunmuyor";
@@ -2367,6 +2438,8 @@ export default function TripDetailsScreen() {
               if (!culturalDifferencesData.localCommunicationTips) {
                 culturalDifferencesData.localCommunicationTips = "Bilgi bulunmuyor";
               }
+
+              console.log('culturalDifferencesData içeriği doldurulduktan sonra:', JSON.stringify(culturalDifferencesData));
             }
 
             // Diğer kültürel farklılık alanlarını kontrol et
@@ -2389,7 +2462,11 @@ export default function TripDetailsScreen() {
                   {culturalDifferencesData && culturalDifferencesData.culturalDifferences && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Temel Kültürel Farklılıklar</ThemedText>
-                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{culturalDifferencesData.culturalDifferences}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>
+                        {culturalDifferencesData.culturalDifferences !== "Bilgi bulunmuyor"
+                          ? culturalDifferencesData.culturalDifferences
+                          : "Bu destinasyon için kültürel farklılık bilgisi bulunmuyor."}
+                      </ThemedText>
                     </View>
                   )}
 
@@ -2492,12 +2569,13 @@ export default function TripDetailsScreen() {
           {/* Yerel İpuçları */}
           {(() => {
             // localTips'i kontrol et ve doğru formatı bul
-            let localTipsData = null;
+            let localTipsData: any = null;
             let hasLocalTipsData = false;
 
             // String olarak geldiyse parse et
             if (tripData.localTips && typeof tripData.localTips === 'string') {
               try {
+                // Önce JSON olarak parse etmeyi dene
                 localTipsData = safeParseJSON(tripData.localTips);
                 console.log('localTips JSON olarak parse edildi');
                 hasLocalTipsData = true;
@@ -2512,10 +2590,19 @@ export default function TripDetailsScreen() {
             else if (tripData.localTips && typeof tripData.localTips === 'object') {
               localTipsData = tripData.localTips;
               hasLocalTipsData = true;
+              console.log('localTips obje olarak kullanılıyor:', JSON.stringify(localTipsData));
+
+              // Objenin içeriğini kontrol et
+              console.log('localTips içeriği:');
+              Object.keys(localTipsData).forEach(key => {
+                console.log(`- ${key}: ${typeof localTipsData[key] === 'object' ? JSON.stringify(localTipsData[key]) : localTipsData[key]}`);
+              });
             }
 
             // Eksik alanları tamamla
             if (localTipsData) {
+              console.log('localTipsData içeriği doldurulmadan önce:', JSON.stringify(localTipsData));
+
               // Yerel ulaşım rehberi
               if (!localTipsData.localTransportationGuide) {
                 localTipsData.localTransportationGuide = "Bilgi bulunmuyor";
@@ -2555,6 +2642,8 @@ export default function TripDetailsScreen() {
               if (!localTipsData.localLanguageAndCommunicationTips) {
                 localTipsData.localLanguageAndCommunicationTips = "Bilgi bulunmuyor";
               }
+
+              console.log('localTipsData içeriği doldurulduktan sonra:', JSON.stringify(localTipsData));
             }
 
             // Diğer yerel ipuçları alanlarını kontrol et
@@ -2580,7 +2669,11 @@ export default function TripDetailsScreen() {
                   {localTipsData && localTipsData.localTransportationGuide && (
                     <View style={styles.card}>
                       <ThemedText style={styles.cardTitle}>Yerel Ulaşım Rehberi</ThemedText>
-                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>{localTipsData.localTransportationGuide}</ThemedText>
+                      <ThemedText style={[styles.infoItem, { flexShrink: 1 }]}>
+                        {localTipsData.localTransportationGuide !== "Bilgi bulunmuyor"
+                          ? localTipsData.localTransportationGuide
+                          : "Bu destinasyon için yerel ulaşım rehberi bilgisi bulunmuyor."}
+                      </ThemedText>
                     </View>
                   )}
 
@@ -2712,8 +2805,6 @@ export default function TripDetailsScreen() {
             }
             return null;
           })()}
-
-          
 
           {/* Hava Durumu */}
           {weatherLoading ? (
@@ -3053,7 +3144,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontSize: 14,
     flexWrap: 'wrap',
-    flex: 1,
   },
   description: {
     color: '#999',
@@ -3086,7 +3176,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
     padding: 20,
   },
   loadingText: {
@@ -3101,13 +3190,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    marginTop: 100,
   },
   errorText: {
     marginTop: 16,
     fontSize: 16,
     color: '#ccc',
     textAlign: 'center',
+    marginBottom: 24,
     fontFamily: 'SpaceMono',
   },
   rawResponse: {
