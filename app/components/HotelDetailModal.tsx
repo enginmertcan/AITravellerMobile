@@ -81,13 +81,9 @@ const HotelDetailModal = ({ visible, hotel, onClose }: HotelDetailModalProps) =>
 
   // Ana fotoğrafı kontrol et ve ekle
   if (displayHotel.imageUrl && isValidUrl(displayHotel.imageUrl)) {
-    console.log(`Ana fotoğraf URL'si geçerli: ${displayHotel.imageUrl}`);
     allImages.push({ url: displayHotel.imageUrl });
   } else if (displayHotel.hotelImageUrl && isValidUrl(displayHotel.hotelImageUrl)) {
-    console.log(`Alternatif ana fotoğraf URL'si geçerli: ${displayHotel.hotelImageUrl}`);
     allImages.push({ url: displayHotel.hotelImageUrl });
-  } else {
-    console.log('Ana fotoğraf URL\'si geçersiz veya bulunamadı');
   }
 
   // Add additional images if available

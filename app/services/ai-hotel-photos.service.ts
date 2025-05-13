@@ -154,7 +154,6 @@ const AIHotelPhotosService = {
 
             // Eğer zaten yeterli fotoğraf varsa, işlem yapma
             if (existingImages.length >= 5) {
-              console.log(`Otel zaten ${existingImages.length} fotoğrafa sahip, ek fotoğraf getirilmiyor`);
               return hotel;
             }
 
@@ -162,7 +161,6 @@ const AIHotelPhotosService = {
             const photoUrls = await this.fetchHotelPhotos(hotel.hotelName, city);
 
             if (photoUrls.length === 0) {
-              console.log(`${hotel.hotelName} için fotoğraf bulunamadı`);
               return hotel;
             }
 
@@ -190,7 +188,6 @@ const AIHotelPhotosService = {
             // AI tarafından önerilen otel olarak işaretle
             updatedHotel.isAIRecommended = true;
 
-            console.log(`${hotel.hotelName} için ${newImages.length} yeni fotoğraf eklendi`);
             return updatedHotel;
           } catch (error) {
             console.error(`${hotel.hotelName} için fotoğraf getirme hatası:`, error);
@@ -230,7 +227,6 @@ const AIHotelPhotosService = {
       );
 
       if (validExistingImages.length >= 10) {
-        console.log(`Otel zaten ${validExistingImages.length} geçerli fotoğrafa sahip, ek fotoğraf getirilmiyor`);
         return hotel;
       }
 
@@ -239,7 +235,6 @@ const AIHotelPhotosService = {
         const photoUrls = await this.fetchHotelPhotos(hotel.hotelName, city);
 
         if (photoUrls.length === 0) {
-          console.log(`${hotel.hotelName} için fotoğraf bulunamadı`);
           return hotel;
         }
 
@@ -267,14 +262,12 @@ const AIHotelPhotosService = {
         // AI tarafından önerilen otel olarak işaretle
         updatedHotel.isAIRecommended = true;
 
-        console.log(`${hotel.hotelName} için ${newImages.length} yeni fotoğraf eklendi`);
         return updatedHotel;
       } catch (fetchError) {
         console.error(`${hotel.hotelName} için fotoğraf getirme hatası:`, fetchError);
 
         // Alternatif yöntem: Doğrudan Google Places API'ye istek yap
         try {
-          console.log("Alternatif yöntem deneniyor...");
 
           // Basit bir arama sorgusu oluştur
           const searchQuery = `${hotel.hotelName} hotel ${city}`;
@@ -300,7 +293,6 @@ const AIHotelPhotosService = {
                 isAIRecommended: true
               };
 
-              console.log("Alternatif yöntemle 1 fotoğraf eklendi");
               return updatedHotel;
             }
           }
@@ -358,9 +350,6 @@ const AIHotelPhotosService = {
         return [];
       }
 
-      console.log(`OpenAI yanıtından ${hotelOptions.length} otel seçeneği çıkarıldı`);
-
-      // Otel seçeneklerini fotoğraflarla zenginleştir
       const enhancedHotels = await this.enhanceAIHotelOptions(hotelOptions, city);
 
       return enhancedHotels;

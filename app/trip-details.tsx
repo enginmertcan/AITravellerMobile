@@ -93,7 +93,6 @@ export default function TripDetailsScreen() {
           const [day, month, year] = tripData.startDate.split('/').map(Number);
           // UTC kullanarak tarih oluştur - artık gün ekleme yok
           startDate = new Date(Date.UTC(year, month - 1, day));
-          console.log('Parsed date (DD/MM/YYYY):', startDate.toISOString());
         } else {
           // "30 Nisan 2025" gibi formatlar için
           const dateParts = tripData.startDate.split(' ');
@@ -103,7 +102,6 @@ export default function TripDetailsScreen() {
           const year = parseInt(dateParts[2], 10);
           // UTC kullanarak tarih oluştur - artık gün ekleme yok
           startDate = new Date(Date.UTC(year, month, day));
-          console.log('Parsed date (DD Ay YYYY):', startDate.toISOString());
         }
 
         // Tarih geçerli değilse hata ver
@@ -111,7 +109,6 @@ export default function TripDetailsScreen() {
           throw new Error('Geçersiz tarih formatı');
         }
 
-        console.log('Final start date for calendar:', startDate.toISOString());
       } catch (error) {
         console.error('Tarih parse hatası:', error);
         Alert.alert(
@@ -148,12 +145,9 @@ export default function TripDetailsScreen() {
         }
       }
 
-      console.log('Duration days:', durationDays);
-
       // Bitiş tarihini hesapla
       const endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + durationDays);
-      console.log('End date for calendar:', endDate.toISOString());
 
       // Varsayılan takvimi al
       const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
@@ -215,11 +209,8 @@ export default function TripDetailsScreen() {
       try {
         const parsedItinerary = safeParseJSON(plan.itinerary);
         if (parsedItinerary) {
-          console.log('Seçilen plan itinerary başarıyla parse edildi');
-
           // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
           if (parsedItinerary.visaInfo && (!plan.visaInfo || Object.keys(plan.visaInfo).length === 0)) {
-            console.log('visaInfo alanı itinerary\'den çıkarılıyor (selectPlan)');
             plan.visaInfo = parsedItinerary.visaInfo;
 
             // Ayrıca eski format alanlarını da doldur
@@ -235,7 +226,6 @@ export default function TripDetailsScreen() {
           }
 
           if (parsedItinerary.culturalDifferences) {
-            console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (selectPlan)');
 
             // Eğer string ise, objeye dönüştürmeyi dene
             if (typeof parsedItinerary.culturalDifferences === 'string') {
@@ -308,13 +298,9 @@ export default function TripDetailsScreen() {
 
     // Fotoğrafları parse et
     try {
-      console.log('Fotoğraflar yükleniyor (selectPlan)...');
-      console.log('tripPhotos tipi:', typeof plan.tripPhotos);
-
       if (plan.tripPhotos) {
         // Fotoğrafları parse et
         const photos = parseTripPhotos(plan.tripPhotos);
-        console.log(`Parse edilen fotoğraf sayısı: ${photos.length}`);
 
         if (photos.length > 0) {
           // Fotoğraf referanslarını kontrol et ve gerekirse verileri getir
@@ -323,11 +309,9 @@ export default function TripDetailsScreen() {
               // Eğer fotoğrafın imageRef'i varsa ve imageData yoksa
               if (photo.imageRef && !photo.imageData && !photo.imageUrl) {
                 try {
-                  console.log(`Referans ile fotoğraf getiriliyor: ${photo.imageRef}`);
                   // Firestore'dan fotoğraf verisini getir
                   const photoDoc = await FirebaseService.TravelPlan.getPhotoById(photo.imageRef);
                   if (photoDoc && photoDoc.imageData) {
-                    console.log(`Fotoğraf verisi başarıyla getirildi: ${photo.id}`);
                     return {
                       ...photo,
                       imageData: photoDoc.imageData
@@ -337,22 +321,17 @@ export default function TripDetailsScreen() {
                   console.error('Fotoğraf verisi getirme hatası:', error);
                 }
               } else if (photo.imageData) {
-                console.log(`Fotoğraf zaten base64 verisi içeriyor: ${photo.id}`);
               } else if (photo.imageUrl) {
-                console.log(`Fotoğraf URL içeriyor: ${photo.id}`);
               }
               return photo;
             })
           );
 
           setTripPhotos(updatedPhotos);
-          console.log(`${updatedPhotos.length} fotoğraf yüklendi (selectPlan)`);
         } else {
-          console.log('Parse edilen fotoğraf bulunamadı (selectPlan)');
           setTripPhotos([]);
         }
       } else {
-        console.log('Plan içinde tripPhotos alanı bulunamadı (selectPlan)');
         setTripPhotos([]);
       }
     } catch (error) {
@@ -367,7 +346,6 @@ export default function TripDetailsScreen() {
     if (processedPlan.visaInfo && typeof processedPlan.visaInfo === 'string') {
       try {
         processedPlan.visaInfo = safeParseJSON(processedPlan.visaInfo);
-        console.log('Vize bilgileri string formatından objeye dönüştürüldü');
       } catch (error) {
         console.error('Vize bilgileri parse hatası:', error);
       }
@@ -375,15 +353,12 @@ export default function TripDetailsScreen() {
 
     // tripSummary alanını kontrol et ve eksikse oluştur
     if (!processedPlan.tripSummary || typeof processedPlan.tripSummary === 'string' || Object.keys(processedPlan.tripSummary).length === 0) {
-      console.log('tripSummary alanı eksik veya string formatında, yeni oluşturuluyor...');
-
       // String formatındaysa parse etmeyi dene
       if (typeof processedPlan.tripSummary === 'string') {
         try {
           const parsedSummary = safeParseJSON(processedPlan.tripSummary);
           if (parsedSummary) {
             processedPlan.tripSummary = parsedSummary;
-            console.log('tripSummary string formatından objeye dönüştürüldü');
           } else {
             // Parse edilemezse boş bir obje oluştur
             processedPlan.tripSummary = { duration: "", travelers: "", budget: "" };
@@ -455,15 +430,12 @@ export default function TripDetailsScreen() {
         travelers: travelersValue,
         budget: budgetValue
       };
-
-      console.log('Yeni tripSummary oluşturuldu:', processedPlan.tripSummary);
     }
 
     // Kültürel farklılıkları kontrol et
     if (processedPlan.culturalDifferences && typeof processedPlan.culturalDifferences === 'string') {
       try {
         processedPlan.culturalDifferences = safeParseJSON(processedPlan.culturalDifferences);
-        console.log('Kültürel farklılıklar string formatından objeye dönüştürüldü');
       } catch (error) {
         console.error('Kültürel farklılıklar parse hatası:', error);
       }
@@ -473,19 +445,17 @@ export default function TripDetailsScreen() {
     if (processedPlan.localTips && typeof processedPlan.localTips === 'string') {
       try {
         processedPlan.localTips = safeParseJSON(processedPlan.localTips);
-        console.log('Yerel ipuçları string formatından objeye dönüştürüldü');
       } catch (error) {
         console.error('Yerel ipuçları parse hatası:', error);
       }
     }
 
     // UI'ı güncelle
-    console.log('UI güncelleniyor...');
     setTripData(processedPlan);
     setShowPlansList(false); // Detay görünümüne geç
 
     // Hava durumu verilerini getir
-    fetchWeatherData(processedPlan);
+    fetchWeatherData(processedPlan); // Hava durumu verilerini getir
 
     // URL'i güncelle ama sayfayı yeniden yükleme
     if (processedPlan.id) {
@@ -496,13 +466,11 @@ export default function TripDetailsScreen() {
   // Hava durumu verilerini getir
   const fetchWeatherData = async (plan: Partial<TravelPlan>) => {
     if (!plan.destination) {
-      console.log('Hava durumu getirilemedi: Destinasyon bilgisi yok');
       return;
     }
 
     setWeatherLoading(true);
     try {
-      console.log('Hava durumu verileri getiriliyor...');
       // Destinasyon bilgisini al
       const destination = plan.destination;
 
@@ -521,26 +489,6 @@ export default function TripDetailsScreen() {
       } else {
         tripDate = new Date(); // Bugünün tarihi
       }
-
-      console.log('Tarih bilgisi:', {
-        startDate: plan.startDate,
-        parsedDate: tripDate.toISOString(),
-        isValid: !isNaN(tripDate.getTime())
-      });
-
-      // Plan verilerini debug için logla
-      console.log('Plan verileri:', {
-        destination: plan.destination,
-        startDate: plan.startDate,
-        duration: plan.duration,
-        days: plan.days,
-        tripSummary: plan.tripSummary ? {
-          duration: plan.tripSummary.duration,
-          travelers: plan.tripSummary.travelers,
-          budget: plan.tripSummary.budget
-        } : null,
-        itineraryType: typeof plan.itinerary
-      });
 
       // Konaklama süresi (gün sayısı)
       let durationDays = 1;
@@ -594,7 +542,6 @@ export default function TripDetailsScreen() {
             if (parsedItinerary) {
               // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
               if (parsedItinerary.visaInfo && (!plan.visaInfo || Object.keys(plan.visaInfo).length === 0)) {
-                console.log('visaInfo alanı itinerary\'den çıkarılıyor (fetchWeatherData)');
                 plan.visaInfo = parsedItinerary.visaInfo;
 
                 // Ayrıca eski format alanlarını da doldur
@@ -610,8 +557,6 @@ export default function TripDetailsScreen() {
               }
 
               if (parsedItinerary.culturalDifferences) {
-                console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (fetchWeatherData)');
-
                 // Eğer string ise, objeye dönüştürmeyi dene
                 if (typeof parsedItinerary.culturalDifferences === 'string') {
                   try {
@@ -653,7 +598,6 @@ export default function TripDetailsScreen() {
               }
 
               if (parsedItinerary.localTips && !plan.localTips) {
-                console.log('localTips alanı itinerary\'den çıkarılıyor (fetchWeatherData)');
                 plan.localTips = parsedItinerary.localTips;
 
                 // Ayrıca eski format alanlarını da doldur
@@ -686,12 +630,8 @@ export default function TripDetailsScreen() {
         }
       }
 
-      console.log('Tespit edilen konaklama süresi:', durationDays, 'gün');
-
       // En az 1, en fazla 15 gün olacak şekilde sınırla
       durationDays = Math.max(1, Math.min(15, durationDays));
-
-      console.log(`Hava durumu getiriliyor: ${destination}, Tarih: ${tripDate.toISOString().split('T')[0]}, Süre: ${durationDays} gün`);
 
       // Hava durumu verilerini getir
       const forecast = await getWeatherForecast(destination, tripDate, durationDays);
@@ -713,18 +653,14 @@ export default function TripDetailsScreen() {
 
   // Sayfa yüklenirken veya yenilenirken çağrılan fonksiyon
   const loadData = async () => {
-    console.log('loadData çağrıldı, planId:', planId);
     try {
       setLoading(true);
 
       // Önce kullanıcının tüm planlarını çekelim
       if (userId) {
-        console.log('Kullanıcının tüm seyahat planları çekiliyor...');
         const plans = await FirebaseService.TravelPlan.getUserTravelPlans(userId);
 
         if (plans && plans.length > 0) {
-          console.log(`${plans.length} seyahat planı bulundu.`);
-          // Her planın itinerary alanını parse et
           const parsedPlans = plans.map(plan => {
             if (plan.itinerary && typeof plan.itinerary === 'string') {
               try {
@@ -732,7 +668,6 @@ export default function TripDetailsScreen() {
                 if (parsedItinerary) {
                   // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
                   if (parsedItinerary.visaInfo && (!plan.visaInfo || Object.keys(plan.visaInfo).length === 0)) {
-                    console.log('visaInfo alanı itinerary\'den çıkarılıyor (loadData)');
                     plan.visaInfo = parsedItinerary.visaInfo;
 
                     // Ayrıca eski format alanlarını da doldur
@@ -748,9 +683,6 @@ export default function TripDetailsScreen() {
                   }
 
                   if (parsedItinerary.culturalDifferences) {
-                    console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (loadData)');
-
-                    // Eğer string ise, objeye dönüştürmeyi dene
                     if (typeof parsedItinerary.culturalDifferences === 'string') {
                       try {
                         const culturalObj = safeParseJSON(parsedItinerary.culturalDifferences);
@@ -791,7 +723,6 @@ export default function TripDetailsScreen() {
                   }
 
                   if (parsedItinerary.localTips && !plan.localTips) {
-                    console.log('localTips alanı itinerary\'den çıkarılıyor (loadData)');
                     plan.localTips = parsedItinerary.localTips;
 
                     // Ayrıca eski format alanlarını da doldur
@@ -827,7 +758,6 @@ export default function TripDetailsScreen() {
           if (planId) {
             const selectedPlan = parsedPlans.find(p => p.id === planId);
             if (selectedPlan) {
-              console.log('Plan bulundu ve seçildi:', planId);
               setTripData(selectedPlan);
               setShowPlansList(false);
               fetchWeatherData(selectedPlan); // Hava durumu verilerini getir
@@ -837,21 +767,17 @@ export default function TripDetailsScreen() {
               await loadSinglePlan(planId);
             }
           } else {
-            // Plan ID yoksa liste görünümünü göster
             setShowPlansList(true);
           }
         } else {
-          console.log('Kullanıcı için plan bulunamadı');
           setUserPlans([]);
           setShowPlansList(true);
 
-          // Yine de belirli bir plan ID'si varsa, onu yüklemeyi dene
           if (planId) {
             await loadSinglePlan(planId);
           }
         }
       } else {
-        console.log('Kullanıcı ID bulunamadı');
         setUserPlans([]);
         setShowPlansList(true);
 
@@ -873,34 +799,22 @@ export default function TripDetailsScreen() {
   // Tek bir planı ID'ye göre yükle
   const loadSinglePlan = async (id: string) => {
     try {
-      console.log('Firebase\'den belirli seyahat planı çekiliyor, ID:', id);
-      console.log('Mevcut fotoğraf sayısı:', tripPhotos.length);
-
-      // Yükleme durumunu aktif et
       setLoading(true);
 
-      // Önce mevcut fotoğrafları temizle
       setTripPhotos([]);
 
       // Plan verilerini getir
-      console.log('Firebase.TravelPlan.getTravelPlanById çağrılıyor...');
       const plan = await FirebaseService.TravelPlan.getTravelPlanById(id);
-      console.log('Plan verileri alındı, içerik kontrolü yapılıyor...');
 
       if (plan && Object.keys(plan).length > 0) {
-        console.log('Plan başarıyla çekildi, alanlar:', Object.keys(plan).join(', '));
 
         // İtinerary alanını parse et
         if (plan.itinerary && typeof plan.itinerary === 'string') {
           try {
-            console.log('İtinerary string formatında, parse ediliyor...');
             const parsedItinerary = safeParseJSON(plan.itinerary);
             if (parsedItinerary) {
-              console.log('İtinerary başarıyla parse edildi');
-
               // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
               if (parsedItinerary.visaInfo && (!plan.visaInfo || Object.keys(plan.visaInfo).length === 0)) {
-                console.log('visaInfo alanı itinerary\'den çıkarılıyor');
                 plan.visaInfo = parsedItinerary.visaInfo;
 
                 // Ayrıca eski format alanlarını da doldur
@@ -916,7 +830,6 @@ export default function TripDetailsScreen() {
               }
 
               if (parsedItinerary.culturalDifferences) {
-                console.log('culturalDifferences alanı itinerary\'den çıkarılıyor');
 
                 // Eğer string ise, objeye dönüştürmeyi dene
                 if (typeof parsedItinerary.culturalDifferences === 'string') {
@@ -959,7 +872,6 @@ export default function TripDetailsScreen() {
               }
 
               if (parsedItinerary.localTips && !plan.localTips) {
-                console.log('localTips alanı itinerary\'den çıkarılıyor');
                 plan.localTips = parsedItinerary.localTips;
 
                 // Ayrıca eski format alanlarını da doldur
@@ -988,18 +900,12 @@ export default function TripDetailsScreen() {
             console.error('İtinerary parse hatası:', parseError);
           }
         } else {
-          console.log('İtinerary string formatında değil veya mevcut değil:', typeof plan.itinerary);
         }
 
         // Fotoğrafları parse et
         try {
-          console.log('Fotoğraflar yükleniyor...');
-          console.log('tripPhotos tipi:', typeof plan.tripPhotos);
-
           if (plan.tripPhotos) {
-            // Fotoğrafları parse et
             const photos = parseTripPhotos(plan.tripPhotos);
-            console.log(`Parse edilen fotoğraf sayısı: ${photos.length}`);
 
             if (photos.length > 0) {
               // Fotoğraf referanslarını kontrol et ve gerekirse verileri getir
@@ -1008,11 +914,9 @@ export default function TripDetailsScreen() {
                   // Eğer fotoğrafın imageRef'i varsa ve imageData yoksa
                   if (photo.imageRef && !photo.imageData && !photo.imageUrl) {
                     try {
-                      console.log(`Referans ile fotoğraf getiriliyor: ${photo.imageRef}`);
                       // Firestore'dan fotoğraf verisini getir
                       const photoDoc = await FirebaseService.TravelPlan.getPhotoById(photo.imageRef);
                       if (photoDoc && photoDoc.imageData) {
-                        console.log(`Fotoğraf verisi başarıyla getirildi: ${photo.id}`);
                         return {
                           ...photo,
                           imageData: photoDoc.imageData
@@ -1022,22 +926,17 @@ export default function TripDetailsScreen() {
                       console.error('Fotoğraf verisi getirme hatası:', error);
                     }
                   } else if (photo.imageData) {
-                    console.log(`Fotoğraf zaten base64 verisi içeriyor: ${photo.id}`);
                   } else if (photo.imageUrl) {
-                    console.log(`Fotoğraf URL içeriyor: ${photo.id}`);
                   }
                   return photo;
                 })
               );
 
               setTripPhotos(updatedPhotos);
-              console.log(`${updatedPhotos.length} fotoğraf yüklendi`);
             } else {
-              console.log('Parse edilen fotoğraf bulunamadı');
               setTripPhotos([]);
             }
           } else {
-            console.log('Plan içinde tripPhotos alanı bulunamadı');
             setTripPhotos([]);
           }
         } catch (error) {
@@ -1046,12 +945,6 @@ export default function TripDetailsScreen() {
         }
 
         // Veri işleme tamamlandı, şimdi UI'ı güncelleyelim
-        console.log('Veri işleme tamamlandı, UI güncelleniyor...');
-
-        // Önce veri yapısını kontrol edelim
-        console.log('Vize bilgileri:', plan.visaInfo ? 'Mevcut' : 'Yok');
-        console.log('Kültürel farklılıklar:', plan.culturalDifferences ? 'Mevcut' : 'Yok');
-        console.log('Yerel ipuçları:', plan.localTips ? 'Mevcut' : 'Yok');
 
         // Veri yapısını güncelleyelim
         const processedPlan = { ...plan };
@@ -1060,7 +953,6 @@ export default function TripDetailsScreen() {
         if (processedPlan.visaInfo && typeof processedPlan.visaInfo === 'string') {
           try {
             processedPlan.visaInfo = safeParseJSON(processedPlan.visaInfo);
-            console.log('Vize bilgileri string formatından objeye dönüştürüldü');
           } catch (error) {
             console.error('Vize bilgileri parse hatası:', error);
           }
@@ -1068,15 +960,11 @@ export default function TripDetailsScreen() {
 
         // tripSummary alanını kontrol et ve eksikse oluştur
         if (!processedPlan.tripSummary || typeof processedPlan.tripSummary === 'string' || Object.keys(processedPlan.tripSummary).length === 0) {
-          console.log('tripSummary alanı eksik veya string formatında, yeni oluşturuluyor...');
-
-          // String formatındaysa parse etmeyi dene
           if (typeof processedPlan.tripSummary === 'string') {
             try {
               const parsedSummary = safeParseJSON(processedPlan.tripSummary);
               if (parsedSummary) {
                 processedPlan.tripSummary = parsedSummary;
-                console.log('tripSummary string formatından objeye dönüştürüldü');
               } else {
                 // Parse edilemezse boş bir obje oluştur
                 processedPlan.tripSummary = { duration: "", travelers: "", budget: "" };
@@ -1148,17 +1036,12 @@ export default function TripDetailsScreen() {
             travelers: travelersValue,
             budget: budgetValue
           };
-
-          console.log('Yeni tripSummary oluşturuldu:', processedPlan.tripSummary);
         }
 
         // Kültürel farklılıkları kontrol et
         if (processedPlan.culturalDifferences && typeof processedPlan.culturalDifferences === 'string') {
           try {
-            console.log('Kültürel farklılıklar string formatı:', processedPlan.culturalDifferences);
             processedPlan.culturalDifferences = safeParseJSON(processedPlan.culturalDifferences);
-            console.log('Kültürel farklılıklar string formatından objeye dönüştürüldü:',
-              JSON.stringify(processedPlan.culturalDifferences));
           } catch (error) {
             console.error('Kültürel farklılıklar parse hatası:', error);
           }
@@ -1172,10 +1055,7 @@ export default function TripDetailsScreen() {
         // Yerel ipuçlarını kontrol et
         if (processedPlan.localTips && typeof processedPlan.localTips === 'string') {
           try {
-            console.log('Yerel ipuçları string formatı:', processedPlan.localTips);
             processedPlan.localTips = safeParseJSON(processedPlan.localTips);
-            console.log('Yerel ipuçları string formatından objeye dönüştürüldü:',
-              JSON.stringify(processedPlan.localTips));
           } catch (error) {
             console.error('Yerel ipuçları parse hatası:', error);
           }
@@ -1187,21 +1067,17 @@ export default function TripDetailsScreen() {
         }
 
         // UI'ı güncelle
-        console.log('UI güncelleniyor...');
         setTripData(processedPlan);
         setShowPlansList(false); // Detay görünümünü göster
 
         // Hava durumu verilerini getir
-        console.log('Hava durumu verileri getiriliyor...');
         fetchWeatherData(processedPlan);
 
         // Yükleme durumunu kapat
         setLoading(false);
 
-        console.log('Plan yükleme işlemi başarıyla tamamlandı');
         return true;
       } else {
-        console.error('Plan bulunamadı veya boş:', id);
         setTripData(DEFAULT_TRAVEL_PLAN);
         setShowPlansList(true); // Liste görünümüne dön
         setLoading(false);
@@ -1220,11 +1096,8 @@ export default function TripDetailsScreen() {
   useEffect(() => {
     // Immediate function to allow async/await
     const fetchData = async () => {
-      console.log('useEffect triggered, loading data...');
-
       // Eğer planId varsa, doğrudan o planı yükle
       if (planId) {
-        console.log(`Belirli bir plan yükleniyor, ID: ${planId}`);
         await loadSinglePlan(planId);
       } else {
         // Yoksa tüm planları yükle
@@ -1255,19 +1128,14 @@ export default function TripDetailsScreen() {
 
   // Sayfayı manuel olarak yenilemek için
   const handleRefresh = async () => {
-    console.log('Sayfa yenileniyor...');
-
-    // Yükleme durumunu aktif et
     setLoading(true);
 
     try {
       if (!showPlansList && tripData && tripData.id) {
         // Detay görünümündeyse, mevcut planı yeniden yükle
-        console.log(`Mevcut plan yeniden yükleniyor, ID: ${tripData.id}`);
         await loadSinglePlan(tripData.id);
       } else {
         // Liste görünümündeyse, tüm planları yeniden yükle
-        console.log('Tüm planlar yeniden yükleniyor');
         await loadData();
       }
     } catch (error) {
@@ -1594,7 +1462,7 @@ export default function TripDetailsScreen() {
             </View>
           )}
 
-         {/* Temel Seyahat Bilgileri */}
+          {/* Temel Seyahat Bilgileri */}
           <View style={styles.section}>
             <View style={styles.sectionTitleContainer}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -1643,11 +1511,9 @@ export default function TripDetailsScreen() {
 
                 // Ek fotoğrafları getir
                 if (!hotel.additionalImages || !Array.isArray(hotel.additionalImages) || hotel.additionalImages.length < 5) {
-                  console.log(`Otel için ek fotoğraflar getiriliyor: ${hotel.hotelName}, ${city}`);
 
                   // OpenAI tarafından önerilen oteller için AIHotelPhotosService kullan
                   if (hotel.isAIRecommended || hotel.hotelName.includes('AI Recommended')) {
-                    console.log(`AI tarafından önerilen otel için fotoğraflar getiriliyor: ${hotel.hotelName}`);
                     const updatedHotel = await AIHotelPhotosService.enhanceHotelWithPhotos(hotel, city);
                     setSelectedHotel(updatedHotel);
                   } else {
@@ -2039,20 +1905,15 @@ export default function TripDetailsScreen() {
                        tripData.itinerary.itinerary &&
                        Array.isArray(tripData.itinerary.itinerary)) {
                 itineraryToUse = tripData.itinerary.itinerary;
-                console.log('İtinerary objesi içindeki itinerary array kullanılıyor');
               }
               // String ise parse etmeyi dene
               else if (typeof tripData.itinerary === 'string') {
                 try {
-                  console.log('İtinerary string formatında, parse ediliyor...');
                   const parsedItinerary = safeParseJSON(tripData.itinerary);
 
                   if (parsedItinerary) {
-                    console.log('İtinerary başarıyla parse edildi, format kontrol ediliyor...');
-
                     // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
                     if (parsedItinerary.visaInfo && (!tripData.visaInfo || Object.keys(tripData.visaInfo).length === 0)) {
-                      console.log('visaInfo alanı itinerary\'den çıkarılıyor (itineraryToUse)');
                       tripData.visaInfo = parsedItinerary.visaInfo;
 
                       // Ayrıca eski format alanlarını da doldur
@@ -2068,8 +1929,6 @@ export default function TripDetailsScreen() {
                     }
 
                     if (parsedItinerary.culturalDifferences) {
-                      console.log('culturalDifferences alanı itinerary\'den çıkarılıyor (itineraryToUse)');
-
                       // Eğer string ise, objeye dönüştürmeyi dene
                       if (typeof parsedItinerary.culturalDifferences === 'string') {
                         try {
@@ -2089,16 +1948,13 @@ export default function TripDetailsScreen() {
                               tripData.socialNormsDifferences = culturalObj.socialNormsDifferences;
                             }
                           } else {
-                            console.log('culturalDifferences string olarak kullanılıyor');
                             tripData.culturalDifferences = parsedItinerary.culturalDifferences;
                           }
                         } catch (error) {
                           console.error('culturalDifferences parse hatası:', error);
-                          console.log('culturalDifferences string olarak kullanılıyor (parse hatası)');
                           tripData.culturalDifferences = parsedItinerary.culturalDifferences;
                         }
                       } else if (typeof parsedItinerary.culturalDifferences === 'object') {
-                        console.log('culturalDifferences obje olarak kullanılıyor');
                         tripData.culturalDifferences = parsedItinerary.culturalDifferences;
 
                         // Ayrıca eski format alanlarını da doldur
@@ -2115,14 +1971,12 @@ export default function TripDetailsScreen() {
                     }
 
                     if (parsedItinerary.localTips) {
-                      console.log('localTips alanı itinerary\'den çıkarılıyor (itineraryToUse)');
 
                       // Eğer string ise, objeye dönüştürmeyi dene
                       if (typeof parsedItinerary.localTips === 'string') {
                         try {
                           const localTipsObj = safeParseJSON(parsedItinerary.localTips);
                           if (localTipsObj && typeof localTipsObj === 'object') {
-                            console.log('localTips string içinden obje olarak parse edildi');
                             tripData.localTips = localTipsObj;
 
                             // Ayrıca eski format alanlarını da doldur
@@ -2142,16 +1996,12 @@ export default function TripDetailsScreen() {
                               tripData.healthcareInfo = localTipsObj.healthcareInfo;
                             }
                           } else {
-                            console.log('localTips string olarak kullanılıyor');
                             tripData.localTips = parsedItinerary.localTips;
                           }
                         } catch (error) {
-                          console.error('localTips parse hatası:', error);
-                          console.log('localTips string olarak kullanılıyor (parse hatası)');
                           tripData.localTips = parsedItinerary.localTips;
                         }
                       } else if (typeof parsedItinerary.localTips === 'object') {
-                        console.log('localTips obje olarak kullanılıyor');
                         tripData.localTips = parsedItinerary.localTips;
 
                         // Ayrıca eski format alanlarını da doldur
@@ -2176,14 +2026,12 @@ export default function TripDetailsScreen() {
                     // Direkt array ise kullan
                     if (Array.isArray(parsedItinerary)) {
                       itineraryToUse = parsedItinerary;
-                      console.log('Parse edilen itinerary array olarak kullanılıyor');
                     }
                     // Obje içinde itinerary array'i varsa onu kullan
                     else if (typeof parsedItinerary === 'object' &&
                              parsedItinerary.itinerary &&
                              Array.isArray(parsedItinerary.itinerary)) {
                       itineraryToUse = parsedItinerary.itinerary;
-                      console.log('Parse edilen itinerary objesi içindeki itinerary array kullanılıyor');
                     }
                   } else {
                     console.error('İtinerary parse edilemedi');
@@ -2373,7 +2221,6 @@ export default function TripDetailsScreen() {
               try {
                 // Önce JSON olarak parse etmeyi dene
                 culturalDifferencesData = safeParseJSON(tripData.culturalDifferences);
-                console.log('culturalDifferences JSON olarak parse edildi');
                 hasCulturalData = true;
               } catch (error) {
                 console.error('culturalDifferences parse hatası:', error);
@@ -2386,10 +2233,8 @@ export default function TripDetailsScreen() {
             else if (tripData.culturalDifferences && typeof tripData.culturalDifferences === 'object') {
               culturalDifferencesData = tripData.culturalDifferences;
               hasCulturalData = true;
-              console.log('culturalDifferences obje olarak kullanılıyor:', JSON.stringify(culturalDifferencesData));
 
               // Objenin içeriğini kontrol et
-              console.log('culturalDifferences içeriği:');
               Object.keys(culturalDifferencesData).forEach(key => {
                 console.log(`- ${key}: ${culturalDifferencesData[key]}`);
               });
@@ -2590,12 +2435,9 @@ export default function TripDetailsScreen() {
             else if (tripData.localTips && typeof tripData.localTips === 'object') {
               localTipsData = tripData.localTips;
               hasLocalTipsData = true;
-              console.log('localTips obje olarak kullanılıyor:', JSON.stringify(localTipsData));
 
               // Objenin içeriğini kontrol et
-              console.log('localTips içeriği:');
               Object.keys(localTipsData).forEach(key => {
-                console.log(`- ${key}: ${typeof localTipsData[key] === 'object' ? JSON.stringify(localTipsData[key]) : localTipsData[key]}`);
               });
             }
 
@@ -2898,7 +2740,9 @@ export default function TripDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    ...AppStyles.layout.safeContainer,
+    flex: 1,
+    backgroundColor: AppStyles.colors.dark.background,
+    padding: 16,
   },
   header: {
     padding: AppStyles.spacing.lg,
@@ -3176,6 +3020,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: AppStyles.colors.dark.background,
     padding: 20,
   },
   loadingText: {

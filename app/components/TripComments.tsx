@@ -37,16 +37,11 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
     setLoading(true);
     try {
-      console.log(`Yorumlar yükleniyor, travelPlanId: ${travelPlanId}`);
-
       // 1. Önce yorumları getir
       const commentsData = await FirebaseService.Comment.getCommentsByTravelPlanId(travelPlanId);
-      console.log(`${commentsData.length} yorum yüklendi`);
 
       // 2. Sonra yorum fotoğraflarını getir
-      console.log(`Yorum fotoğrafları getiriliyor...`);
-      const commentPhotos = await FirebaseService.CommentPhoto.getPhotosByTravelPlanId(travelPlanId);
-      console.log(`${commentPhotos.length} yorum fotoğrafı bulundu`);
+        const commentPhotos = await FirebaseService.CommentPhoto.getPhotosByTravelPlanId(travelPlanId);
 
       // 3. Her yoruma ait fotoğrafları eşleştir
       if (commentPhotos.length > 0) {
@@ -55,17 +50,13 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
           const commentPhoto = commentPhotos.find(photo => photo.commentId === comment.id);
 
           if (commentPhoto) {
-            console.log(`Yorum ${comment.id} için fotoğraf bulundu`);
-
             // Fotoğraf verilerini yoruma ekle
             if (commentPhoto.photoData) {
               comment.photoData = commentPhoto.photoData;
-              console.log(`Fotoğraf verisi eklendi, uzunluk: ${commentPhoto.photoData.length}`);
             }
 
             if (commentPhoto.photoLocation) {
               comment.photoLocation = commentPhoto.photoLocation;
-              console.log(`Fotoğraf konum bilgisi eklendi: ${commentPhoto.photoLocation}`);
             }
           }
         }
@@ -73,8 +64,6 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
       // Yorum fotoğraflarını kontrol et
       commentsData.forEach((comment, index) => {
-        console.log(`Yorum ${index + 1} - ID: ${comment.id}`);
-        console.log(`  Fotoğraf var mı: ${comment.photoUrl || comment.photoData ? 'Evet' : 'Hayır'}`);
         if (comment.photoUrl) {
           console.log(`  photoUrl: ${comment.photoUrl.substring(0, 30)}...`);
         }

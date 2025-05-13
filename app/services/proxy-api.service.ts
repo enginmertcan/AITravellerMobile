@@ -61,12 +61,10 @@ const ProxyApiService = {
 
       // Alternatif proxy dene
       try {
-        console.log("Alternatif proxy deneniyor...");
         const searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}`;
         const response = await fetch(`${ALTERNATIVE_PROXIES[0]}${encodeURIComponent(searchUrl)}`);
         return await response.json();
       } catch (altError) {
-        console.error("Alternatif proxy hatası:", altError);
 
         // Hata durumunda boş bir sonuç döndür
         return { results: [] };
@@ -96,7 +94,6 @@ const ProxyApiService = {
           return data;
         }
       } catch (directError) {
-        console.log("Doğrudan istek başarısız, proxy deneniyor...", directError);
       }
 
       // Proxy üzerinden istek yap
@@ -115,12 +112,10 @@ const ProxyApiService = {
 
       // Alternatif proxy dene
       try {
-        console.log("Alternatif proxy deneniyor...");
         const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
         const response = await fetch(`${ALTERNATIVE_PROXIES[0]}${encodeURIComponent(detailsUrl)}`);
         return await response.json();
       } catch (altError) {
-        console.error("Alternatif proxy hatası:", altError);
 
         // Hata durumunda boş bir sonuç döndür
         return { result: { photos: [] } };

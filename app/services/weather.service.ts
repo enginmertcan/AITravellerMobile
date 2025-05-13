@@ -83,20 +83,17 @@ function validateWeatherData(data: any): boolean {
 export async function getWeatherForecast(location: string, startDate: Date, days: number = 1): Promise<WeatherData[]> {
   try {
     if (!location || !startDate) {
-      console.warn('Invalid location or date provided');
       return [fallbackWeatherData];
     }
 
     const formattedLocation = formatLocation(location);
     if (!formattedLocation) {
-      console.warn('Location formatting failed');
       return [fallbackWeatherData];
     }
 
     // Tarih geçerli mi kontrol et
     if (isNaN(startDate.getTime())) {
-      console.warn('Invalid date provided:', startDate);
-      startDate = new Date(); // Geçersiz tarih ise bugünün tarihini kullan
+      return [fallbackWeatherData];
     }
 
     // Tarih aralığını hesapla
@@ -105,8 +102,6 @@ export async function getWeatherForecast(location: string, startDate: Date, days
 
     const formattedStartDate = startDate.toISOString().split('T')[0];
     const formattedEndDate = endDate.toISOString().split('T')[0];
-
-    console.log(`Fetching weather for ${formattedLocation} from ${formattedStartDate} to ${formattedEndDate} (${days} days)`);
 
     // API çağrısını yap - tarih aralığı için
     const response = await fetch(
@@ -121,7 +116,6 @@ export async function getWeatherForecast(location: string, startDate: Date, days
 
     // HTTP durumunu kontrol et
     if (!response.ok) {
-      console.warn(`Weather API returned status ${response.status}`);
       return [fallbackWeatherData];
     }
 
@@ -129,7 +123,6 @@ export async function getWeatherForecast(location: string, startDate: Date, days
 
     // Veri doğrulaması yap
     if (!validateWeatherData(data)) {
-      console.warn('Invalid weather data structure received');
       return [fallbackWeatherData];
     }
 
@@ -155,11 +148,9 @@ export async function getWeatherForecast(location: string, startDate: Date, days
       };
     });
 
-    console.log(`${weatherData.length} günlük hava durumu verileri alındı`);
     return weatherData;
 
   } catch (error) {
-    console.error('Error fetching weather data:', error);
     return [fallbackWeatherData];
   }
 }

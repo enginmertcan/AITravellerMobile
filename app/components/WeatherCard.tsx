@@ -4,12 +4,15 @@ import { ThemedText } from '@/components/ThemedText';
 import { WeatherData } from '../services/weather.service';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+// Define the type for MaterialCommunityIcons names
+type MaterialCommunityIconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
 interface WeatherCardProps {
   weatherData: WeatherData[];
 }
 
 // Weather icon mapping
-const weatherIconMap: { [key: string]: string } = {
+const weatherIconMap: { [key: string]: MaterialCommunityIconName } = {
   '01d': 'weather-sunny',
   '01n': 'weather-night',
   '02d': 'weather-partly-cloudy',
@@ -114,8 +117,8 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
   };
 
   // Get icon name from weather code
-  const getIconName = (iconCode: string) => {
-    return weatherIconMap[iconCode] || 'weather-partly-cloudy';
+  const getIconName = (iconCode: string): MaterialCommunityIconName => {
+    return weatherIconMap[iconCode] || 'weather-partly-cloudy'; // Ensure the default is also a valid name
   };
 
   return (
@@ -265,7 +268,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   temperature: {
-    fontSize: 32,
+    fontSize: 48,
     fontWeight: '700',
     color: '#fff',
     fontFamily: 'SpaceMono',
@@ -275,7 +278,7 @@ const styles = StyleSheet.create({
   },
   feelsLike: {
     color: '#999',
-    fontSize: 14,
+    fontSize: 18,
     fontFamily: 'SpaceMono',
     marginTop: 4,
   },

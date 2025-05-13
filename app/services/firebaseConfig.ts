@@ -23,11 +23,8 @@ let app: any = null;
 
 try {
   if (getApps().length === 0) {
-    console.log('Firebase: İlk kez başlatılıyor...');
     app = initializeApp(firebaseConfig);
-    console.log('Firebase: Başarıyla başlatıldı!');
   } else {
-    console.log('Firebase: Mevcut instance kullanılıyor...');
     app = getApp(); // Eğer zaten initialize edilmişse mevcut app'i kullan
   }
 
@@ -37,17 +34,14 @@ try {
     throw new Error('Firebase API anahtarı bulunamadı!');
   }
 } catch (error) {
-  console.error('Firebase başlatma hatası:', error);
   // Hata durumunda varsayılan bir uygulama oluşturmayı deneyelim
   if (!app && firebaseConfig.apiKey) {
-    console.log('Varsayılan firebase app oluşturuluyor...');
     app = initializeApp(firebaseConfig);
   }
 }
 
 // App önceden oluşturulduğundan emin olalım
 if (!app) {
-  console.log('Firebase: Acil durum - app oluşturuluyor');
   app = initializeApp(firebaseConfig);
 }
 

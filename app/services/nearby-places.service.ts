@@ -265,7 +265,6 @@ export const getNearbyPlaces = async (
     // Kullanılacak arama yarıçapı
     const currentRadius = retryCount > 0 ? Math.min(radius * (retryCount + 1), MAX_SEARCH_RADIUS) : radius;
 
-    console.log(`Arama yarıçapı: ${currentRadius} metre (${currentRadius/1000} km), Deneme: ${retryCount + 1}/${MAX_API_RETRIES + 1}`);
 
     // API URL oluştur
     // Daha iyi sonuçlar için rankby ve radius parametrelerini optimize edelim
@@ -290,7 +289,6 @@ export const getNearbyPlaces = async (
       url = `${API_ENDPOINTS.GOOGLE_PLACES}/nearbysearch/json?location=${location.latitude},${location.longitude}&radius=${currentRadius}&type=${type}&keyword=${keyword}&key=${apiKey}`;
     }
 
-    console.log('API isteği yapılıyor:', url.replace(apiKey, 'API_KEY_HIDDEN'));
 
     // API isteği yap
     const response = await fetch(url);
@@ -300,7 +298,6 @@ export const getNearbyPlaces = async (
 
       // Yeniden deneme kontrolü
       if (retryCount < MAX_API_RETRIES) {
-        console.log(`API isteği başarısız oldu. Yeniden deneniyor (${retryCount + 1}/${MAX_API_RETRIES})...`);
         return getNearbyPlaces(location, radius, type, retryCount + 1);
       }
 
@@ -309,18 +306,11 @@ export const getNearbyPlaces = async (
 
     const data = await response.json();
 
-    // API yanıtını kontrol et
-    console.log('Google Places API yanıtı alındı. Status:', data.status);
-
     // Detaylı hata ayıklama için
     if (data.results && data.results.length > 0) {
-      console.log(`${data.results.length} sonuç bulundu.`);
     } else {
-      console.log('Sonuç bulunamadı.');
-
       // Sonuç bulunamadıysa ve yeniden deneme hakkımız varsa, arama yarıçapını artırarak tekrar deneyelim
       if (retryCount < MAX_API_RETRIES) {
-        console.log(`Sonuç bulunamadı. Arama yarıçapı artırılarak yeniden deneniyor (${retryCount + 1}/${MAX_API_RETRIES})...`);
         return getNearbyPlaces(location, radius, type, retryCount + 1);
       }
     }
@@ -332,7 +322,6 @@ export const getNearbyPlaces = async (
 
         // Yeniden deneme kontrolü
         if (retryCount < MAX_API_RETRIES) {
-          console.log(`Sonuç bulunamadı. Arama yarıçapı artırılarak yeniden deneniyor (${retryCount + 1}/${MAX_API_RETRIES})...`);
           return getNearbyPlaces(location, radius, type, retryCount + 1);
         }
 
@@ -397,7 +386,6 @@ export const getNearbyTouristAttractions = async (): Promise<NearbyPlace[]> => {
       return await getNearbyPlaces(location, 5000, 'tourist_attraction');
     } catch (error) {
       // Turistik yerler bulunamadıysa, alternatif olarak "point_of_interest" türünü deneyelim
-      console.log('Turistik yerler bulunamadı, alternatif olarak ilgi çekici yerler aranıyor...');
       return await getNearbyPlaces(location, 5000, 'point_of_interest');
     }
   } catch (error) {

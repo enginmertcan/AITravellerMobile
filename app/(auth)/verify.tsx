@@ -19,23 +19,17 @@ export default function VerifyScreen() {
 
     try {
       setLoading(true);
-      console.log("Doğrulama başlatılıyor. Kod:", code);
 
       // E-posta doğrulama kodunu doğrula
       const signUpAttempt = await signUp.attemptEmailAddressVerification({
         code,
       });
 
-      console.log("Doğrulama yanıtı:", JSON.stringify(signUpAttempt, null, 2));
-
       if (signUpAttempt.status === "complete") {
-        console.log("Doğrulama başarılı, oturum oluşturuluyor...");
         // Oturumu aktif et
         await setActive({ session: signUpAttempt.createdSessionId });
-        console.log("Oturum aktif edildi, yönlendiriliyor...");
         router.replace("/(tabs)");
       } else {
-        console.log("Doğrulama başarısız. Durum:", signUpAttempt.status);
         alert(`Doğrulama başarısız oldu. Durum: ${signUpAttempt.status}`);
       }
     } catch (err: any) {
@@ -60,12 +54,9 @@ export default function VerifyScreen() {
     if (!signUp) return;
 
     try {
-      console.log("Yeni doğrulama kodu isteniyor...");
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      console.log("Yeni doğrulama kodu gönderildi");
       alert("Doğrulama kodu tekrar gönderildi. Lütfen e-postanızı kontrol edin.");
     } catch (err: any) {
-      console.error("Kod gönderme hatası detayı:", JSON.stringify(err, null, 2));
       alert(err.errors?.[0]?.message || "Doğrulama kodu gönderilirken bir hata oluştu");
     }
   };

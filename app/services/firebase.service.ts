@@ -1507,12 +1507,10 @@ export const TravelPlanService = {
             // Eğer itinerary içinde localTips varsa ve ana objede yoksa, taşı
             if (parsedItinerary) {
               if (parsedItinerary.localTips && !data.localTips) {
-                console.log('Extracting localTips from itinerary for plan:', doc.id);
                 data.localTips = parsedItinerary.localTips;
               }
 
               if (parsedItinerary.culturalDifferences && !data.culturalDifferences) {
-                console.log('Extracting culturalDifferences from itinerary for plan:', doc.id);
                 data.culturalDifferences = parsedItinerary.culturalDifferences;
               }
 
@@ -1599,7 +1597,6 @@ export const TravelPlanService = {
         if (data.localTips && typeof data.localTips === 'string') {
           try {
             console.log('Parsing localTips string from web app for plan:', doc.id);
-            console.log('Original localTips string:', data.localTips);
 
             // Önce string içindeki kaçış karakterlerini temizle
             let cleanString = data.localTips
@@ -1611,12 +1608,9 @@ export const TravelPlanService = {
               cleanString = `{${cleanString}}`;
             }
 
-            console.log('Cleaned localTips string:', cleanString);
-
             try {
               const parsedLocalTips = JSON.parse(cleanString);
               if (parsedLocalTips && typeof parsedLocalTips === 'object') {
-                console.log('Successfully parsed localTips as object');
                 data.localTips = parsedLocalTips;
               }
             } catch (innerError) {
@@ -1652,7 +1646,6 @@ export const TravelPlanService = {
           }
         } else if (!data.localTips) {
           // localTips yoksa oluştur
-          console.log('Creating new localTips object for plan:', doc.id);
           data.localTips = {
             localTransportationGuide: data.localTransportationGuide || "Bilgi bulunmuyor",
             emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
@@ -1681,7 +1674,6 @@ export const TravelPlanService = {
         // tripSummary alanını da parse et
         if (data.tripSummary && typeof data.tripSummary === 'string') {
           try {
-            console.log('Parsing tripSummary string from web app for plan:', doc.id);
             const parsedTripSummary = JSON.parse(data.tripSummary);
             if (parsedTripSummary && typeof parsedTripSummary === 'object') {
               data.tripSummary = parsedTripSummary;
@@ -1696,8 +1688,6 @@ export const TravelPlanService = {
 
         // tripSummary alanını kontrol et ve eksikse oluştur
         if (!processedData.tripSummary || typeof processedData.tripSummary === 'string' && processedData.tripSummary.trim() === '') {
-          console.log('tripSummary alanı oluşturuluyor (getRecommendedTravelPlans)...');
-
           // Süre bilgisini belirle
           let durationValue = processedData.duration || "Belirtilmemiş";
           if (typeof durationValue === 'number') {
@@ -1742,7 +1732,6 @@ export const TravelPlanService = {
 
         // localTips alanını kontrol et ve eksikse oluştur
         if (!processedData.localTips) {
-          console.log('localTips alanı oluşturuluyor (getRecommendedTravelPlans)...');
           processedData.localTips = {
             localTransportationGuide: "Bilgi bulunmuyor",
             emergencyContacts: "Acil durumlarda 112'yi arayın",
@@ -1805,25 +1794,18 @@ export const TravelPlanService = {
    */
   async uploadImage(userId: string, imageUri: string, folderName: string = "travelImages"): Promise<string> {
     try {
-      console.log(`Resim yükleme başlatılıyor: ${folderName} klasörüne ${userId} kullanıcısı için`);
-
       // Dosya adı oluştur
       const timestamp = new Date().getTime();
       const fileName = `${userId}_${timestamp}.jpg`;
       const fullPath = `${folderName}/${fileName}`;
-      console.log(`Dosya yolu: ${fullPath}`);
 
       const storageRef = ref(storage, fullPath);
-      console.log('Storage referansı oluşturuldu');
 
       // Resmi fetch et ve buffer'a dönüştür
-      console.log('Resim fetch ediliyor:', imageUri.substring(0, 50) + '...');
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      console.log(`Blob oluşturuldu, boyut: ${blob.size} bytes`);
 
       // Storage'a yükle - uploadBytesResumable kullanarak daha iyi hata yönetimi
-      console.log('Firebase Storage\'a yükleniyor...');
 
       // Promise olarak yükleme işlemini bekle
       return new Promise((resolve, reject) => {
@@ -1834,7 +1816,6 @@ export const TravelPlanService = {
           (snapshot) => {
             // Yükleme durumunu izle
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log(`Yükleme ilerlemesi: ${progress.toFixed(2)}%`);
           },
           (error) => {
             // Hata durumunda
@@ -1852,12 +1833,9 @@ export const TravelPlanService = {
           },
           async () => {
             // Yükleme tamamlandığında
-            console.log('Yükleme başarıyla tamamlandı');
             try {
               // Download URL al
-              console.log('Download URL alınıyor...');
               const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-              console.log('Download URL:', downloadUrl);
               resolve(downloadUrl);
             } catch (urlError) {
               console.error('Download URL alma hatası:', urlError);
@@ -1894,8 +1872,6 @@ export const TravelPlanService = {
    */
   async uploadBlob(storageRef: StorageReference, blob: Blob): Promise<StorageReference> {
     try {
-      console.log(`Blob yükleniyor, boyut: ${blob.size} bytes`);
-
       // Yükleme işlemi
       const uploadTask = uploadBytesResumable(storageRef, blob);
 
@@ -1906,7 +1882,6 @@ export const TravelPlanService = {
           (snapshot) => {
             // Yükleme durumunu izle
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log(`Yükleme ilerlemesi: ${progress.toFixed(2)}%`);
           },
           (error) => {
             // Hata durumunda
@@ -1915,7 +1890,6 @@ export const TravelPlanService = {
           },
           () => {
             // Yükleme tamamlandığında
-            console.log('Yükleme başarıyla tamamlandı');
             resolve(storageRef);
           }
         );
@@ -1932,7 +1906,6 @@ export const TravelPlanService = {
   async getDownloadURL(storageRef: StorageReference): Promise<string> {
     try {
       const url = await getDownloadURL(storageRef);
-      console.log('Download URL alındı:', url);
       return url;
     } catch (error) {
       console.error('Download URL alma hatası:', error);
@@ -1945,9 +1918,6 @@ export const TravelPlanService = {
    */
   async uploadBase64Image(base64Image: string, fullPath: string): Promise<string> {
     try {
-      console.log(`Base64 resim yükleme başlatılıyor: ${fullPath}`);
-      console.log(`Base64 uzunluğu: ${base64Image.length}`);
-
       // Base64 formatını kontrol et ve düzelt
       let formattedBase64 = base64Image;
       if (base64Image.includes('base64,')) {
@@ -1979,14 +1949,10 @@ export const TravelPlanService = {
       console.log(`Blob oluşturuldu, boyut: ${blob.size} bytes`);
 
       // Storage'a yükle
-      console.log('Firebase Storage\'a yükleniyor...');
       const snapshot = await uploadBytes(storageRef, blob);
-      console.log('Yükleme tamamlandı, metadata:', snapshot.metadata);
 
       // Download URL al
-      console.log('Download URL alınıyor...');
       const downloadUrl = await getDownloadURL(snapshot.ref);
-      console.log('Download URL:', downloadUrl);
 
       return downloadUrl;
     } catch (error: any) {
@@ -2055,7 +2021,6 @@ export const TravelPlanService = {
         updatedAt: serverTimestamp()
       });
 
-      console.log("Fotoğraf başarıyla eklendi:", newPhoto.id);
       return true;
     } catch (error) {
       console.error("Fotoğraf ekleme hatası:", error);
@@ -2139,11 +2104,9 @@ export const TravelPlanService = {
       if (existingPhotoIndex >= 0) {
         // Varsa güncelle
         tripPhotos[existingPhotoIndex] = newPhoto;
-        console.log(`Mevcut fotoğraf güncellendi: ${photoId}`);
       } else {
         // Yoksa ekle
         tripPhotos.push(newPhoto);
-        console.log(`Yeni fotoğraf eklendi: ${photoId}`);
       }
 
       // Web uyumluluğu için string'e dönüştür
@@ -2156,8 +2119,6 @@ export const TravelPlanService = {
         updatedAt: serverTimestamp()
       });
 
-      console.log("Base64 resim başarıyla ana koleksiyona kaydedildi:", photoId);
-      console.log(`Toplam fotoğraf sayısı: ${tripPhotos.length}`);
       return true;
     } catch (error) {
       console.error("Base64 resim kaydetme hatası:", error);
@@ -2170,9 +2131,6 @@ export const TravelPlanService = {
    */
   async saveBase64ImageToFirestore(travelPlanId: string, base64Image: string, photoInfo: Partial<import('../types/travel').TripPhoto>): Promise<boolean> {
     try {
-      console.log(`Base64 resim Firestore'a kaydediliyor...`);
-      console.log(`Base64 uzunluğu: ${base64Image.length}`);
-
       if (!travelPlanId?.trim()) {
         console.warn("Geçersiz seyahat planı ID'si");
         return false;

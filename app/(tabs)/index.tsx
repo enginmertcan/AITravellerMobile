@@ -13,17 +13,20 @@ import { TravelPlan } from '@/app/types/travel';
 const { width } = Dimensions.get('window');
 
 interface Feature {
-  icon: string;
+  icon: MaterialCommunityIconName;
   title: string;
   description: string;
   color: string;
 }
 
 interface QuickAction {
-  icon: string;
+  icon: MaterialCommunityIconName;
   title: string;
   color: string;
 }
+
+// Define the type for MaterialCommunityIcons names
+type MaterialCommunityIconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 export default function HomeScreen() {
   const { isSignedIn, userId } = useAuth();
@@ -81,12 +84,6 @@ export default function HomeScreen() {
 
   const features: Feature[] = [
     {
-      icon: 'compass',
-      title: 'Popüler Rotalar',
-      description: 'En çok tercih edilen seyahat rotaları',
-      color: '#4c669f',
-    },
-    {
       icon: 'map-marker-radius',
       title: 'Yakın Yerler',
       description: 'Yakınınızdaki keşfedilecek yerler',
@@ -98,12 +95,7 @@ export default function HomeScreen() {
       description: 'Size özel seyahat önerileri',
       color: '#192f6a',
     },
-    {
-      icon: 'calendar-month',
-      title: 'Etkinlikler',
-      description: 'Yaklaşan seyahat etkinlikleri',
-      color: '#4c669f',
-    },
+
   ];
 
   const quickActions: QuickAction[] = [
@@ -152,7 +144,7 @@ export default function HomeScreen() {
         <View style={styles.travelPlansContainer}>
           <View style={styles.travelPlansHeader}>
             <ThemedText style={styles.sectionTitle}>Seyahat Planlarım</ThemedText>
-            <TouchableOpacity onPress={() => router.push('/travelPlansList')}>
+            <TouchableOpacity onPress={() => router.push('/trip-details')}>
               <ThemedText style={styles.seeAllText}>Tümünü Gör</ThemedText>
             </TouchableOpacity>
           </View>

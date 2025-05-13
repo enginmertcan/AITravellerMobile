@@ -12,11 +12,16 @@ import {
   Modal
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import AppStyles from '@/constants/AppStyles';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as NearbyPlacesService from './services/nearby-places.service';
 import { NearbyPlace, LocationData } from './services/nearby-places.service';
+
+// Define the type for MaterialCommunityIcons names
+type MaterialCommunityIconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 // Sıralama seçenekleri için enum
 enum SortOption {
@@ -57,9 +62,8 @@ export default function NearbyPlacesScreen() {
   useEffect(() => {
     const loadUserLocation = async () => {
       try {
-        console.log('Kullanıcı konumu alınıyor...');
+        
         const location = await NearbyPlacesService.getCurrentLocation();
-        console.log('Kullanıcı konumu alındı:', location.latitude.toFixed(6), location.longitude.toFixed(6));
         setUserLocation(location);
       } catch (error) {
         console.error('Konum alınamadı:', error);
@@ -74,7 +78,6 @@ export default function NearbyPlacesScreen() {
   useEffect(() => {
     // Konum bilgisi varsa ve daha önce hiç yükleme yapılmadıysa
     if (userLocation && !lastLoadedType) {
-      console.log('Konum alındı, ilk kez yerler yükleniyor...');
       handleTypeSelect(selectedType);
     }
   }, [userLocation]);
@@ -129,7 +132,6 @@ export default function NearbyPlacesScreen() {
   };
 
   const handleTypeSelect = async (type: string) => {
-    console.log(`Yer türü seçildi: ${type}`);
 
     // Yükleme durumunu aktifleştir
     setLoading(true);
@@ -147,13 +149,10 @@ export default function NearbyPlacesScreen() {
     try {
       // Kullanıcı konumu kontrolü
       if (!userLocation) {
-        console.log('Kullanıcı konumu bulunamadı, konum alınmaya çalışılıyor...');
         try {
           const location = await NearbyPlacesService.getCurrentLocation();
           setUserLocation(location);
-          console.log('Kullanıcı konumu alındı:', location.latitude.toFixed(6), location.longitude.toFixed(6));
         } catch (error) {
-          console.error('Konum alınamadı:', error);
           setLoading(false);
           Alert.alert('Hata', 'Kullanıcı konumu bulunamadı. Lütfen konum izinlerini kontrol edin.');
           return;
@@ -205,7 +204,6 @@ export default function NearbyPlacesScreen() {
         setLastLoadedType(type);
 
         if (nearbyPlaces && nearbyPlaces.length > 0) {
-          console.log(`${type} türünde ${nearbyPlaces.length} yer bulundu.`);
 
           // Yerleri ayarla
           setPlaces(nearbyPlaces);
@@ -215,7 +213,6 @@ export default function NearbyPlacesScreen() {
             sortPlaces(sortOption, nearbyPlaces);
           }
         } else {
-          console.log(`${type} türünde yer bulunamadı.`);
 
           // Kullanıcıya bilgi ver
           Alert.alert(
@@ -258,11 +255,8 @@ export default function NearbyPlacesScreen() {
     const itemsToSort = placesToSort || places;
 
     if (!itemsToSort || itemsToSort.length === 0) {
-      console.log('Sıralanacak yer bulunamadı.');
       return;
     }
-
-    console.log(`${itemsToSort.length} yer ${option} kriterine göre sıralanıyor...`);
 
     // Orijinal diziyi değiştirmeden yeni bir kopya oluştur
     const sortedPlaces = [...itemsToSort];
@@ -289,10 +283,32 @@ export default function NearbyPlacesScreen() {
       });
     }
 
-    console.log('Sıralama tamamlandı.');
-
     // Sıralanmış yerleri state'e ayarla
     setPlaces(sortedPlaces);
+  };
+
+  // Tür simgelerini döndüren fonksiyon
+  const getTypeIcon = (type: string): MaterialCommunityIconName => {
+    switch (type) {
+      case 'restaurant':
+        return 'food-fork-drink';
+      case 'museum':
+        return 'bank';
+      case 'shopping_mall':
+        return 'shopping';
+      case 'lodging':
+        return 'bed';
+      case 'park':
+        return 'tree';
+      case 'cafe':
+        return 'coffee';
+      case 'bar':
+        return 'glass-cocktail';
+      case 'bakery':
+        return 'bread-slice';
+      default:
+        return 'map-marker';
+    }
   };
 
   return (
@@ -393,7 +409,7 @@ export default function NearbyPlacesScreen() {
               onPress={() => handleTypeSelect(type.id)}
             >
               <MaterialCommunityIcons
-                name={type.icon}
+                name={getTypeIcon(type.id)}
                 size={20}
                 color={selectedType === type.id ? "#fff" : "#4c669f"}
               />
@@ -494,7 +510,7 @@ export default function NearbyPlacesScreen() {
                 ) : (
                   <View style={styles.placeholderImage}>
                     <MaterialCommunityIcons
-                      name={PLACE_TYPES.find(type => type.id === selectedType)?.icon || 'map-marker'}
+                      name={getTypeIcon(selectedType)}
                       size={40}
                       color="#4c669f"
                     />

@@ -226,20 +226,16 @@ export function safeParseJSON(jsonString: string | any) {
 // Seyahat fotoğraflarını parse et
 export function parseTripPhotos(tripPhotos: TripPhoto[] | string | undefined): TripPhoto[] {
   if (!tripPhotos) {
-    console.log('Fotoğraf verisi bulunamadı');
     return [];
   }
 
   if (typeof tripPhotos === 'string') {
     try {
-      console.log('Fotoğraf verisi string formatında, parse ediliyor...');
       const parsed = safeParseJSON(tripPhotos);
 
       if (Array.isArray(parsed)) {
-        console.log(`${parsed.length} fotoğraf başarıyla parse edildi`);
         return parsed;
       } else {
-        console.error('Fotoğraf verisi array formatında değil');
         return [];
       }
     } catch (error) {
@@ -249,7 +245,6 @@ export function parseTripPhotos(tripPhotos: TripPhoto[] | string | undefined): T
   }
 
   if (Array.isArray(tripPhotos)) {
-    console.log(`${tripPhotos.length} fotoğraf zaten array formatında`);
     return tripPhotos;
   }
 

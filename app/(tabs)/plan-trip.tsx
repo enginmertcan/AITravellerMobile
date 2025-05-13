@@ -215,13 +215,8 @@ export default function PlanTripScreen() {
         userId: userIdStr,
       };
 
-      console.log('Seyahat planı oluşturuluyor...', travelFormData);
-
       // AI servisini çağır - createTravelPlan metodu
       const travelPlan = await chatSession.createTravelPlan(travelFormData);
-
-      // Sadece konsol için
-      console.log('Oluşturulan seyahat planı:', JSON.stringify(travelPlan, null, 2));
 
       // Web uyumluluğu için veri formatını düzenle
       const formattedPlan = FirebaseService.TravelPlan.formatTravelPlanForWeb(travelPlan);
@@ -230,9 +225,7 @@ export default function PlanTripScreen() {
       let travelPlanId = '';
       try {
         travelPlanId = await FirebaseService.TravelPlan.createTravelPlan(formattedPlan);
-        console.log("Seyahat planı Firebase'e kaydedildi, ID:", travelPlanId);
       } catch (error) {
-        console.error('Firebase kaydetme hatası:', error);
         Alert.alert(
           'Hata',
           'Seyahat planı kaydedilemedi. Lütfen daha sonra tekrar deneyin.',
@@ -240,8 +233,6 @@ export default function PlanTripScreen() {
         );
         return; // Hata durumunda işlemi sonlandır
       }
-
-      console.log('Seyahat planı oluşturuldu ve kaydedildi');
 
       // Kullanıcıyı detay sayfasına yönlendir (plan ID ile)
       if (travelPlanId) {
@@ -261,7 +252,6 @@ export default function PlanTripScreen() {
         ]
       );
     } catch (error) {
-      console.error('Error creating travel plan:', error);
       Alert.alert('Hata', 'Seyahat planı oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setIsLoading(false);
@@ -322,7 +312,6 @@ export default function PlanTripScreen() {
         setSearchResults([]);
       }
     } catch (error) {
-      console.error('Error getting place details:', error);
       Alert.alert('Hata', 'Şehir detayları alınırken bir hata oluştu. Lütfen tekrar deneyin.');
     }
   };

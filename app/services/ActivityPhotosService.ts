@@ -61,11 +61,8 @@ const ActivityPhotosService = {
    */
   async getActivityPhotos(activityName: string, city: string): Promise<string[]> {
     try {
-      console.log(`Aktivite fotoğrafları getiriliyor: ${activityName}, ${city}`);
-
       // Aktivite adı veya şehir yoksa, boş dizi döndür
       if (!activityName || !city) {
-        console.warn('Aktivite adı veya şehir bilgisi eksik');
         return [];
       }
 
@@ -87,19 +84,16 @@ const ActivityPhotosService = {
           const searchData = await ProxyApiService.placeTextSearch(queryText, GOOGLE_PLACES_API_KEY);
 
           if (!searchData.results || searchData.results.length === 0) {
-            console.log(`"${queryText}" sorgusu için sonuç bulunamadı`);
             return [];
           }
 
           // İlk sonucu al (en alakalı)
           const placeId = searchData.results[0].place_id;
-          console.log(`Yer ID: ${placeId}`);
 
           // Fotoğraflar dahil yer detaylarını al
           const detailsData = await ProxyApiService.placeDetails(placeId, 'photos', GOOGLE_PLACES_API_KEY);
 
           if (!detailsData.result || !detailsData.result.photos || detailsData.result.photos.length === 0) {
-            console.log(`"${queryText}" sorgusu için fotoğraf bulunamadı`);
             return [];
           }
 
@@ -113,7 +107,6 @@ const ActivityPhotosService = {
             .filter((ref: string) => ref)
             .map((ref: string) => ProxyApiService.getPhotoUrl(ref, 1200, GOOGLE_PLACES_API_KEY));
         } catch (error) {
-          console.error(`"${queryText}" sorgusu için hata:`, error);
           return [];
         }
       });
@@ -126,10 +119,8 @@ const ActivityPhotosService = {
         photoUrlsArrays.flat().filter(url => url && url.length > 0)
       ));
 
-      console.log(`Toplam ${uniquePhotoUrls.length} benzersiz fotoğraf URL'i bulundu`);
       return uniquePhotoUrls;
     } catch (error) {
-      console.error('Aktivite fotoğrafları getirme hatası:', error);
       return [];
     }
   },
@@ -141,8 +132,6 @@ const ActivityPhotosService = {
    * @returns Yedek aktivite fotoğraf URL'leri
    */
   getDummyPhotos(activityName?: string, city?: string): string[] {
-    console.log(`Yedek fotoğraflar kullanılıyor: ${activityName || ''}, ${city || ''}`);
-
     // Aktivite adına göre kategorize edilmiş fotoğraflar
     const activityNameLower = (activityName || '').toLowerCase();
 
@@ -196,13 +185,11 @@ const ActivityPhotosService = {
 
       // Önbellekte varsa, önbellekten döndür
       if (this.photoCache.has(cacheKey)) {
-        console.log(`Önbellekten fotoğraflar alınıyor: ${activityName}, ${city}`);
         return this.photoCache.get(cacheKey) || [];
       }
 
       // Aktivite adı veya şehir yoksa, varsayılan fotoğrafları döndür
       if (!activityName || !city) {
-        console.log('Aktivite adı veya şehir bilgisi eksik, varsayılan fotoğraflar kullanılıyor');
         const dummyUrls = this.getDummyPhotos('', '');
         const dummyPhotos = dummyUrls.map((url: string, index: number) => ({
           imageUrl: url,
@@ -211,8 +198,6 @@ const ActivityPhotosService = {
         }));
         return dummyPhotos;
       }
-
-      console.log(`Aktivite fotoğrafları yükleniyor: ${activityName}, ${city}`);
 
       // Google Places API'den fotoğraf URL'lerini al
       const photoUrls = await this.getActivityPhotos(activityName, city);
@@ -226,7 +211,6 @@ const ActivityPhotosService = {
 
       // Eğer hiç fotoğraf bulunamadıysa, yedek fotoğrafları kullan
       if (activityPhotos.length === 0) {
-        console.log('Fotoğraf bulunamadı, yedek fotoğraflar kullanılıyor');
         const dummyUrls = this.getDummyPhotos(activityName, city);
         const dummyPhotos = dummyUrls.map((url: string, index: number) => ({
           imageUrl: url,
@@ -243,7 +227,6 @@ const ActivityPhotosService = {
       this.photoCache.set(cacheKey, activityPhotos);
       return activityPhotos;
     } catch (error) {
-      console.error('Aktivite fotoğrafları yükleme hatası:', error);
       // Hata durumunda yedek fotoğraflar kullan
       const backupUrls = this.getDummyPhotos(activityName, city);
       return backupUrls.map((url: string, index: number) => ({
