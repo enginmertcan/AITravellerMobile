@@ -85,7 +85,8 @@ export interface TravelPlan {
   likedBy?: string[];         // Beğenen kullanıcıların ID'leri
 
   // Temel seyahat bilgileri
-  startDate: string;           // Başlangıç tarihi
+  startDate: string;           // Başlangıç tarihi (DD/MM/YYYY formatında)
+  _selectedDate?: Date;        // Seçilen tarih (Date objesi olarak)
   endDate?: string;            // Bitiş tarihi (opsiyonel)
   duration: string;            // Seyahat süresi (gün) - Web uyumluluğu için string
   days?: number;               // Alternatif süre gösterimi
@@ -276,12 +277,12 @@ export const DEFAULT_TRAVEL_PLAN: TravelPlan = {
   groupType: '',
   numberOfPeople: '',
   country: '',
-  bestTimeToVisit: '',
+  bestTimeToVisit: 'İlkbahar ve Sonbahar ayları',
   // Destinasyon detayları
   destinationInfo: {
     name: '',
     country: '',
-    bestTimeToVisit: '',
+    bestTimeToVisit: 'İlkbahar ve Sonbahar ayları',
     language: '',
     timezone: '',
     currency: ''

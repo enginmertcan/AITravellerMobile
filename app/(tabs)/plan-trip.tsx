@@ -41,7 +41,9 @@ export default function PlanTripScreen() {
   const [countries, setCountries] = useState<Country[]>([]);
   const [formState, setFormState] = useState<{
     city: string;
-    startDate: Date;
+    startDate: string;
+    _selectedDate: Date;
+    startDateISO?: string; // ISO formatında tarih (hava durumu için)
     days: number;
     budget: string;
     companion: string;
@@ -49,10 +51,16 @@ export default function PlanTripScreen() {
     citizenship: string;
   }>({
     city: '',
-    startDate: new Date(),
+    startDate: new Date().toLocaleDateString('tr-TR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }), // Türkçe formatında (30 Nisan 2025)
+    _selectedDate: new Date(),
+    startDateISO: new Date().toISOString(), // ISO formatında tarih
     days: 3,
-    budget: '',
-    companion: '',
+    budget: 'moderate', // Default olarak orta bütçe seçili
+    companion: 'couple', // Default olarak çift seçili
     residenceCountry: '',
     citizenship: '',
   });
@@ -202,11 +210,39 @@ export default function PlanTripScreen() {
       const userIdStr = userId || '';
 
       // Form verilerini hazırla
+      // _selectedDate'i kullan (çünkü startDate string formatında)
+      // Eğer startDateISO varsa, onu kullan (en doğru tarih bilgisi)
+      let selectedDate: Date;
+
+      if (formState.startDateISO) {
+        selectedDate = new Date(formState.startDateISO);
+      } else if (formState._selectedDate) {
+        // UTC kullanarak tarih oluştur - gün kayması sorununu önlemek için
+        selectedDate = new Date(Date.UTC(
+          formState._selectedDate.getFullYear(),
+          formState._selectedDate.getMonth(),
+          formState._selectedDate.getDate()
+        ));
+      } else {
+        // Fallback olarak bugünün tarihini kullan
+        const today = new Date();
+        selectedDate = new Date(Date.UTC(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        ));
+      }
+
+      console.log('AI servisine gönderilen tarih:', selectedDate.toISOString());
+      console.log('Form state:', formState);
+      console.log('AI servisine gönderilen gün sayısı:', formState.days);
+
       const travelFormData = {
         city: formState.city,
         destination: formState.city,
         days: formState.days,
-        startDate: formState.startDate.toISOString(),
+        startDate: selectedDate.toISOString(),
+        startDateFormatted: formState.startDate, // Türkçe formatı da gönder
         budget: formState.budget,
         companion: formState.companion,
         residenceCountry: formState.residenceCountry,
@@ -258,15 +294,41 @@ export default function PlanTripScreen() {
     }
   };
 
-  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
+  const handleDateChange = (_event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
     }
 
     if (date) {
       // Güncellenen tarihi kaydet
-      setSelectedDate(date);
-      setFormState({ ...formState, startDate: date });
+      // UTC kullanarak tarih oluştur - gün kayması sorununu önlemek için
+      const selectedDate = new Date(Date.UTC(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+      ));
+
+      // Web uygulaması için Türkçe tarih formatı (30 Nisan 2025)
+      const turkishDate = selectedDate.toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+
+      // Ayrıca DD/MM/YYYY formatında da kaydet (API çağrıları için)
+      const formattedDate = `${selectedDate.getUTCDate().toString().padStart(2, '0')}/${(selectedDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${selectedDate.getUTCFullYear()}`;
+
+      console.log('Seçilen tarih (Türkçe):', turkishDate);
+      console.log('Seçilen tarih (DD/MM/YYYY):', formattedDate);
+      console.log('Seçilen tarih (ISO):', selectedDate.toISOString());
+
+      setSelectedDate(selectedDate); // Date objesi olarak tut
+      setFormState(prev => ({
+        ...prev,
+        startDate: turkishDate, // Türkçe format olarak kaydet (web uyumluluğu için)
+        _selectedDate: selectedDate, // Date objesini ayrıca tut (gerektiğinde kullanmak için)
+        startDateISO: selectedDate.toISOString() // ISO formatını da sakla (hava durumu için)
+      }));
     }
   };
 
@@ -404,7 +466,7 @@ export default function PlanTripScreen() {
           </View>
           {showResults && searchResults.length > 0 && !formState.city && (
             <View style={styles.searchResults}>
-              {searchResults.map((place, index) => (
+              {searchResults.map((place) => (
                 <TouchableOpacity
                   key={place.placeId}
                   style={styles.searchResultItem}
@@ -447,7 +509,7 @@ export default function PlanTripScreen() {
             <View style={styles.detailContent}>
               <ThemedText style={styles.detailLabel}>Başlangıç Tarihi</ThemedText>
               <ThemedText style={styles.detailValue}>
-                {formState.startDate.toLocaleDateString('tr-TR', {
+                {formState._selectedDate.toLocaleDateString('tr-TR', {
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric'

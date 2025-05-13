@@ -35,6 +35,11 @@ const openai = new OpenAI({
 
 // AI isteklerinde kullanılacak istek şablonu
 const getPromptTemplate = (destination: string, duration: number, groupType: string, budget: string, residenceCountry: string, citizenship: string, startDate: string = '') => {
+  // Gün sayısını kontrol et ve geçerli bir değer olduğundan emin ol
+  const days = !isNaN(duration) && duration > 0 ? duration : 3;
+
+  console.log(`Prompt oluşturuluyor: Destinasyon=${destination}, Gün=${days}, Tarih=${startDate}`);
+
   return `ÖNEMLİ: Tüm yanıtlarınız kesinlikle Türkçe olmalıdır. İngilizce yanıt vermeyin.
 
 Aşağıdaki seyahat planını oluştur ve şu kurallara uy:
@@ -106,21 +111,34 @@ Aşağıdaki seyahat planını oluştur ve şu kurallara uy:
 
 Lütfen bu seyahat planını JSON formatında oluştur:
 Konum: ${destination}
-Süre: ${duration} gün
+Süre: ${days} gün
 Kişi: ${groupType}
 Bütçe: ${budget}
 Yaşadığı Ülke: ${residenceCountry}
 Vatandaşlık: ${citizenship}
 ${startDate ? `Başlangıç Tarihi: ${startDate}` : ''}
 
+ÖNEMLİ: Tam olarak ${days} günlük bir plan oluştur. Daha az veya daha fazla gün için değil, tam olarak ${days} gün için plan yap.
+
+UYARI: İtinerary dizisi tam olarak ${days} gün içermelidir. Her gün için ayrı bir plan oluşturulmalıdır. Eksik gün olmamalıdır.
+
+ÖRNEK FORMAT:
+"itinerary": [
+  { "day": "1. Gün", "plan": [...] },
+  { "day": "2. Gün", "plan": [...] },
+  ...
+  { "day": "${days}. Gün", "plan": [...] }
+]
+
 Yanıtın kesinlikle JSON olmalıdır ve aşağıdaki alanları içermelidir:
-- destinationInfo (destinasyon hakkında genel bilgiler)
+- destinationInfo (destinasyon hakkında genel bilgiler, MUTLAKA bestTimeToVisit alanı içermeli)
 - tripSummary (seyahat özeti)
 - hotelOptions (en az 3 otel önerisi)
-- itinerary (günlük gezi planı)
+- itinerary (günlük gezi planı - tam olarak ${days} gün için)
 - visaInfo (vize ve pasaport bilgileri)
 - culturalDifferences (kültürel farklılıklar)
 - localTips (yerel yaşam önerileri)
+- bestTimeToVisit (destinasyon için en uygun ziyaret zamanı - ZORUNLU ALAN)
 
 NOT: Tüm yanıtınız Türkçe olmalıdır. İngilizce yanıt vermeyin.
 NOT: Vize, pasaport ve kültürel öneriler bölümleri zorunludur ve detaylı olmalıdır.
@@ -242,9 +260,22 @@ export const aiService = {
       const startDate = message.match(/Başlangıç Tarihi: (.*?)\n/)?.[1] || '';
 
       // Prompt'u oluştur
+      // Gün sayısını doğru şekilde parse et
+      let days = 3; // Varsayılan değer
+      if (duration) {
+        if (!isNaN(parseInt(duration))) {
+          days = parseInt(duration);
+        } else {
+          console.warn('Geçersiz süre formatı, varsayılan değer (3 gün) kullanılıyor:', duration);
+        }
+      }
+
+      console.log('AI prompt için kullanılan gün sayısı:', days);
+      console.log('AI prompt için kullanılan tarih:', startDate);
+
       const prompt = getPromptTemplate(
         destination,
-        parseInt(duration),
+        days,
         groupType,
         budget,
         residenceCountry,
@@ -267,6 +298,15 @@ export const aiService = {
 Web ve mobil uygulamalarıyla uyumlu olması için aşağıdaki formatta JSON döndürmelisin:
 
 {
+  "bestTimeToVisit": "Destinasyon için en uygun ziyaret zamanı (ZORUNLU ALAN)",
+  "destinationInfo": {
+    "location": "Konum bilgisi",
+    "description": "Destinasyon açıklaması",
+    "bestTimeToVisit": "En iyi ziyaret zamanı (ZORUNLU ALAN)",
+    "language": "Konuşulan dil",
+    "timezone": "Saat dilimi",
+    "currency": "Para birimi"
+  },
   "hotelOptions": [
     {
       "hotelName": "Otel Adı",
@@ -377,18 +417,38 @@ Web ve mobil uygulamalarıyla uyumlu olması için aşağıdaki formatta JSON d�
   async createTravelPlan(formData: any): Promise<any> {
     try {
       // Formatı Gemini AI için hazırla
-      const budgetText = formData.budget === 'low' ? 'Ekonomik' :
-                        formData.budget === 'medium' ? 'Orta' : 'Lüks';
+      const budgetText = formData.budget === 'budget' ? 'Ekonomik' :
+                        formData.budget === 'moderate' ? 'Orta' :
+                        formData.budget === 'luxury' ? 'Lüks' : 'Orta';
 
-      const companionText = formData.companion === 'alone' ? 'Yalnız' :
-                          formData.companion === 'couple' ? 'Çift' : 'Aile/Grup';
+      const companionText = formData.companion === 'solo' ? 'Yalnız' :
+                          formData.companion === 'couple' ? 'Çift' :
+                          formData.companion === 'family' ? 'Aile' :
+                          formData.companion === 'group' ? 'Grup' : 'Çift';
 
       // Tarihi Türkçe formatla
-      const formattedDate = formData.startDate ? new Date(formData.startDate).toLocaleDateString('tr-TR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      }) : '';
+      let formattedDate = '';
+      if (formData.startDate) {
+        try {
+          // ISO string formatındaki tarihi Date objesine çevir
+          const date = new Date(formData.startDate);
+
+          // Geçerli bir tarih mi kontrol et
+          if (!isNaN(date.getTime())) {
+            // Tarihi Türkçe formatla
+            formattedDate = date.toLocaleDateString('tr-TR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            });
+            console.log('AI servisinde formatlanmış tarih:', formattedDate);
+          } else {
+            console.error('Geçersiz tarih formatı:', formData.startDate);
+          }
+        } catch (error) {
+          console.error('Tarih formatı hatası:', error);
+        }
+      }
 
       // Mesaj formatı
       const message = `Konum: ${formData.city || formData.destination}
@@ -426,16 +486,113 @@ Başlangıç Tarihi: ${formattedDate}`;
           bestTimeToVisit: result.response.travelPlan.bestTimeToVisit || '',
         };
 
+        // İtinerary'nin doğru gün sayısına sahip olduğunu kontrol et ve eksik günleri tamamla
+        try {
+          if (result.response.travelPlan.itinerary) {
+            // İtinerary'nin gün sayısını kontrol et
+            const itineraryObj = result.response.travelPlan.itinerary;
+
+            // İtinerary bir dizi mi yoksa obje mi kontrol et
+            let itineraryArray: any[] = [];
+
+            if (Array.isArray(itineraryObj)) {
+              // Zaten dizi formatında
+              itineraryArray = itineraryObj;
+            } else if (typeof itineraryObj === 'object') {
+              // Obje formatında (Day 1, Day 2, ...) - diziye çevir
+              itineraryArray = Object.keys(itineraryObj).map(key => {
+                const dayData = (itineraryObj as any)[key];
+                return {
+                  day: key.replace('Day ', '') + '. Gün',
+                  plan: dayData && dayData.plan ? dayData.plan : []
+                };
+              });
+            }
+
+            const days = itineraryArray.length;
+            console.log(`İtinerary gün sayısı: ${days}, Beklenen gün sayısı: ${formData.days}`);
+
+            // Eğer gün sayısı beklenen gün sayısından farklıysa, eksik günleri ekle
+            if (days < formData.days) {
+              console.warn(`İtinerary gün sayısı (${days}) beklenen gün sayısından (${formData.days}) az! Eksik günler ekleniyor...`);
+
+              // Eksik günleri ekle
+              for (let i = days + 1; i <= formData.days; i++) {
+                const newDay = {
+                  day: `${i}. Gün`,
+                  plan: [
+                    {
+                      time: "09:00 - 17:00",
+                      placeName: `${formData.destination} Keşfi - Gün ${i}`,
+                      placeDetails: "Bu gün için özel bir plan bulunmamaktadır. Şehri keşfedebilir veya rehberli turlara katılabilirsiniz.",
+                      placeImageUrl: "",
+                      geoCoordinates: { latitude: 0, longitude: 0 },
+                      ticketPricing: "Değişken",
+                      timeToTravel: "Değişken",
+                      tips: [
+                        "Yerel rehberlerden bilgi alabilirsiniz.",
+                        "Hava durumuna göre giyinin.",
+                        "Yanınızda su bulundurun."
+                      ],
+                      warnings: ["Değerli eşyalarınıza dikkat edin."],
+                      alternatives: ["Müze ziyareti", "Yerel pazarları gezme", "Şehir turu"]
+                    }
+                  ]
+                };
+
+                itineraryArray.push(newDay);
+              }
+
+              // Güncellenmiş itinerary'yi kaydet
+              result.response.travelPlan.itinerary = itineraryArray as any;
+            } else if (days > formData.days) {
+              console.warn(`İtinerary gün sayısı (${days}) beklenen gün sayısından (${formData.days}) fazla! Fazla günler kaldırılıyor...`);
+
+              // Fazla günleri kaldır
+              result.response.travelPlan.itinerary = itineraryArray.slice(0, formData.days) as any;
+            }
+          }
+        } catch (error) {
+          console.error('İtinerary kontrol ve düzeltme hatası:', error);
+        }
+
         // Web uygulamasıyla uyumlu olması için tarih formatını ayarla
         if (formData.startDate) {
           try {
+            // ISO string formatındaki tarihi Date objesine çevir
             const date = new Date(formData.startDate);
-            const day = date.getDate().toString().padStart(2, '0');
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const year = date.getFullYear();
-            travelPlan.startDate = `${day}/${month}/${year}`;
+
+            // Geçerli bir tarih mi kontrol et
+            if (!isNaN(date.getTime())) {
+              // Web uygulaması için DD/MM/YYYY formatında tarih oluştur
+              const day = date.getDate().toString().padStart(2, '0');
+              const month = (date.getMonth() + 1).toString().padStart(2, '0');
+              const year = date.getFullYear();
+              travelPlan.startDate = `${day}/${month}/${year}`;
+              console.log('Firebase için formatlanmış tarih:', travelPlan.startDate);
+
+              // Ayrıca ISO formatında da saklayalım (trip-details.tsx'de kullanılacak)
+              (travelPlan as any).startDateISO = date.toISOString();
+              console.log('Firebase için ISO formatında tarih:', (travelPlan as any).startDateISO);
+            } else {
+              console.error('Geçersiz tarih formatı:', formData.startDate);
+              // Bugünün tarihini kullan
+              const today = new Date();
+              const day = today.getDate().toString().padStart(2, '0');
+              const month = (today.getMonth() + 1).toString().padStart(2, '0');
+              const year = today.getFullYear();
+              travelPlan.startDate = `${day}/${month}/${year}`;
+              (travelPlan as any).startDateISO = today.toISOString();
+            }
           } catch (error) {
             console.error('Tarih dönüştürme hatası:', error);
+            // Hata durumunda bugünün tarihini kullan
+            const today = new Date();
+            const day = today.getDate().toString().padStart(2, '0');
+            const month = (today.getMonth() + 1).toString().padStart(2, '0');
+            const year = today.getFullYear();
+            travelPlan.startDate = `${day}/${month}/${year}`;
+            (travelPlan as any).startDateISO = today.toISOString();
           }
         }
       } else {
@@ -458,16 +615,79 @@ Başlangıç Tarihi: ${formattedDate}`;
           bestTimeToVisit: '',
         };
 
+        // Varsayılan plan için itinerary oluştur - kullanıcının seçtiği gün sayısı kadar
+        try {
+          // Gün sayısını kontrol et
+          const days = formData.days || 3;
+          console.log(`Varsayılan plan için gün sayısı: ${days}`);
+
+          // Varsayılan itinerary oluştur - dizi formatında (web ve mobil uygulamalar için uyumlu)
+          const defaultItinerary: any[] = [];
+          for (let i = 1; i <= days; i++) {
+            defaultItinerary.push({
+              day: `${i}. Gün`,
+              plan: [
+                {
+                  time: "09:00 - 17:00",
+                  placeName: `${formData.city || formData.destination} Gezisi - Gün ${i}`,
+                  placeDetails: "Bu gün için özel bir plan bulunmamaktadır. Şehri keşfedebilir veya rehberli turlara katılabilirsiniz.",
+                  placeImageUrl: "",
+                  geoCoordinates: { latitude: 0, longitude: 0 },
+                  ticketPricing: "Değişken",
+                  timeToTravel: "Değişken",
+                  tips: ["Yerel rehberlerden bilgi alabilirsiniz.", "Hava durumuna göre giyinin.", "Yanınızda su bulundurun."],
+                  warnings: ["Değerli eşyalarınıza dikkat edin."],
+                  alternatives: ["Müze ziyareti", "Yerel pazarları gezme", "Şehir turu"]
+                }
+              ]
+            });
+          }
+
+          // Yeni itinerary'yi kaydet
+          travelPlan.itinerary = JSON.stringify(defaultItinerary);
+
+          console.log(`Varsayılan plan için ${days} günlük itinerary oluşturuldu.`);
+        } catch (error) {
+          console.error('Varsayılan itinerary oluşturma hatası:', error);
+        }
+
         // Web uygulamasıyla uyumlu olması için tarih formatını ayarla
         if (formData.startDate) {
           try {
+            // ISO string formatındaki tarihi Date objesine çevir
             const date = new Date(formData.startDate);
-            const day = date.getDate().toString().padStart(2, '0');
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const year = date.getFullYear();
-            travelPlan.startDate = `${day}/${month}/${year}`;
+
+            // Geçerli bir tarih mi kontrol et
+            if (!isNaN(date.getTime())) {
+              // Web uygulaması için DD/MM/YYYY formatında tarih oluştur
+              const day = date.getDate().toString().padStart(2, '0');
+              const month = (date.getMonth() + 1).toString().padStart(2, '0');
+              const year = date.getFullYear();
+              travelPlan.startDate = `${day}/${month}/${year}`;
+              console.log('Varsayılan plan için formatlanmış tarih:', travelPlan.startDate);
+
+              // Ayrıca ISO formatında da saklayalım (trip-details.tsx'de kullanılacak)
+              (travelPlan as any).startDateISO = date.toISOString();
+              console.log('Varsayılan plan için ISO formatında tarih:', (travelPlan as any).startDateISO);
+            } else {
+              console.error('Geçersiz tarih formatı:', formData.startDate);
+              // Bugünün tarihini kullan
+              const today = new Date();
+              const day = today.getDate().toString().padStart(2, '0');
+              const month = (today.getMonth() + 1).toString().padStart(2, '0');
+              const year = today.getFullYear();
+              travelPlan.startDate = `${day}/${month}/${year}`;
+              (travelPlan as any).startDateISO = today.toISOString();
+            }
           } catch (error) {
             console.error('Tarih dönüştürme hatası:', error);
+            // Hata durumunda bugünün tarihini kullan
+            const today = new Date();
+            const day = today.getDate().toString().padStart(2, '0');
+            const month = (today.getMonth() + 1).toString().padStart(2, '0');
+            const year = today.getFullYear();
+            travelPlan.startDate = `${day}/${month}/${year}`;
+            (travelPlan as any).startDateISO = today.toISOString();
           }
         }
       }

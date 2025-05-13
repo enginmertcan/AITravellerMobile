@@ -5,7 +5,9 @@ import Constants from 'expo-constants';
 const API_KEY = Constants.expoConfig?.extra?.weatherApiKey || '';
 
 export interface WeatherData {
-  date: string;
+  date: string; // DD/MM/YYYY formatı (API çağrıları için)
+  dateISO?: string; // ISO formatı (YYYY-MM-DD)
+  dateTurkish?: string; // Türkçe format (30 Nisan 2025 Pazartesi)
   temperature: number;
   feelsLike: number;
   description: string;
@@ -85,32 +87,58 @@ function validateWeatherData(data: any): boolean {
   );
 }
 
-export async function getWeatherForecast(location: string, startDate: Date, days: number = 1): Promise<WeatherData[]> {
+export async function getWeatherForecast(location: string, startDate: Date, days: number = 5): Promise<WeatherData[]> {
   try {
+    console.log(`getWeatherForecast called with location: ${location}, startDate: ${startDate.toISOString()}, days: ${days}`);
+
     if (!location || !startDate) {
+      console.warn('Missing location or startDate in getWeatherForecast');
       return [fallbackWeatherData];
     }
 
     const formattedLocation = formatLocation(location);
     if (!formattedLocation) {
+      console.warn('Invalid location format in getWeatherForecast');
       return [fallbackWeatherData];
     }
 
     // Tarih geçerli mi kontrol et
     if (isNaN(startDate.getTime())) {
+      console.warn('Invalid date format in getWeatherForecast');
       return [fallbackWeatherData];
+    }
+
+    // Global değişkene ata (AI servisi için)
+    (global as any).weatherStartDate = startDate.toISOString();
+    console.log('Global değişkene atanan hava durumu tarihi:', (global as any).weatherStartDate);
+
+    // Bugünün tarihiyle karşılaştır
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Eğer startDate bugünden önceyse, bugünü kullan
+    if (startDate < today) {
+      console.log('startDate is in the past, using today instead:', today.toISOString());
+      startDate = today;
     }
 
     // Tarih aralığını hesapla
     const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + Math.min(days, 15) - 1); // API en fazla 15 gün destekliyor
+    // En az 5 gün, en fazla 15 gün hava durumu göster
+    const requestDays = Math.max(5, Math.min(days, 15));
+    endDate.setDate(startDate.getDate() + requestDays - 1); // API en fazla 15 gün destekliyor
 
     const formattedStartDate = startDate.toISOString().split('T')[0];
     const formattedEndDate = endDate.toISOString().split('T')[0];
 
+    console.log(`Fetching weather from ${formattedStartDate} to ${formattedEndDate} (${days} days) for ${formattedLocation}`);
+
     // API çağrısını yap - tarih aralığı için
+    const apiUrl = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(formattedLocation)}/${formattedStartDate}/${formattedEndDate}?unitGroup=metric&include=days&key=${API_KEY}&contentType=json`;
+    console.log(`Weather API URL: ${apiUrl}`);
+
     const response = await fetch(
-      `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(formattedLocation)}/${formattedStartDate}/${formattedEndDate}?unitGroup=metric&include=days&key=${API_KEY}&contentType=json`,
+      apiUrl,
       {
         method: 'GET',
         headers: {
@@ -121,6 +149,7 @@ export async function getWeatherForecast(location: string, startDate: Date, days
 
     // HTTP durumunu kontrol et
     if (!response.ok) {
+      console.warn(`Weather API returned status ${response.status}`);
       return [fallbackWeatherData];
     }
 
@@ -128,8 +157,11 @@ export async function getWeatherForecast(location: string, startDate: Date, days
 
     // Veri doğrulaması yap
     if (!validateWeatherData(data)) {
+      console.warn('Invalid weather data structure received');
       return [fallbackWeatherData];
     }
+
+    console.log(`Received weather data for ${data.days.length} days`);
 
     // Veriyi dönüştür ve tarihi formatla
     const weatherData = data.days.map((day: any, index: number) => {
@@ -140,11 +172,24 @@ export async function getWeatherForecast(location: string, startDate: Date, days
         startDate.getDate() + index
       ));
 
-      // Tarihi DD/MM/YYYY formatına dönüştür (web uyumluluğu için)
+      // Tarihi DD/MM/YYYY formatına dönüştür (API çağrıları için)
       const formattedDate = `${dayDate.getUTCDate().toString().padStart(2, '0')}/${(dayDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${dayDate.getUTCFullYear()}`;
 
+      // Tarihi ISO formatına dönüştür (YYYY-MM-DD)
+      const isoDate = `${dayDate.getUTCFullYear()}-${(dayDate.getUTCMonth() + 1).toString().padStart(2, '0')}-${dayDate.getUTCDate().toString().padStart(2, '0')}`;
+
+      // Tarihi Türkçe formatına dönüştür (görüntüleme için)
+      const turkishDate = dayDate.toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        weekday: 'long'
+      });
+
       return {
-        date: formattedDate, // Web uyumluluğu için DD/MM/YYYY formatında
+        date: formattedDate, // DD/MM/YYYY formatı (API çağrıları için)
+        dateISO: isoDate, // ISO formatı (YYYY-MM-DD)
+        dateTurkish: turkishDate, // Türkçe format (30 Nisan 2025 Pazartesi)
         temperature: day.temp ?? 20,
         feelsLike: day.feelslike ?? day.temp ?? 20,
         description: day.conditions ?? "Parçalı Bulutlu",
@@ -156,9 +201,11 @@ export async function getWeatherForecast(location: string, startDate: Date, days
       };
     });
 
+    console.log(`Processed ${weatherData.length} days of weather data with dates: ${weatherData.map((d: WeatherData) => d.date).join(', ')}`);
     return weatherData;
 
   } catch (error) {
+    console.error('Error in getWeatherForecast:', error);
     return [fallbackWeatherData];
   }
 }

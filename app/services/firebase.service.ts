@@ -592,16 +592,87 @@ export const TravelPlanService = {
       try {
         let date: Date;
 
+        // Önce startDateISO alanını kontrol et (en doğru tarih bilgisi)
+        if ((formattedPlan as any).startDateISO && typeof (formattedPlan as any).startDateISO === 'string') {
+          console.log('startDateISO alanı bulundu:', (formattedPlan as any).startDateISO);
+          date = new Date((formattedPlan as any).startDateISO);
+        }
+        // Sonra startDateFormatted alanını kontrol et
+        else if ((formattedPlan as any).startDateFormatted && typeof (formattedPlan as any).startDateFormatted === 'string') {
+          console.log('startDateFormatted alanı bulundu:', (formattedPlan as any).startDateFormatted);
+          // Eğer bu alan zaten Türkçe formatta ise, direkt kullan
+          formattedPlan.startDate = (formattedPlan as any).startDateFormatted;
+
+          // Tarih formatını kontrol et (30 Nisan 2025 veya DD/MM/YYYY)
+          if ((formattedPlan as any).startDateFormatted.includes('/')) {
+            // DD/MM/YYYY formatı
+            const [day, month, year] = (formattedPlan as any).startDateFormatted.split('/').map(Number);
+            date = new Date(Date.UTC(year, month - 1, day));
+          } else {
+            // Türkçe tarih formatı (30 Nisan 2025)
+            const turkishMonths = {
+              'Ocak': 0, 'Şubat': 1, 'Mart': 2, 'Nisan': 3, 'Mayıs': 4, 'Haziran': 5,
+              'Temmuz': 6, 'Ağustos': 7, 'Eylül': 8, 'Ekim': 9, 'Kasım': 10, 'Aralık': 11
+            };
+
+            // Tarih formatını parçala
+            const parts = (formattedPlan as any).startDateFormatted.split(' ');
+            if (parts.length === 3) {
+              const day = parseInt(parts[0]);
+              const monthName = parts[1];
+              const year = parseInt(parts[2]);
+
+              // Ay adını sayıya çevir
+              const monthIndex = turkishMonths[monthName as keyof typeof turkishMonths];
+
+              if (!isNaN(day) && monthIndex !== undefined && !isNaN(year)) {
+                // UTC kullanarak tarih oluştur
+                date = new Date(Date.UTC(year, monthIndex, day));
+              } else {
+                date = new Date();
+              }
+            } else {
+              date = new Date();
+            }
+          }
+        }
         // String ise parse et
-        if (typeof formattedPlan.startDate === 'string') {
+        else if (typeof formattedPlan.startDate === 'string') {
           // ISO formatı (2023-04-30T14:52:18.000Z)
           if (formattedPlan.startDate.includes('T')) {
             date = new Date(formattedPlan.startDate);
           }
-          // Zaten DD/MM/YYYY formatındaysa
+          // DD/MM/YYYY formatındaysa
           else if (formattedPlan.startDate.includes('/')) {
             const [day, month, year] = formattedPlan.startDate.split('/').map(Number);
-            date = new Date(year, month - 1, day);
+            date = new Date(Date.UTC(year, month - 1, day));
+          }
+          // Türkçe tarih formatı (30 Nisan 2025)
+          else if (/\d+\s+[A-Za-zğüşıöçĞÜŞİÖÇ]+\s+\d{4}/.test(formattedPlan.startDate)) {
+            const turkishMonths = {
+              'Ocak': 0, 'Şubat': 1, 'Mart': 2, 'Nisan': 3, 'Mayıs': 4, 'Haziran': 5,
+              'Temmuz': 6, 'Ağustos': 7, 'Eylül': 8, 'Ekim': 9, 'Kasım': 10, 'Aralık': 11
+            };
+
+            // Tarih formatını parçala
+            const parts = formattedPlan.startDate.split(' ');
+            if (parts.length === 3) {
+              const day = parseInt(parts[0]);
+              const monthName = parts[1];
+              const year = parseInt(parts[2]);
+
+              // Ay adını sayıya çevir
+              const monthIndex = turkishMonths[monthName as keyof typeof turkishMonths];
+
+              if (!isNaN(day) && monthIndex !== undefined && !isNaN(year)) {
+                // UTC kullanarak tarih oluştur
+                date = new Date(Date.UTC(year, monthIndex, day));
+              } else {
+                date = new Date();
+              }
+            } else {
+              date = new Date();
+            }
           }
           // Diğer string formatları
           else {
@@ -619,6 +690,9 @@ export const TravelPlanService = {
 
         // Geçerli bir tarih mi kontrol et
         if (!isNaN(date.getTime())) {
+          // Orijinal tarihi sakla (ISO formatında)
+          const originalDate = date.toISOString();
+
           // Web uygulaması için Türkçe tarih formatı (30 Nisan 2025)
           const options: Intl.DateTimeFormatOptions = {
             day: 'numeric',
@@ -626,9 +700,21 @@ export const TravelPlanService = {
             year: 'numeric'
           };
 
-          // Türkçe tarih formatı oluştur
-          formattedPlan.startDate = date.toLocaleDateString('tr-TR', options);
-          console.log('Tarih formatı düzenlendi (Türkçe format):', formattedPlan.startDate);
+          // Eğer startDate zaten Türkçe formatta değilse, dönüştür
+          if (!/\d+\s+[A-Za-zğüşıöçĞÜŞİÖÇ]+\s+\d{4}/.test(formattedPlan.startDate as string)) {
+            // Türkçe tarih formatı oluştur
+            formattedPlan.startDate = date.toLocaleDateString('tr-TR', options);
+            console.log('Tarih formatı düzenlendi (Türkçe format):', formattedPlan.startDate);
+          }
+
+          // Orijinal tarihi de sakla (ISO formatında) - hava durumu ve diğer hesaplamalar için
+          formattedPlan.originalStartDate = originalDate;
+          formattedPlan.startDateISO = originalDate; // Ek olarak startDateISO alanını da ekle
+          console.log('Orijinal tarih saklandı (ISO format):', originalDate);
+
+          // Ayrıca DD/MM/YYYY formatında da sakla (API çağrıları için)
+          (formattedPlan as any).startDateDDMMYYYY = `${date.getUTCDate().toString().padStart(2, '0')}/${(date.getUTCMonth() + 1).toString().padStart(2, '0')}/${date.getUTCFullYear()}`;
+          console.log('DD/MM/YYYY formatında tarih saklandı:', (formattedPlan as any).startDateDDMMYYYY);
         } else {
           console.warn('Geçersiz tarih:', formattedPlan.startDate);
           // Geçersiz tarih ise bugünün tarihini kullan
@@ -639,6 +725,16 @@ export const TravelPlanService = {
             year: 'numeric'
           };
           formattedPlan.startDate = today.toLocaleDateString('tr-TR', options);
+
+          // Orijinal tarihi de sakla (ISO formatında) - hava durumu ve diğer hesaplamalar için
+          const originalDate = today.toISOString();
+          formattedPlan.originalStartDate = originalDate;
+          formattedPlan.startDateISO = originalDate; // Ek olarak startDateISO alanını da ekle
+
+          // Ayrıca DD/MM/YYYY formatında da sakla (API çağrıları için)
+          (formattedPlan as any).startDateDDMMYYYY = `${today.getUTCDate().toString().padStart(2, '0')}/${(today.getUTCMonth() + 1).toString().padStart(2, '0')}/${today.getUTCFullYear()}`;
+
+          console.log('Orijinal tarih saklandı (bugün - ISO format):', originalDate);
         }
       } catch (error) {
         console.error('Tarih dönüştürme hatası:', error);
@@ -650,6 +746,16 @@ export const TravelPlanService = {
           year: 'numeric'
         };
         formattedPlan.startDate = today.toLocaleDateString('tr-TR', options);
+
+        // Orijinal tarihi de sakla (ISO formatında) - hava durumu ve diğer hesaplamalar için
+        const originalDate = today.toISOString();
+        formattedPlan.originalStartDate = originalDate;
+        formattedPlan.startDateISO = originalDate; // Ek olarak startDateISO alanını da ekle
+
+        // Ayrıca DD/MM/YYYY formatında da sakla (API çağrıları için)
+        (formattedPlan as any).startDateDDMMYYYY = `${today.getUTCDate().toString().padStart(2, '0')}/${(today.getUTCMonth() + 1).toString().padStart(2, '0')}/${today.getUTCFullYear()}`;
+
+        console.log('Orijinal tarih saklandı (hata durumu - ISO format):', originalDate);
       }
     }
 
@@ -891,7 +997,6 @@ export const TravelPlanService = {
               data.tripSummary = parsedTripSummary;
             }
           } catch (error) {
-            console.error('Error parsing tripSummary string for plan:', doc.id, error);
           }
         }
 

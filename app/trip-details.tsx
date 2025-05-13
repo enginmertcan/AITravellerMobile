@@ -88,8 +88,14 @@ export default function TripDetailsScreen() {
       // Başlangıç tarihini parse et
       let startDate: Date;
       try {
+        // Önce startDateISO alanını kontrol et (en doğru tarih bilgisi burada olmalı)
+        if ((tripData as any).startDateISO && typeof (tripData as any).startDateISO === 'string') {
+          console.log('startDateISO alanı bulundu:', (tripData as any).startDateISO);
+          startDate = new Date((tripData as any).startDateISO);
+        }
         // Tarih formatını kontrol et (ISO string, DD/MM/YYYY, "DD Ay YYYY" veya timestamp)
-        if (typeof tripData.startDate === 'string') {
+        else if (typeof tripData.startDate === 'string') {
+          console.log('startDate alanı kullanılıyor:', tripData.startDate);
           if (tripData.startDate.includes('/')) {
             // DD/MM/YYYY formatı
             const [day, month, year] = tripData.startDate.split('/').map(Number);
@@ -377,6 +383,12 @@ export default function TripDetailsScreen() {
     // Veri yapısını güncelleyelim
     const processedPlan = { ...plan };
 
+    // startDateISO alanını kontrol et
+    if ((plan as any).startDateISO) {
+      (processedPlan as any).startDateISO = (plan as any).startDateISO;
+      console.log('selectPlan: startDateISO alanı bulundu:', (plan as any).startDateISO);
+    }
+
     // Vize bilgilerini kontrol et
     if (processedPlan.visaInfo && typeof processedPlan.visaInfo === 'string') {
       try {
@@ -509,37 +521,151 @@ export default function TripDetailsScreen() {
       // Destinasyon bilgisini al
       const destination = plan.destination;
 
-      // Tarih bilgisini al (plan.startDate veya bugünün tarihi)
+      // Önce startDateISO alanını kontrol et (en doğru tarih bilgisi)
       let tripDate: Date;
-      if (plan.startDate) {
-        // Tarih formatını kontrol et (ISO string, DD/MM/YYYY veya timestamp)
-        if (typeof plan.startDate === 'string') {
-          if (plan.startDate.includes('/')) {
-            // DD/MM/YYYY formatı
-            const [day, month, year] = plan.startDate.split('/').map(Number);
+
+      if ((plan as any).startDateISO && typeof (plan as any).startDateISO === 'string') {
+        console.log('startDateISO alanı bulundu:', (plan as any).startDateISO);
+        tripDate = new Date((plan as any).startDateISO);
+      }
+      // Sonra startDateDDMMYYYY alanını kontrol et (API çağrıları için)
+      else if ((plan as any).startDateDDMMYYYY && typeof (plan as any).startDateDDMMYYYY === 'string') {
+        console.log('startDateDDMMYYYY alanı bulundu:', (plan as any).startDateDDMMYYYY);
+        const [day, month, year] = (plan as any).startDateDDMMYYYY.split('/').map(Number);
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          // UTC kullanarak tarih oluştur - gün kayması sorununu önlemek için
+          tripDate = new Date(Date.UTC(year, month - 1, day));
+
+          // ISO formatını da ekle
+          (plan as any).startDateISO = tripDate.toISOString();
+          (plan as any).originalStartDate = tripDate.toISOString();
+        } else {
+          // Geçersiz format, bugünün tarihini kullan
+          tripDate = new Date(Date.UTC(
+            new Date().getFullYear(),
+            new Date().getMonth(),
+            new Date().getDate()
+          ));
+        }
+      }
+      // Sonra startDate alanını kontrol et
+      else if (plan.startDate && typeof plan.startDate === 'string') {
+        console.log('Parsing startDate:', plan.startDate);
+
+        // DD/MM/YYYY formatı
+        if (plan.startDate.includes('/')) {
+          const [day, month, year] = plan.startDate.split('/').map(Number);
+          if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
             // UTC kullanarak tarih oluştur - gün kayması sorununu önlemek için
             tripDate = new Date(Date.UTC(year, month - 1, day));
-          } else if (plan.startDate.includes('-')) {
-            // YYYY-MM-DD formatı
-            const [year, month, day] = plan.startDate.split('-').map(Number);
-            tripDate = new Date(Date.UTC(year, month - 1, day));
-          } else if (plan.startDate.includes('T')) {
-            // ISO string formatı (YYYY-MM-DDTHH:mm:ss.sssZ)
-            tripDate = new Date(plan.startDate);
+
+            // Eğer originalStartDate veya startDateISO yoksa, bunları ekleyelim
+            if (!(plan as any).originalStartDate) {
+              (plan as any).originalStartDate = tripDate.toISOString();
+              console.log('originalStartDate eklendi (DD/MM/YYYY formatından):', (plan as any).originalStartDate);
+            }
+
+            if (!(plan as any).startDateISO) {
+              (plan as any).startDateISO = tripDate.toISOString();
+              console.log('startDateISO eklendi (DD/MM/YYYY formatından):', (plan as any).startDateISO);
+            }
           } else {
-            // Timestamp olabilir
-            tripDate = new Date(parseInt(plan.startDate));
+            // Geçersiz format, bugünün tarihini kullan
+            tripDate = new Date(Date.UTC(
+              new Date().getFullYear(),
+              new Date().getMonth(),
+              new Date().getDate()
+            ));
           }
-        } else if (typeof plan.startDate === 'number') {
-          // Timestamp formatı
+        }
+        // Türkçe tarih formatı (30 Nisan 2025)
+        else if (/\d+\s+[A-Za-zğüşıöçĞÜŞİÖÇ]+\s+\d{4}/.test(plan.startDate)) {
+          try {
+            // Türkçe ay adlarını sayıya çevir
+            const turkishMonths = {
+              'Ocak': 0, 'Şubat': 1, 'Mart': 2, 'Nisan': 3, 'Mayıs': 4, 'Haziran': 5,
+              'Temmuz': 6, 'Ağustos': 7, 'Eylül': 8, 'Ekim': 9, 'Kasım': 10, 'Aralık': 11
+            };
+
+            // Tarih formatını parçala
+            const parts = plan.startDate.split(' ');
+            if (parts.length === 3) {
+              const day = parseInt(parts[0]);
+              const monthName = parts[1];
+              const year = parseInt(parts[2]);
+
+              // Ay adını sayıya çevir
+              const monthIndex = turkishMonths[monthName as keyof typeof turkishMonths];
+
+              if (!isNaN(day) && monthIndex !== undefined && !isNaN(year)) {
+                // UTC kullanarak tarih oluştur
+                tripDate = new Date(Date.UTC(year, monthIndex, day));
+                console.log('Türkçe tarih formatı algılandı ve dönüştürüldü:', tripDate.toISOString());
+
+                // ISO formatında startDate ve startDateISO alanlarını güncelle
+                (plan as any).startDateISO = tripDate.toISOString();
+                (plan as any).originalStartDate = tripDate.toISOString();
+                // DD/MM/YYYY formatında startDateDDMMYYYY alanını ekle
+                (plan as any).startDateDDMMYYYY = `${day.toString().padStart(2, '0')}/${(monthIndex + 1).toString().padStart(2, '0')}/${year}`;
+
+                console.log('Tarih alanları güncellendi:', {
+                  startDate: plan.startDate,
+                  startDateISO: (plan as any).startDateISO,
+                  originalStartDate: (plan as any).originalStartDate,
+                  startDateDDMMYYYY: (plan as any).startDateDDMMYYYY
+                });
+              } else {
+                // Geçersiz format, bugünün tarihini kullan
+                tripDate = new Date(Date.UTC(
+                  new Date().getFullYear(),
+                  new Date().getMonth(),
+                  new Date().getDate()
+                ));
+              }
+            } else {
+              // Geçersiz format, bugünün tarihini kullan
+              tripDate = new Date(Date.UTC(
+                new Date().getFullYear(),
+                new Date().getMonth(),
+                new Date().getDate()
+              ));
+            }
+          } catch (error) {
+            console.error('Tarih dönüştürme hatası:', error);
+            // Geçersiz format, bugünün tarihini kullan
+            tripDate = new Date(Date.UTC(
+              new Date().getFullYear(),
+              new Date().getMonth(),
+              new Date().getDate()
+            ));
+          }
+        }
+        // ISO formatı (2023-04-30T14:52:18.000Z)
+        else if (plan.startDate.includes('T')) {
           tripDate = new Date(plan.startDate);
-        } else {
+
+          // DD/MM/YYYY formatında startDateDDMMYYYY alanını ekle
+          (plan as any).startDateDDMMYYYY = `${tripDate.getUTCDate().toString().padStart(2, '0')}/${(tripDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${tripDate.getUTCFullYear()}`;
+
+          // ISO formatında startDateISO alanını ekle
+          (plan as any).startDateISO = tripDate.toISOString();
+          (plan as any).originalStartDate = tripDate.toISOString();
+        }
+        // Diğer formatlar
+        else {
           // Varsayılan olarak bugünü kullan
           tripDate = new Date(Date.UTC(
             new Date().getFullYear(),
             new Date().getMonth(),
             new Date().getDate()
           ));
+
+          // ISO formatında startDateISO alanını ekle
+          (plan as any).startDateISO = tripDate.toISOString();
+          (plan as any).originalStartDate = tripDate.toISOString();
+
+          // DD/MM/YYYY formatında startDateDDMMYYYY alanını ekle
+          (plan as any).startDateDDMMYYYY = `${tripDate.getUTCDate().toString().padStart(2, '0')}/${(tripDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${tripDate.getUTCFullYear()}`;
         }
 
         // Tarih geçerli değilse bugünün tarihini kullan
@@ -550,6 +676,13 @@ export default function TripDetailsScreen() {
             new Date().getMonth(),
             new Date().getDate()
           ));
+
+          // ISO formatında startDateISO alanını ekle
+          (plan as any).startDateISO = tripDate.toISOString();
+          (plan as any).originalStartDate = tripDate.toISOString();
+
+          // DD/MM/YYYY formatında startDateDDMMYYYY alanını ekle
+          (plan as any).startDateDDMMYYYY = `${tripDate.getUTCDate().toString().padStart(2, '0')}/${(tripDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${tripDate.getUTCFullYear()}`;
         }
       } else {
         // Bugünün tarihini UTC olarak kullan
@@ -558,6 +691,13 @@ export default function TripDetailsScreen() {
           new Date().getMonth(),
           new Date().getDate()
         ));
+
+        // ISO formatında startDateISO alanını ekle
+        (plan as any).startDateISO = tripDate.toISOString();
+        (plan as any).originalStartDate = tripDate.toISOString();
+
+        // DD/MM/YYYY formatında startDateDDMMYYYY alanını ekle
+        (plan as any).startDateDDMMYYYY = `${tripDate.getUTCDate().toString().padStart(2, '0')}/${(tripDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${tripDate.getUTCFullYear()}`;
       }
 
       console.log('Hava durumu için kullanılan tarih:', tripDate.toISOString());
@@ -705,12 +845,27 @@ export default function TripDetailsScreen() {
       // En az 1, en fazla 15 gün olacak şekilde sınırla
       durationDays = Math.max(1, Math.min(15, durationDays));
 
+      console.log(`Fetching weather data for ${durationDays} days for destination: ${destination}`);
+      console.log(`Trip date: ${tripDate.toISOString()}, Duration: ${durationDays} days`);
+
       // Hava durumu verilerini getir
       const forecast = await getWeatherForecast(destination, tripDate, durationDays);
 
       if (forecast && forecast.length > 0) {
+        console.log(`Received ${forecast.length} days of weather data with dates: ${forecast.map(d => d.date).join(', ')}`);
+
+        // Hava durumu verilerini kontrol et
+        if (forecast.length < durationDays) {
+          console.warn(`Warning: Received fewer weather days (${forecast.length}) than requested (${durationDays})`);
+        }
+
         setWeatherData(forecast);
         console.log(`${forecast.length} günlük hava durumu verileri başarıyla alındı`);
+
+        // Hava durumu verilerini detaylı olarak logla
+        forecast.forEach((day, index) => {
+          console.log(`Day ${index + 1}: ${day.date}, Temp: ${day.temperature}°C, ${day.description}`);
+        });
       } else {
         console.warn('Hava durumu verileri alınamadı');
         setWeatherData(null);
@@ -1544,7 +1699,15 @@ export default function TripDetailsScreen() {
             </View>
             <View style={styles.card}>
               <ThemedText style={styles.infoItem} numberOfLines={2} ellipsizeMode="tail">Destinasyon: {tripData.destination}</ThemedText>
-              {tripData.startDate && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Başlangıç Tarihi: {tripData.startDate}</ThemedText>}
+              {tripData.startDate && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Başlangıç Tarihi: {(tripData as any).startDateISO ? new Date((tripData as any).startDateISO).toLocaleDateString('tr-TR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              }) : (tripData as any).originalStartDate ? new Date((tripData as any).originalStartDate).toLocaleDateString('tr-TR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              }) : tripData.startDate}</ThemedText>}
               {tripData.duration && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Süre: {tripData.duration} gün</ThemedText>}
               {tripData.budget && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Bütçe: {tripData.budget}</ThemedText>}
               {tripData.groupType && <ThemedText style={styles.infoItem} numberOfLines={1} ellipsizeMode="tail">Grup Tipi: {tripData.groupType}</ThemedText>}
@@ -2114,7 +2277,60 @@ export default function TripDetailsScreen() {
               }
             }
 
+            // İtinerary'nin gün sayısını kontrol et ve eksik günleri tamamla
             if (itineraryToUse && itineraryToUse.length > 0) {
+              // Beklenen gün sayısını belirle
+              let expectedDays = 1;
+              if (tripData.days && typeof tripData.days === 'number') {
+                expectedDays = tripData.days;
+              } else if (tripData.duration) {
+                if (typeof tripData.duration === 'number') {
+                  expectedDays = tripData.duration;
+                } else if (typeof tripData.duration === 'string') {
+                  // "3 days" gibi string'den sayıyı çıkar
+                  const durationMatch = tripData.duration.match(/\d+/);
+                  if (durationMatch) {
+                    expectedDays = parseInt(durationMatch[0], 10);
+                  }
+                }
+              } else if (tripData.tripSummary && tripData.tripSummary.duration) {
+                const durationMatch = String(tripData.tripSummary.duration).match(/\d+/);
+                if (durationMatch) {
+                  expectedDays = parseInt(durationMatch[0], 10);
+                }
+              }
+
+              console.log(`İtinerary gün sayısı: ${itineraryToUse.length}, Beklenen gün sayısı: ${expectedDays}`);
+
+              // Eksik günleri tamamla
+              if (itineraryToUse.length < expectedDays) {
+                console.log(`Eksik günler ekleniyor (${itineraryToUse.length} -> ${expectedDays})...`);
+
+                for (let i = itineraryToUse.length + 1; i <= expectedDays; i++) {
+                  itineraryToUse.push({
+                    day: `${i}. Gün`,
+                    plan: [
+                      {
+                        time: "09:00 - 17:00",
+                        placeName: `${tripData.destination} Keşfi - Gün ${i}`,
+                        placeDetails: "Bu gün için özel bir plan bulunmamaktadır. Şehri keşfedebilir veya rehberli turlara katılabilirsiniz.",
+                        placeImageUrl: "",
+                        geoCoordinates: { latitude: 0, longitude: 0 },
+                        ticketPricing: "Değişken",
+                        timeToTravel: "Değişken",
+                        tips: [
+                          "Yerel rehberlerden bilgi alabilirsiniz.",
+                          "Hava durumuna göre giyinin.",
+                          "Yanınızda su bulundurun."
+                        ],
+                        warnings: ["Değerli eşyalarınıza dikkat edin."],
+                        alternatives: ["Müze ziyareti", "Yerel pazarları gezme", "Şehir turu"]
+                      }
+                    ]
+                  });
+                }
+              }
+
               return (
                 <View style={styles.section}>
                   <ThemedText style={styles.sectionTitle}>Gezi Planı</ThemedText>
@@ -2509,8 +2725,9 @@ export default function TripDetailsScreen() {
               hasLocalTipsData = true;
 
               // Objenin içeriğini kontrol et
-              Object.keys(localTipsData).forEach(key => {
-              });
+              if (Object.keys(localTipsData).length > 0) {
+                console.log('localTipsData içeriği:', Object.keys(localTipsData));
+              }
             }
 
             // Eksik alanları tamamla

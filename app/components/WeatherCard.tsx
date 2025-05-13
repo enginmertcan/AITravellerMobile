@@ -47,7 +47,7 @@ const weatherDescriptionTranslations: { [key: string]: string } = {
   "Scattered clouds": "Parçalı Bulutlu",
   "Broken clouds": "Çok Bulutlu",
   "Overcast clouds": "Kapalı Hava",
-  "Partly cloudy": "Parçalı Bulutlu", 
+  "Partly cloudy": "Parçalı Bulutlu",
   // Yağışlı Durumlar
   "Rain": "Yağmurlu",
   "Light rain": "Hafif Yağmurlu",
@@ -120,6 +120,10 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
   const uniqueWeatherData = useMemo(() => {
     if (!weatherData || weatherData.length === 0) return [];
 
+    // Log the received weather data for debugging
+    console.log(`WeatherCard received ${weatherData.length} days of weather data:`,
+      weatherData.map(day => day.date).join(', '));
+
     const uniqueDates = new Map<string, WeatherData>();
 
     const validWeatherData = weatherData.filter(day => {
@@ -151,34 +155,58 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
       }
     });
 
+    // Log the valid weather data
+    console.log(`WeatherCard found ${validWeatherData.length} valid days of weather data`);
+
+    // Make sure each day is included only once by using the date as a key
     validWeatherData.forEach(day => {
       let dateKey = day.date;
       if (!uniqueDates.has(dateKey)) {
         uniqueDates.set(dateKey, day);
+      } else {
+        console.warn(`Duplicate date found in weather data: ${day.date}`);
       }
     });
 
-    return Array.from(uniqueDates.values()).sort((a, b) => {
+    // Eğer hiç geçerli tarih yoksa, orijinal veriyi kullan
+    if (uniqueDates.size === 0 && weatherData.length > 0) {
+      console.warn('No valid dates found in weather data, using original data');
+      weatherData.forEach((day, index) => {
+        uniqueDates.set(`day-${index}`, day);
+      });
+    }
+
+    // Sort the weather data by date
+    const sortedData = Array.from(uniqueDates.values()).sort((a, b) => {
       try {
         let dateA_val: Date, dateB_val: Date;
-        if (a.date.includes('/')) {
+        if (a.date && a.date.includes('/')) {
           const [dayA, monthA, yearA] = a.date.split('/').map(Number);
           dateA_val = new Date(Date.UTC(yearA, monthA - 1, dayA));
-        } else {
+        } else if (a.date) {
           dateA_val = new Date(a.date + 'T00:00:00Z');
+        } else {
+          return -1; // Tarih yoksa en başa koy
         }
-        if (b.date.includes('/')) {
+
+        if (b.date && b.date.includes('/')) {
           const [dayB, monthB, yearB] = b.date.split('/').map(Number);
           dateB_val = new Date(Date.UTC(yearB, monthB - 1, dayB));
-        } else {
+        } else if (b.date) {
           dateB_val = new Date(b.date + 'T00:00:00Z');
+        } else {
+          return 1; // Tarih yoksa en başa koy
         }
+
         return dateA_val.getTime() - dateB_val.getTime();
       } catch (error) {
         console.error('Tarih sıralama hatası WeatherCard içinde:', error);
         return 0;
       }
     });
+
+    console.log(`WeatherCard returning ${sortedData.length} sorted days of weather data`);
+    return sortedData;
   }, [weatherData]);
 
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
@@ -188,6 +216,8 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
     if (!day || !day.date) {
       return {
         date: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }), // Show current date as fallback
+        dateISO: new Date().toISOString().split('T')[0], // ISO formatı (YYYY-MM-DD)
+        dateTurkish: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' }), // Türkçe format
         description: 'Hava durumu verisi alınamadı.',
         currentTemp: '--', // Keep this key for internal consistency in the component
         feelsLike: '--',
@@ -199,7 +229,9 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
       };
     }
     return {
-      date: day.date,
+      date: day.date, // DD/MM/YYYY formatı (API çağrıları için)
+      dateISO: day.dateISO || day.date.split('/').reverse().join('-'), // ISO formatı (YYYY-MM-DD)
+      dateTurkish: day.dateTurkish || formatDate(day.date), // Türkçe format (30 Nisan 2025 Pazartesi)
       description: day.description || 'Açıklama mevcut değil',
       currentTemp: day.temperature?.toString() ?? '--', // Map from WeatherData.temperature
       feelsLike: day.feelsLike?.toString() ?? '--',
@@ -278,11 +310,11 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
       <View style={styles.container}>
         <View style={styles.header}>
           <ThemedText style={styles.title}>Hava Durumu</ThemedText>
-          <ThemedText style={styles.date}>{formatDate(fallbackDay.date)}</ThemedText>
+          <ThemedText style={styles.date}>{fallbackDay.dateTurkish || formatDate(fallbackDay.date)}</ThemedText>
         </View>
-        <View style={styles.mainInfoContainer}> 
-          <MaterialCommunityIcons 
-            name={getIconName(fallbackDay.icon)} 
+        <View style={styles.mainInfoContainer}>
+          <MaterialCommunityIcons
+            name={getIconName(fallbackDay.icon)}
             size={64} // Adjusted size for fallback
             color="#AEAEB2" // Muted color for fallback icon
           />
@@ -295,46 +327,81 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
       </View>
     );
   }
-  
+
   // If there's data (even if current selected might be problematic, getValidSelectedDay handles it)
   const currentIconName = getIconName(validSelectedDay.icon);
-  
+
   return (
     <View style={styles.container}>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        style={styles.daySelector}
-        contentContainerStyle={styles.daySelectorContent}
-      >
-        {uniqueWeatherData.map((day, index) => (
-          <TouchableOpacity
-            key={`${day.date}-${index}`} // More robust key
-            style={[
-              styles.dayButton,
-              selectedDayIndex === index && styles.selectedDayButton,
-            ]}
-            onPress={() => setSelectedDayIndex(index)}
-          >
-            <ThemedText 
+      {/* Day selector - horizontal scrollable list of days */}
+      <View style={styles.daySelectorContainer}>
+        <ThemedText style={styles.daySelectorTitle}>
+          {uniqueWeatherData.length > 1
+            ? `${uniqueWeatherData.length} Günlük Hava Durumu - Gün Seçin`
+            : "Hava Durumu"}
+        </ThemedText>
+
+        {uniqueWeatherData.length > 1 && (
+          <ThemedText style={styles.daySelectorInstructions}>
+            Aşağıdaki günlerden birini seçerek o günün hava durumunu görüntüleyebilirsiniz
+          </ThemedText>
+        )}
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.daySelector}
+          contentContainerStyle={styles.daySelectorContent}
+        >
+          {uniqueWeatherData.map((day, index) => (
+            <TouchableOpacity
+              key={`${day.date}-${index}`}
               style={[
-                styles.dayButtonText,
-                selectedDayIndex === index && styles.selectedDayText,
+                styles.dayButton,
+                selectedDayIndex === index && styles.selectedDayButton,
               ]}
+              onPress={() => setSelectedDayIndex(index)}
             >
-              {formatShortDate(day.date)}
-            </ThemedText>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+              <ThemedText
+                style={[
+                  styles.dayButtonText,
+                  selectedDayIndex === index && styles.selectedDayText,
+                ]}
+              >
+                {formatShortDate(day.date)}
+              </ThemedText>
+
+              {/* Küçük hava durumu ikonu */}
+              {day.icon && (
+                <MaterialCommunityIcons
+                  name={getIconName(day.icon)}
+                  size={18}
+                  color={selectedDayIndex === index ? "#FFFFFF" : "#CCCCCC"}
+                  style={{marginTop: 4}}
+                />
+              )}
+
+              {/* Sıcaklık bilgisi */}
+              <ThemedText
+                style={[
+                  styles.dayTempText,
+                  selectedDayIndex === index && styles.selectedDayText,
+                ]}
+              >
+                {day.temperature}°C
+              </ThemedText>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <View style={styles.header}>
         <ThemedText style={styles.title}>Hava Durumu</ThemedText>
-        {/* Tarih formatı validSelectedDay'den geliyor ve formatDate ile işleniyor */}
-        <ThemedText style={styles.date}>{formatDate(validSelectedDay.date)}</ThemedText>
+        {/* Türkçe tarih formatını kullan (dateTurkish) */}
+        <ThemedText style={styles.date}>{validSelectedDay.dateTurkish || formatDate(validSelectedDay.date)}</ThemedText>
       </View>
 
-      <View style={styles.mainInfoContainer}> 
+      <View style={styles.mainInfoContainer}>
         <MaterialCommunityIcons name={currentIconName} size={80} color="#FFFFFF" />
         <View style={styles.temperatureContainer}>
           <ThemedText style={styles.temperature}>{validSelectedDay.currentTemp}°C</ThemedText>
@@ -397,27 +464,61 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)', // Daha ince ve şık bir kenarlık
   },
+  // Day selector container and title
+  daySelectorContainer: {
+    marginBottom: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: 15,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  daySelectorTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+    textAlign: 'center',
+    backgroundColor: 'rgba(10, 132, 255, 0.2)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  daySelectorInstructions: {
+    color: '#CCCCCC',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 10,
+    fontStyle: 'italic',
+  },
   daySelector: {
-    marginBottom: 22, // Boşluğu biraz artırdım
+    marginBottom: 5,
   },
   daySelectorContent: {
-    paddingHorizontal: 2, // Butonların kenarlara yapışmaması için
+    paddingHorizontal: 2,
+    paddingVertical: 5,
   },
   dayButton: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 18, // Daha yumuşak kenarlar
-    marginHorizontal: 5, // Butonlar arası boşluk
+    paddingVertical: 12,
+    borderRadius: 18,
+    marginHorizontal: 5,
     backgroundColor: '#3A3A3C',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    minWidth: 75, 
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    minWidth: 80,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
   selectedDayButton: {
     backgroundColor: '#0A84FF', // iOS Mavi
-    borderColor: 'rgba(10, 132, 255, 0.5)',
+    borderColor: 'rgba(10, 132, 255, 0.7)',
     shadowColor: '#0A84FF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.6,
@@ -426,13 +527,20 @@ const styles = StyleSheet.create({
   },
   dayButtonText: {
     color: '#E0E0E0',
-    fontSize: 14,
-    fontFamily: 'System', // Daha standart bir font ailesi
+    fontSize: 15,
+    fontFamily: 'System',
     fontWeight: '500',
   },
   selectedDayText: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  dayTempText: {
+    color: '#E0E0E0',
+    fontSize: 13,
+    fontFamily: 'System',
+    fontWeight: '500',
+    marginTop: 2,
   },
   header: {
     marginBottom: 18, // Boşluğu ayarladım
@@ -504,7 +612,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(76, 76, 76, 0.3)', // Detay kutularının arka planını biraz daha belirgin yaptım
     borderRadius: 14,
     paddingVertical: 16,
-    paddingHorizontal: 8, 
+    paddingHorizontal: 8,
   },
   detailTextContainer: {
     marginTop: 10, // İkon ile metin arası boşluğu artırdım
@@ -522,5 +630,15 @@ const styles = StyleSheet.create({
     fontSize: 17, // Değer fontunu büyüttüm
     fontWeight: '500',
     fontFamily: 'System',
+  },
+  weatherLoadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  weatherLoadingText: {
+    marginTop: 10,
+    color: '#AEAEB2',
+    fontSize: 14,
   },
 });
