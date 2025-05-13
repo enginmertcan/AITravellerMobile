@@ -18,7 +18,11 @@ export interface WeatherData {
 
 // Yedek hava durumu verisi
 const fallbackWeatherData: WeatherData = {
-  date: formatDateToDDMMYYYY(new Date()), // Web uyumluluğu için DD/MM/YYYY formatında
+  date: formatDateToDDMMYYYY(new Date(Date.UTC(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    new Date().getDate()
+  ))), // Web uyumluluğu için DD/MM/YYYY formatında
   temperature: 20,
   feelsLike: 20,
   description: "Hava durumu verisi alınamadı",
@@ -31,9 +35,10 @@ const fallbackWeatherData: WeatherData = {
 
 // Tarihi DD/MM/YYYY formatına dönüştüren yardımcı fonksiyon
 function formatDateToDDMMYYYY(date: Date): string {
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear();
+  // UTC kullanarak tarih formatla - gün kayması sorununu önlemek için
+  const day = date.getUTCDate().toString().padStart(2, '0');
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const year = date.getUTCFullYear();
   return `${day}/${month}/${year}`;
 }
 
@@ -128,12 +133,15 @@ export async function getWeatherForecast(location: string, startDate: Date, days
 
     // Veriyi dönüştür ve tarihi formatla
     const weatherData = data.days.map((day: any, index: number) => {
-      // Tarihi hesapla (startDate + index gün)
-      const dayDate = new Date(startDate);
-      dayDate.setDate(startDate.getDate() + index);
+      // Tarihi hesapla (startDate + index gün) - UTC kullanarak
+      const dayDate = new Date(Date.UTC(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate() + index
+      ));
 
       // Tarihi DD/MM/YYYY formatına dönüştür (web uyumluluğu için)
-      const formattedDate = `${dayDate.getDate().toString().padStart(2, '0')}/${(dayDate.getMonth() + 1).toString().padStart(2, '0')}/${dayDate.getFullYear()}`;
+      const formattedDate = `${dayDate.getUTCDate().toString().padStart(2, '0')}/${(dayDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${dayDate.getUTCFullYear()}`;
 
       return {
         date: formattedDate, // Web uyumluluğu için DD/MM/YYYY formatında

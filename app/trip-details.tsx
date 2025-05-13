@@ -88,26 +88,61 @@ export default function TripDetailsScreen() {
       // Başlangıç tarihini parse et
       let startDate: Date;
       try {
-        // startDate formatı "DD/MM/YYYY" veya "DD Ay YYYY" olabilir
-        if (tripData.startDate.includes('/')) {
-          const [day, month, year] = tripData.startDate.split('/').map(Number);
-          // UTC kullanarak tarih oluştur - artık gün ekleme yok
-          startDate = new Date(Date.UTC(year, month - 1, day));
+        // Tarih formatını kontrol et (ISO string, DD/MM/YYYY, "DD Ay YYYY" veya timestamp)
+        if (typeof tripData.startDate === 'string') {
+          if (tripData.startDate.includes('/')) {
+            // DD/MM/YYYY formatı
+            const [day, month, year] = tripData.startDate.split('/').map(Number);
+            // UTC kullanarak tarih oluştur - gün kayması sorununu önlemek için
+            startDate = new Date(Date.UTC(year, month - 1, day));
+          } else if (tripData.startDate.includes('-')) {
+            // YYYY-MM-DD formatı
+            const [year, month, day] = tripData.startDate.split('-').map(Number);
+            startDate = new Date(Date.UTC(year, month - 1, day));
+          } else if (tripData.startDate.includes('T')) {
+            // ISO string formatı (YYYY-MM-DDTHH:mm:ss.sssZ)
+            const isoDate = new Date(tripData.startDate);
+            startDate = new Date(Date.UTC(
+              isoDate.getFullYear(),
+              isoDate.getMonth(),
+              isoDate.getDate()
+            ));
+          } else if (/^\d+$/.test(tripData.startDate)) {
+            // Timestamp olabilir
+            const tsDate = new Date(parseInt(tripData.startDate));
+            startDate = new Date(Date.UTC(
+              tsDate.getFullYear(),
+              tsDate.getMonth(),
+              tsDate.getDate()
+            ));
+          } else {
+            // "30 Nisan 2025" gibi formatlar için
+            const dateParts = tripData.startDate.split(' ');
+            const day = parseInt(dateParts[0], 10);
+            const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+            const month = monthNames.indexOf(dateParts[1]);
+            const year = parseInt(dateParts[2], 10);
+            // UTC kullanarak tarih oluştur
+            startDate = new Date(Date.UTC(year, month, day));
+          }
+        } else if (typeof tripData.startDate === 'number') {
+          // Timestamp formatı
+          const tsDate = new Date(tripData.startDate);
+          startDate = new Date(Date.UTC(
+            tsDate.getFullYear(),
+            tsDate.getMonth(),
+            tsDate.getDate()
+          ));
         } else {
-          // "30 Nisan 2025" gibi formatlar için
-          const dateParts = tripData.startDate.split(' ');
-          const day = parseInt(dateParts[0], 10);
-          const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-          const month = monthNames.indexOf(dateParts[1]);
-          const year = parseInt(dateParts[2], 10);
-          // UTC kullanarak tarih oluştur - artık gün ekleme yok
-          startDate = new Date(Date.UTC(year, month, day));
+          throw new Error('Geçersiz tarih formatı');
         }
 
         // Tarih geçerli değilse hata ver
         if (isNaN(startDate.getTime())) {
           throw new Error('Geçersiz tarih formatı');
         }
+
+        console.log('Takvim için kullanılan tarih:', startDate.toISOString());
 
       } catch (error) {
         console.error('Tarih parse hatası:', error);
@@ -477,18 +512,55 @@ export default function TripDetailsScreen() {
       // Tarih bilgisini al (plan.startDate veya bugünün tarihi)
       let tripDate: Date;
       if (plan.startDate) {
-        // startDate formatı "DD/MM/YYYY" olarak kabul edilir
-        const [day, month, year] = plan.startDate.split('/').map(Number);
-        tripDate = new Date(year, month - 1, day); // Ay 0-11 arasında olduğu için -1
+        // Tarih formatını kontrol et (ISO string, DD/MM/YYYY veya timestamp)
+        if (typeof plan.startDate === 'string') {
+          if (plan.startDate.includes('/')) {
+            // DD/MM/YYYY formatı
+            const [day, month, year] = plan.startDate.split('/').map(Number);
+            // UTC kullanarak tarih oluştur - gün kayması sorununu önlemek için
+            tripDate = new Date(Date.UTC(year, month - 1, day));
+          } else if (plan.startDate.includes('-')) {
+            // YYYY-MM-DD formatı
+            const [year, month, day] = plan.startDate.split('-').map(Number);
+            tripDate = new Date(Date.UTC(year, month - 1, day));
+          } else if (plan.startDate.includes('T')) {
+            // ISO string formatı (YYYY-MM-DDTHH:mm:ss.sssZ)
+            tripDate = new Date(plan.startDate);
+          } else {
+            // Timestamp olabilir
+            tripDate = new Date(parseInt(plan.startDate));
+          }
+        } else if (typeof plan.startDate === 'number') {
+          // Timestamp formatı
+          tripDate = new Date(plan.startDate);
+        } else {
+          // Varsayılan olarak bugünü kullan
+          tripDate = new Date(Date.UTC(
+            new Date().getFullYear(),
+            new Date().getMonth(),
+            new Date().getDate()
+          ));
+        }
 
         // Tarih geçerli değilse bugünün tarihini kullan
         if (isNaN(tripDate.getTime())) {
           console.warn('Geçersiz tarih formatı:', plan.startDate);
-          tripDate = new Date();
+          tripDate = new Date(Date.UTC(
+            new Date().getFullYear(),
+            new Date().getMonth(),
+            new Date().getDate()
+          ));
         }
       } else {
-        tripDate = new Date(); // Bugünün tarihi
+        // Bugünün tarihini UTC olarak kullan
+        tripDate = new Date(Date.UTC(
+          new Date().getFullYear(),
+          new Date().getMonth(),
+          new Date().getDate()
+        ));
       }
+
+      console.log('Hava durumu için kullanılan tarih:', tripDate.toISOString());
 
       // Konaklama süresi (gün sayısı)
       let durationDays = 1;

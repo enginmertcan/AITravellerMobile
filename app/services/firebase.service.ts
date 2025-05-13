@@ -1679,7 +1679,6 @@ export const TravelPlanService = {
               data.tripSummary = parsedTripSummary;
             }
           } catch (error) {
-            console.error('Error parsing tripSummary string for plan:', doc.id, error);
           }
         }
 
