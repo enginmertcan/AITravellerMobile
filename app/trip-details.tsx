@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, Alert, Modal, Dimensions, Image } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, Alert, Modal, Dimensions, Image, Platform } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -42,6 +42,9 @@ export default function TripDetailsScreen() {
   // Otel detayları için modal state'leri
   const [hotelModalVisible, setHotelModalVisible] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
+
+  // Önerme modalı için state
+  const [recommendModalVisible, setRecommendModalVisible] = useState(false);
 
   const screenWidth = Dimensions.get('window').width;
   const router = useRouter();
@@ -225,9 +228,19 @@ export default function TripDetailsScreen() {
       const eventId = await Calendar.createEventAsync(defaultCalendar.id, eventDetails);
 
       if (eventId) {
+        // Haptic feedback
+        if (Platform.OS === 'ios') {
+          try {
+            const Haptics = require('expo-haptics');
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          } catch (error) {
+            console.log('Haptic feedback not available');
+          }
+        }
+
         Alert.alert(
           "Başarılı",
-          "Seyahat planınız takvime eklendi.",
+          "Seyahat planınız takvime eklendi. Takviminizde görüntüleyebilirsiniz.",
           [{ text: "Tamam" }]
         );
       } else {
@@ -1562,94 +1575,141 @@ export default function TripDetailsScreen() {
         </TouchableOpacity>
         <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">Seyahat Planı</ThemedText>
 
-        {/* Beğeni Sayısı ve Butonu - Önerilen planlarda göster */}
-        {tripData.isRecommended && (
-          <TouchableOpacity
-            style={styles.likeCountContainer}
-            onPress={() => {
-              if (!userId) {
-                Alert.alert('Giriş Gerekli', 'Beğeni yapabilmek için giriş yapmalısınız.');
-                return;
+        {/* Beğeni Sayısı ve Butonu - Her zaman göster */}
+        <TouchableOpacity
+          style={[
+            styles.likeCountContainer,
+            tripData.likedBy?.includes(userId || '') && styles.likeCountContainerActive
+          ]}
+          onPress={() => {
+            if (!userId) {
+              Alert.alert('Giriş Gerekli', 'Beğeni yapabilmek için giriş yapmalısınız.');
+              return;
+            }
+
+            // Optimistic UI update
+            const isCurrentlyLiked = tripData.likedBy?.includes(userId || '') || false;
+            const currentLikes = tripData.likes || 0;
+
+            // Create a new likedBy array
+            const newLikedBy = [...(tripData.likedBy || [])];
+
+            if (isCurrentlyLiked) {
+              // Remove user from likedBy
+              const index = newLikedBy.indexOf(userId || '');
+              if (index > -1) {
+                newLikedBy.splice(index, 1);
               }
+            } else {
+              // Add user to likedBy
+              newLikedBy.push(userId || '');
+            }
 
-              // Optimistic UI update
-              const isCurrentlyLiked = tripData.likedBy?.includes(userId || '') || false;
-              const currentLikes = tripData.likes || 0;
+            // Create a new tripData object with updated like info
+            const updatedTripData = {
+              ...tripData,
+              likes: isCurrentlyLiked ? currentLikes - 1 : currentLikes + 1,
+              likedBy: newLikedBy
+            };
 
-              // Create a new likedBy array
-              const newLikedBy = [...(tripData.likedBy || [])];
+            // Update the state immediately for responsive UI
+            setTripData(updatedTripData);
 
-              if (isCurrentlyLiked) {
-                // Remove user from likedBy
-                const index = newLikedBy.indexOf(userId || '');
-                if (index > -1) {
-                  newLikedBy.splice(index, 1);
-                }
-              } else {
-                // Add user to likedBy
-                newLikedBy.push(userId || '');
+            // Haptic feedback
+            if (Platform.OS === 'ios') {
+              try {
+                const Haptics = require('expo-haptics');
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              } catch (error) {
+                console.log('Haptic feedback not available');
               }
+            }
 
-              // Create a new tripData object with updated like info
-              const updatedTripData = {
-                ...tripData,
-                likes: isCurrentlyLiked ? currentLikes - 1 : currentLikes + 1,
-                likedBy: newLikedBy
-              };
+            // Show a brief success message
+            if (!isCurrentlyLiked) {
+              Alert.alert(
+                'Beğenildi!',
+                'Bu seyahat planını beğendiniz. Beğendiğiniz planlar önerilen seyahatler bölümünde görüntülenebilir.',
+                [{ text: 'Tamam', style: 'default' }],
+                { cancelable: true }
+              );
+            }
 
-              // Update the state immediately for responsive UI
-              setTripData(updatedTripData);
-
-              // Then perform the actual API call in the background without waiting
-              FirebaseService.TravelPlan.toggleLike(tripData.id as string, userId || '')
-                .then(success => {
-                  if (!success) {
-                    // If the API call fails, revert the UI change
-                    setTripData({
-                      ...tripData,
-                      likes: currentLikes,
-                      likedBy: tripData.likedBy || []
-                    });
-                    Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
-                  }
-                })
-                .catch(error => {
-                  console.error('Beğeni hatası:', error);
-                  // Revert UI change on error
+            // Then perform the actual API call in the background without waiting
+            FirebaseService.TravelPlan.toggleLike(tripData.id as string, userId || '')
+              .then(success => {
+                if (!success) {
+                  // If the API call fails, revert the UI change
                   setTripData({
                     ...tripData,
                     likes: currentLikes,
                     likedBy: tripData.likedBy || []
                   });
                   Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+              })
+              .catch(error => {
+                console.error('Beğeni hatası:', error);
+                // Revert UI change on error
+                setTripData({
+                  ...tripData,
+                  likes: currentLikes,
+                  likedBy: tripData.likedBy || []
                 });
-            }}
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <MaterialCommunityIcons
-              name={tripData.likedBy?.includes(userId || '') ? "heart" : "heart-outline"}
-              size={18}
-              color="#e91e63"
-            />
-            <ThemedText style={styles.likeCountText}>
-              {tripData.likes || 0}
-            </ThemedText>
-          </TouchableOpacity>
-        )}
+                Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+              });
+          }}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialCommunityIcons
+            name={tripData.likedBy?.includes(userId || '') ? "heart" : "heart-outline"}
+            size={22}
+            color={tripData.likedBy?.includes(userId || '') ? "#e91e63" : "#fff"}
+          />
+          <ThemedText style={styles.likeCountText}>
+            {tripData.likes || 0}
+          </ThemedText>
+        </TouchableOpacity>
 
         {/* Öneri Butonu */}
         {tripData.userId === userId && (
           <TouchableOpacity
             style={[styles.actionButton, tripData.isRecommended ? styles.recommendedButton : {}]}
-            onPress={toggleRecommendation}
+            onPress={() => {
+              // Öneri modalını göster
+              setRecommendModalVisible(true);
+
+              // Haptic feedback
+              if (Platform.OS === 'ios') {
+                try {
+                  const Haptics = require('expo-haptics');
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                } catch (error) {
+                  console.log('Haptic feedback not available');
+                }
+              }
+            }}
           >
             <MaterialCommunityIcons
               name={tripData.isRecommended ? "star" : "star-outline"}
               size={22}
               color={tripData.isRecommended ? "#FFD700" : "#fff"}
             />
+            {tripData.isRecommended && (
+              <View style={styles.recommendedBadge}>
+                <ThemedText style={styles.recommendedBadgeText}>Önerilen</ThemedText>
+              </View>
+            )}
           </TouchableOpacity>
+        )}
+
+        {/* Önerilen Rozeti - Kullanıcı plan sahibi değilse ve plan önerilmişse */}
+        {tripData.userId !== userId && tripData.isRecommended && (
+          <View style={styles.recommendedIndicator}>
+            <MaterialCommunityIcons name="star" size={16} color="#FFD700" />
+            <ThemedText style={styles.recommendedIndicatorText}>Önerilen</ThemedText>
+          </View>
         )}
 
         <TouchableOpacity
@@ -1717,7 +1777,36 @@ export default function TripDetailsScreen() {
               {/* Takvime Ekle Butonu */}
               <TouchableOpacity
                 style={styles.calendarButton}
-                onPress={addToCalendar}
+                onPress={() => {
+                  // Haptic feedback
+                  if (Platform.OS === 'ios') {
+                    try {
+                      const Haptics = require('expo-haptics');
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    } catch (error) {
+                      console.log('Haptic feedback not available');
+                    }
+                  }
+
+                  // Takvim modalını göster
+                  Alert.alert(
+                    "Takvime Ekle",
+                    `${tripData.destination} seyahatinizi takviminize eklemek istiyor musunuz?`,
+                    [
+                      {
+                        text: "İptal",
+                        style: "cancel"
+                      },
+                      {
+                        text: "Ekle",
+                        onPress: () => {
+                          // Takvime ekle
+                          addToCalendar();
+                        }
+                      }
+                    ]
+                  );
+                }}
               >
                 <MaterialCommunityIcons name="calendar-plus" size={20} color="#fff" style={{ marginRight: 8 }} />
                 <ThemedText style={styles.calendarButtonText}>Takvime Ekle</ThemedText>
@@ -1914,6 +2003,72 @@ export default function TripDetailsScreen() {
             hotel={selectedHotel}
             onClose={() => setHotelModalVisible(false)}
           />
+
+          {/* Önerme Modalı */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={recommendModalVisible}
+            onRequestClose={() => setRecommendModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.recommendModalContent}>
+                <View style={styles.recommendModalHeader}>
+                  <MaterialCommunityIcons
+                    name={tripData.isRecommended ? "star" : "star-outline"}
+                    size={40}
+                    color={tripData.isRecommended ? "#FFD700" : "#4c669f"}
+                  />
+                  <ThemedText style={styles.recommendModalTitle}>
+                    {tripData.isRecommended ? 'Önerilen Seyahat Planı' : 'Seyahat Planını Öner'}
+                  </ThemedText>
+                </View>
+
+                <ThemedText style={styles.recommendModalText}>
+                  {tripData.isRecommended
+                    ? 'Bu seyahat planınız şu anda diğer kullanıcılara öneriliyor. Önermeyi kaldırmak istiyor musunuz?'
+                    : 'Bu seyahat planınızı diğer kullanıcılara önermek istiyor musunuz? Önerilen planlar, beğeni sayısına göre sıralanır ve diğer kullanıcılar tarafından görüntülenebilir.'}
+                </ThemedText>
+
+                <View style={styles.recommendModalButtons}>
+                  <TouchableOpacity
+                    style={styles.recommendModalCancelButton}
+                    onPress={() => setRecommendModalVisible(false)}
+                  >
+                    <ThemedText style={styles.recommendModalCancelButtonText}>İptal</ThemedText>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.recommendModalActionButton,
+                      tripData.isRecommended ? styles.recommendModalRemoveButton : styles.recommendModalAddButton
+                    ]}
+                    onPress={() => {
+                      // Öneri durumunu değiştir
+                      toggleRecommendation();
+
+                      // Modalı kapat
+                      setRecommendModalVisible(false);
+
+                      // Haptic feedback
+                      if (Platform.OS === 'ios') {
+                        try {
+                          const Haptics = require('expo-haptics');
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (error) {
+                          console.log('Haptic feedback not available');
+                        }
+                      }
+                    }}
+                  >
+                    <ThemedText style={styles.recommendModalActionButtonText}>
+                      {tripData.isRecommended ? 'Öneriyi Kaldır' : 'Öner'}
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
 
           {/* Gezi Planı */}
           {/* Aktivite Detay Modalı */}
@@ -3161,10 +3316,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
     ...AppStyles.shadows.small,
+    position: 'relative',
   },
   recommendedButton: {
     backgroundColor: 'rgba(255, 215, 0, 0.2)',
     borderColor: '#FFD700',
+  },
+  recommendedBadge: {
+    position: 'absolute',
+    bottom: -15,
+    left: -10,
+    right: -10,
+    backgroundColor: 'rgba(255, 215, 0, 0.8)',
+    paddingVertical: 2,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recommendedBadgeText: {
+    color: '#000',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  recommendedIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 10,
+  },
+  recommendedIndicatorText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
   likeCountContainer: {
     flexDirection: 'row',
@@ -3178,6 +3366,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(233, 30, 99, 0.3)',
     ...AppStyles.shadows.small,
+    // Animasyon efekti için transform eklenebilir
+    transform: [{ scale: 1.0 }],
+  },
+  likeCountContainerActive: {
+    backgroundColor: 'rgba(233, 30, 99, 0.2)',
+    borderColor: 'rgba(233, 30, 99, 0.5)',
+    transform: [{ scale: 1.05 }],
   },
   likeCountText: {
     fontSize: 14,
@@ -3377,6 +3572,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#5d77af',
   },
   calendarButtonText: {
     color: '#fff',
@@ -3644,5 +3841,75 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: 'SpaceMono',
     fontSize: 14,
+  },
+
+  // Önerme Modalı Stilleri
+  recommendModalContent: {
+    backgroundColor: '#111',
+    borderRadius: 16,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    ...AppStyles.shadows.medium,
+    borderWidth: 1,
+    borderColor: '#4c669f',
+  },
+  recommendModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  recommendModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginLeft: 12,
+    color: '#fff',
+    fontFamily: 'SpaceMono',
+  },
+  recommendModalText: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 24,
+    color: '#ccc',
+    fontFamily: 'SpaceMono',
+  },
+  recommendModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  recommendModalCancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    marginRight: 8,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  recommendModalCancelButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontFamily: 'SpaceMono',
+  },
+  recommendModalActionButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    marginLeft: 8,
+    alignItems: 'center',
+  },
+  recommendModalAddButton: {
+    backgroundColor: '#4c669f',
+  },
+  recommendModalRemoveButton: {
+    backgroundColor: '#e74c3c',
+  },
+  recommendModalActionButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontFamily: 'SpaceMono',
   },
 });

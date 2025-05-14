@@ -71,6 +71,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="recommended-trips"
+        options={{
+          title: 'Önerilen',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="star" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profil',

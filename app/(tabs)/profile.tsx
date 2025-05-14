@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { FirebaseService } from '@/app/services/firebase.service';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ProfileScreen() {
   const { signOut } = useAuth();
@@ -76,17 +77,24 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <ThemedText style={styles.title}>Profil</ThemedText>
         <View style={styles.userInfoCard}>
-          <View style={styles.userInfo}>
-            <View style={styles.avatarContainer}>
-              <MaterialCommunityIcons name="account" size={40} color="#fff" />
+          <LinearGradient
+            colors={['#4c669f', '#3b5998', '#192f6a']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradientHeader}
+          >
+            <View style={styles.userInfo}>
+              <View style={styles.avatarContainer}>
+                <MaterialCommunityIcons name="account" size={40} color="#fff" />
+              </View>
+              <View style={styles.userDetails}>
+                <ThemedText style={styles.userName}>
+                  {user?.firstName} {user?.lastName}
+                </ThemedText>
+                <ThemedText style={styles.userEmail}>{user?.emailAddresses[0].emailAddress}</ThemedText>
+              </View>
             </View>
-            <View style={styles.userDetails}>
-              <ThemedText style={styles.userName}>
-                {user?.firstName} {user?.lastName}
-              </ThemedText>
-              <ThemedText style={styles.userEmail}>{user?.emailAddresses[0].emailAddress}</ThemedText>
-            </View>
-          </View>
+          </LinearGradient>
           <View style={styles.statsContainer}>
             <TouchableOpacity
               style={styles.statItem}
@@ -164,9 +172,14 @@ const styles = StyleSheet.create({
   },
   userInfoCard: {
     ...AppStyles.layout.card,
-    padding: AppStyles.spacing.lg,
+    padding: 0,
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
+    overflow: 'hidden',
+  },
+  gradientHeader: {
+    padding: AppStyles.spacing.lg,
+    width: '100%',
   },
   userInfo: {
     flexDirection: 'row',
@@ -177,32 +190,42 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: AppStyles.borderRadius.round,
-    backgroundColor: `${AppStyles.colors.primary}20`,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: AppStyles.spacing.md,
     borderWidth: 2,
-    borderColor: AppStyles.colors.primary,
-    ...AppStyles.shadows.small,
+    borderColor: '#ffffff',
+    ...AppStyles.shadows.medium,
   },
   userDetails: {
     flex: 1,
   },
   userName: {
     ...AppStyles.typography.subtitle,
-    color: AppStyles.colors.dark.text,
+    color: '#ffffff',
     marginBottom: AppStyles.spacing.xs,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   userEmail: {
     ...AppStyles.typography.caption,
-    color: AppStyles.colors.dark.textMuted,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingTop: AppStyles.spacing.md,
+    paddingBottom: AppStyles.spacing.md,
+    paddingHorizontal: AppStyles.spacing.lg,
     borderTopWidth: 1,
     borderTopColor: AppStyles.colors.dark.border,
+    backgroundColor: AppStyles.colors.dark.card,
   },
   statItem: {
     alignItems: 'center',
@@ -242,6 +265,8 @@ const styles = StyleSheet.create({
     padding: 0,
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
+    ...AppStyles.shadows.medium,
+    elevation: 4,
   },
   menuItem: {
     flexDirection: 'row',

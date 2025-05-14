@@ -160,15 +160,45 @@ export default function HomeScreen() {
                   onPress={() => router.push(`/trip-details?id=${plan.id}`)}
                 >
                   <View style={styles.travelPlanImageContainer}>
-                    <MaterialCommunityIcons name="map-marker-outline" size={50} color="#4c669f" />
+                    <LinearGradient
+                      colors={['#4c669f', '#3b5998', '#192f6a']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.gradientBackground}
+                    >
+                      <MaterialCommunityIcons name="map-marker-outline" size={50} color="#ffffff" />
+                      {plan.isRecommended && (
+                        <View style={styles.recommendedBadgeTop}>
+                          <MaterialCommunityIcons name="star" size={16} color="#FFD700" />
+                          <ThemedText style={styles.recommendedBadgeTopText}>Önerilen</ThemedText>
+                        </View>
+                      )}
+                    </LinearGradient>
                   </View>
                   <View style={styles.travelPlanContent}>
                     <ThemedText style={styles.travelPlanDestination}>{plan.destination}</ThemedText>
                     <ThemedText style={styles.travelPlanDetails}>
                       {plan.startDate} • {plan.days || plan.duration} gün
                     </ThemedText>
-                    <View style={styles.travelPlanBadge}>
-                      <ThemedText style={styles.travelPlanBadgeText}>{plan.budget}</ThemedText>
+                    <View style={styles.travelPlanBadgesContainer}>
+                      <View style={styles.travelPlanBadge}>
+                        <ThemedText style={styles.travelPlanBadgeText}>{plan.budget}</ThemedText>
+                      </View>
+
+                      {/* Beğeni Sayısı */}
+                      {(plan.likes && plan.likes > 0) && (
+                        <View style={styles.likeBadge}>
+                          <MaterialCommunityIcons name="heart" size={12} color="#e91e63" />
+                          <ThemedText style={styles.likeBadgeText}>{plan.likes}</ThemedText>
+                        </View>
+                      )}
+
+                      {/* Önerilen Rozeti */}
+                      {plan.isRecommended && (
+                        <View style={styles.recommendedBadge}>
+                          <MaterialCommunityIcons name="star" size={12} color="#FFD700" />
+                        </View>
+                      )}
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -264,17 +294,44 @@ const styles = StyleSheet.create({
     backgroundColor: AppStyles.colors.dark.card,
     borderRadius: AppStyles.borderRadius.md,
     marginRight: AppStyles.spacing.sm,
-    ...AppStyles.shadows.small,
+    ...AppStyles.shadows.medium,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
     marginBottom: 2,
+    // Daha modern bir görünüm için
+    elevation: 4,
   },
   travelPlanImageContainer: {
     height: 120,
     backgroundColor: AppStyles.colors.dark.cardAlt,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  gradientBackground: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  recommendedBadgeTop: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recommendedBadgeTopText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
   travelPlanContent: {
     padding: AppStyles.spacing.sm,
@@ -290,17 +347,44 @@ const styles = StyleSheet.create({
     color: AppStyles.colors.dark.textMuted,
     marginBottom: AppStyles.spacing.sm,
   },
+  travelPlanBadgesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   travelPlanBadge: {
     backgroundColor: `${AppStyles.colors.primary}15`,
     paddingHorizontal: AppStyles.spacing.sm,
     paddingVertical: AppStyles.spacing.xs,
     borderRadius: AppStyles.borderRadius.xs,
-    alignSelf: 'flex-start',
   },
   travelPlanBadgeText: {
     color: AppStyles.colors.primary,
     fontSize: 12,
     fontWeight: '500',
+  },
+  likeBadge: {
+    backgroundColor: 'rgba(233, 30, 99, 0.1)',
+    paddingHorizontal: AppStyles.spacing.sm,
+    paddingVertical: AppStyles.spacing.xs,
+    borderRadius: AppStyles.borderRadius.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  likeBadgeText: {
+    color: '#e91e63',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  recommendedBadge: {
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    paddingHorizontal: AppStyles.spacing.sm,
+    paddingVertical: AppStyles.spacing.xs,
+    borderRadius: AppStyles.borderRadius.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   noPlansContainer: {
     padding: AppStyles.spacing.xl,
@@ -388,9 +472,10 @@ const styles = StyleSheet.create({
     padding: AppStyles.spacing.md,
     alignItems: 'center',
     backgroundColor: AppStyles.colors.dark.card,
-    ...AppStyles.shadows.small,
+    ...AppStyles.shadows.medium,
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
+    elevation: 4,
   },
   iconContainer: {
     width: 48,
@@ -419,9 +504,10 @@ const styles = StyleSheet.create({
     borderRadius: AppStyles.borderRadius.lg,
     padding: AppStyles.spacing.md,
     backgroundColor: AppStyles.colors.dark.card,
-    ...AppStyles.shadows.small,
+    ...AppStyles.shadows.medium,
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
+    elevation: 4,
   },
   featureTitle: {
     ...AppStyles.typography.body,

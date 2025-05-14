@@ -483,6 +483,9 @@ Başlangıç Tarihi: ${formattedDate}`;
           residenceCountry: formData.residenceCountry || 'Turkey',
           citizenship: formData.citizenship || 'Turkey',
           country: result.response.travelPlan.country || '',
+          isRecommended: false,
+          likes: 0,
+          likedBy: [],
           bestTimeToVisit: result.response.travelPlan.bestTimeToVisit || '',
         };
 
@@ -613,6 +616,9 @@ Başlangıç Tarihi: ${formattedDate}`;
           citizenship: formData.citizenship || 'Turkey',
           country: '',
           bestTimeToVisit: '',
+          isRecommended: false,
+          likes: 0,
+          likedBy: [],
         };
 
         // Varsayılan plan için itinerary oluştur - kullanıcının seçtiği gün sayısı kadar

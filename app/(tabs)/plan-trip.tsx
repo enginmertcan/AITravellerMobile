@@ -37,6 +37,8 @@ export default function PlanTripScreen() {
   const { userId, isSignedIn } = useAuth(); // useAuth hook'unu en üst seviyede çağırıyoruz
   const [isDomestic, setIsDomestic] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStage, setLoadingStage] = useState('');
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [countries, setCountries] = useState<Country[]>([]);
   const [formState, setFormState] = useState<{
@@ -204,6 +206,8 @@ export default function PlanTripScreen() {
     }
 
     setIsLoading(true);
+    setLoadingProgress(0);
+    setLoadingStage('Seyahat planı oluşturuluyor...');
 
     try {
       // Kullanıcı ID'sini kullan
@@ -233,6 +237,24 @@ export default function PlanTripScreen() {
         ));
       }
 
+      // İlerleme animasyonu başlat
+      const progressInterval = setInterval(() => {
+        setLoadingProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + 5;
+        });
+      }, 1000);
+
+      // Aşamaları göster
+      setTimeout(() => setLoadingStage('Destinasyon bilgileri analiz ediliyor...'), 2000);
+      setTimeout(() => setLoadingStage('Hava durumu verileri alınıyor...'), 4000);
+      setTimeout(() => setLoadingStage('Aktiviteler planlanıyor...'), 6000);
+      setTimeout(() => setLoadingStage('Konaklama önerileri hazırlanıyor...'), 8000);
+      setTimeout(() => setLoadingStage('Seyahat planı tamamlanıyor...'), 10000);
+
       console.log('AI servisine gönderilen tarih:', selectedDate.toISOString());
       console.log('Form state:', formState);
       console.log('AI servisine gönderilen gün sayısı:', formState.days);
@@ -254,6 +276,11 @@ export default function PlanTripScreen() {
       // AI servisini çağır - createTravelPlan metodu
       const travelPlan = await chatSession.createTravelPlan(travelFormData);
 
+      // İlerlemeyi tamamla
+      clearInterval(progressInterval);
+      setLoadingProgress(95);
+      setLoadingStage('Plan kaydediliyor...');
+
       // Web uyumluluğu için veri formatını düzenle
       const formattedPlan = FirebaseService.TravelPlan.formatTravelPlanForWeb(travelPlan);
 
@@ -261,6 +288,8 @@ export default function PlanTripScreen() {
       let travelPlanId = '';
       try {
         travelPlanId = await FirebaseService.TravelPlan.createTravelPlan(formattedPlan);
+        setLoadingProgress(100);
+        setLoadingStage('Tamamlandı!');
       } catch (error) {
         Alert.alert(
           'Hata',
@@ -270,23 +299,37 @@ export default function PlanTripScreen() {
         return; // Hata durumunda işlemi sonlandır
       }
 
-      // Kullanıcıyı detay sayfasına yönlendir (plan ID ile)
+      // Başarı modalı göster
       if (travelPlanId) {
-        router.push(`/trip-details?id=${travelPlanId}`);
+        // Haptic feedback
+        if (Platform.OS === 'ios') {
+          try {
+            const Haptics = require('expo-haptics');
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          } catch (error) {
+            console.log('Haptic feedback not available');
+          }
+        }
+
+        // Başarı mesajı göster
+        Alert.alert(
+          'Seyahat Planı Oluşturuldu!',
+          'Seyahat planınız başarıyla oluşturuldu. Şimdi detayları görüntüleyebilir, planınızı önerebilir veya beğenebilirsiniz.',
+          [
+            {
+              text: 'Detayları Görüntüle',
+              onPress: () => router.push(`/trip-details?id=${travelPlanId}`),
+            },
+            {
+              text: 'Ana Sayfaya Dön',
+              onPress: () => router.push('/'),
+              style: 'cancel',
+            },
+          ]
+        );
       } else {
         router.push('/trip-details');
       }
-
-      Alert.alert(
-        'Başarılı',
-        'Seyahat planınız oluşturuldu!',
-        [
-          {
-            text: 'Tamam',
-            onPress: () => router.push('/'),
-          },
-        ]
-      );
     } catch (error) {
       Alert.alert('Hata', 'Seyahat planı oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
@@ -727,13 +770,23 @@ export default function PlanTripScreen() {
           </View>
         </View>
 
+        {isLoading && (
+          <View style={styles.progressBarContainer}>
+            <View style={[styles.progressBar, { width: `${loadingProgress}%` }]} />
+            <ThemedText style={styles.progressText}>{loadingProgress}%</ThemedText>
+          </View>
+        )}
+
         <TouchableOpacity
           style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
           onPress={handlePlanTrip}
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color="#fff" size="small" />
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="#fff" size="small" />
+              <ThemedText style={styles.loadingText}>{loadingStage}</ThemedText>
+            </View>
           ) : (
             <>
               <MaterialCommunityIcons name="robot" size={24} color="#fff" />
@@ -741,6 +794,13 @@ export default function PlanTripScreen() {
             </>
           )}
         </TouchableOpacity>
+
+        <View style={styles.infoCard}>
+          <MaterialCommunityIcons name="information-outline" size={20} color="#4c669f" />
+          <ThemedText style={styles.infoText}>
+            Oluşturulan seyahat planınızı beğenebilir, önerebilir ve arkadaşlarınızla paylaşabilirsiniz.
+          </ThemedText>
+        </View>
       </View>
     </ScrollView>
   );
@@ -1060,15 +1120,83 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
     marginTop: 32,
+    marginBottom: 20,
+    shadowColor: '#4c669f',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#5d77af',
   },
   submitButtonDisabled: {
     opacity: 0.5,
   },
   submitButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
     fontFamily: 'SpaceMono',
+    marginLeft: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 12,
+    fontFamily: 'SpaceMono',
+  },
+  infoCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'flex-start',
+    marginBottom: 40,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 102, 159, 0.2)',
+  },
+  infoText: {
+    color: '#999',
+    fontSize: 14,
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 20,
+    fontFamily: 'SpaceMono',
+  },
+  progressBarContainer: {
+    width: '100%',
+    height: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 10,
+    marginBottom: 20,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#4c669f',
+    borderRadius: 10,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+  },
+  progressText: {
+    position: 'absolute',
+    width: '100%',
+    textAlign: 'center',
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+    lineHeight: 20,
   },
   selectedValue: {
     fontSize: 14,
