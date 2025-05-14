@@ -842,7 +842,7 @@ export default function TripDetailsScreen() {
         }
       }
 
-      // En az 1, en fazla 15 gün olacak şekilde sınırla
+      // Kullanıcının seçtiği gün sayısını kullan, en az 1, en fazla 15 gün
       durationDays = Math.max(1, Math.min(15, durationDays));
 
       console.log(`Fetching weather data for ${durationDays} days for destination: ${destination}`);

@@ -124,8 +124,8 @@ export async function getWeatherForecast(location: string, startDate: Date, days
 
     // Tarih aralığını hesapla
     const endDate = new Date(startDate);
-    // En az 5 gün, en fazla 15 gün hava durumu göster
-    const requestDays = Math.max(5, Math.min(days, 15));
+    // Kullanıcının seçtiği gün sayısını kullan, en az 1, en fazla 15 gün
+    const requestDays = Math.max(1, Math.min(days, 15));
     endDate.setDate(startDate.getDate() + requestDays - 1); // API en fazla 15 gün destekliyor
 
     const formattedStartDate = startDate.toISOString().split('T')[0];
