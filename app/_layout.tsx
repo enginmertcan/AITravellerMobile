@@ -36,6 +36,10 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    InterRegular: require('../assets/fonts/inter/Inter-Regular.ttf'),
+    InterMedium: require('../assets/fonts/inter/Inter-Medium.ttf'),
+    InterSemiBold: require('../assets/fonts/inter/Inter-SemiBold.ttf'),
+    InterBold: require('../assets/fonts/inter/Inter-Bold.ttf'),
   });
 
   useEffect(() => {
@@ -51,7 +55,7 @@ export default function RootLayout() {
   }
 
   const clerkPublishableKey = Constants.expoConfig?.extra?.clerkPublishableKey || process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  
+
   if (!clerkPublishableKey) {
     console.error('Clerk publishable key is missing!');
     return null;

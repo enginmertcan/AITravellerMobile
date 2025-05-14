@@ -98,28 +98,28 @@ export const typography = StyleSheet.create({
   title: {
     fontSize: scale(24),
     fontWeight: '700',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterBold',
     lineHeight: scale(32),
   },
   subtitle: {
     fontSize: scale(18),
     fontWeight: '600',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
     lineHeight: scale(24),
   },
   body: {
     fontSize: scale(15),
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     lineHeight: scale(22),
   },
   caption: {
     fontSize: scale(13),
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     lineHeight: scale(18),
   },
   small: {
     fontSize: scale(12),
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     lineHeight: scale(16),
   },
 });
@@ -208,7 +208,7 @@ export const components = {
       color: colors.primary,
       fontWeight: '600',
       fontSize: scale(16),
-      fontFamily: 'SpaceMono',
+      fontFamily: 'InterSemiBold',
     },
   },
 };

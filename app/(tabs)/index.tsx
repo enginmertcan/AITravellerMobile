@@ -9,6 +9,7 @@ import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { TravelPlanService } from '@/app/services/firebase.service';
 import { TravelPlan } from '@/app/types/travel';
+import AppStyles from '@/constants/AppStyles';
 
 const { width } = Dimensions.get('window');
 
@@ -264,7 +265,7 @@ export default function HomeScreen() {
   );
 }
 
-import AppStyles from '@/constants/AppStyles';
+
 
 const styles = StyleSheet.create({
   container: {
@@ -496,11 +497,11 @@ const styles = StyleSheet.create({
   },
   featuresGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 12,
   },
   featureCard: {
-    width: (width - 52) / 2,
+    flex: 1,
     borderRadius: AppStyles.borderRadius.lg,
     padding: AppStyles.spacing.md,
     backgroundColor: AppStyles.colors.dark.card,
@@ -508,6 +509,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
     elevation: 4,
+    marginHorizontal: 4,
   },
   featureTitle: {
     ...AppStyles.typography.body,

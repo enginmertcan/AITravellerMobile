@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: AppStyles.colors.primary,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   statLabel: {
     ...AppStyles.typography.small,

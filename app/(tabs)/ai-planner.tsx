@@ -139,13 +139,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     marginBottom: 8,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     marginTop: 10,
   },
   subtitle: {
     fontSize: 16,
     color: '#999',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   content: {
     flex: 1,
@@ -187,14 +187,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     flex: 1,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   cardDescription: {
     fontSize: 14,
     color: '#999',
     marginBottom: 24,
     lineHeight: 22,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   cardButton: {
     backgroundColor: '#4c669f',
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginRight: 8,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   featuresContainer: {
     backgroundColor: '#111',
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginBottom: 16,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   featuresList: {
     marginTop: 8,
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ccc',
     flex: 1,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   infoCard: {
     flexDirection: 'row',
@@ -286,6 +286,6 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
     lineHeight: 20,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
 });

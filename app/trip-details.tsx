@@ -17,8 +17,11 @@ import AIHotelPhotosService from './services/ai-hotel-photos.service';
 import ActivityPhotosService from './services/ActivityPhotosService';
 import * as Calendar from 'expo-calendar';
 import AppStyles from '@/constants/AppStyles';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TripDetailsScreen() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const [loading, setLoading] = useState(true);
   const [tripData, setTripData] = useState<Partial<TravelPlan>>(DEFAULT_TRAVEL_PLAN);
   const [userPlans, setUserPlans] = useState<Partial<TravelPlan>[]>([]);
@@ -1372,8 +1375,46 @@ export default function TripDetailsScreen() {
 
     try {
       if (!showPlansList && tripData && tripData.id) {
-        // Detay görünümündeyse, mevcut planı yeniden yükle
-        await loadSinglePlan(tripData.id);
+        // Detay görünümündeyse, Firebase'den planı getir ama sayfayı yenileme
+        const plan = await FirebaseService.TravelPlan.getTravelPlanById(tripData.id);
+
+        if (plan && Object.keys(plan).length > 0) {
+          // Planı işle ama sayfayı yenileme
+          // Sadece gerekli alanları güncelle
+          setTripData({
+            ...tripData,
+            ...plan,
+            // Önerme durumunu koru
+            isRecommended: plan.isRecommended !== undefined ? plan.isRecommended : tripData.isRecommended,
+            // Beğeni durumunu koru
+            likes: plan.likes !== undefined ? plan.likes : tripData.likes,
+            likedBy: plan.likedBy || tripData.likedBy
+          });
+
+          // Hava durumu verilerini güncelle
+          fetchWeatherData(plan);
+
+          // Yükleme durumunu kapat
+          setLoading(false);
+
+          // Haptic feedback
+          if (Platform.OS === 'ios') {
+            try {
+              const Haptics = require('expo-haptics');
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (error) {
+              console.log('Haptic feedback not available');
+            }
+          }
+
+          // Başarılı mesajı gösterme
+          // setSuccessMessage('Seyahat planı başarıyla güncellendi.');
+          // setSuccessModalVisible(true);
+        } else {
+          // Plan bulunamadıysa hata göster
+          Alert.alert('Hata', 'Seyahat planı bulunamadı.');
+          setLoading(false);
+        }
       } else {
         // Liste görünümündeyse, tüm planları yeniden yükle
         await loadData();
@@ -1385,6 +1426,10 @@ export default function TripDetailsScreen() {
       Alert.alert('Hata', 'Veriler yenilenirken bir hata oluştu. Lütfen tekrar deneyin.');
     }
   };
+
+  // Başarılı mesajı için state
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Seyahat planını önerilen olarak işaretlemek veya kaldırmak için
   const toggleRecommendation = async () => {
@@ -1402,52 +1447,61 @@ export default function TripDetailsScreen() {
       }
 
       const newRecommendedStatus = !(tripData.isRecommended || false);
-      const message = newRecommendedStatus
-        ? 'Bu seyahat planını önermek istediğinize emin misiniz? Diğer kullanıcılar bu planı görebilecek.'
-        : 'Bu seyahat planını önerilerden kaldırmak istediğinize emin misiniz?';
 
-      Alert.alert(
-        newRecommendedStatus ? 'Seyahat Planını Öner' : 'Öneriden Kaldır',
-        message,
-        [
-          {
-            text: 'İptal',
-            style: 'cancel',
-          },
-          {
-            text: 'Evet',
-            onPress: async () => {
-              setLoading(true);
-              const success = await FirebaseService.TravelPlan.toggleRecommendation(
-                tripData.id as string,
-                newRecommendedStatus,
-                userId // Kullanıcı ID'sini gönder
-              );
+      // Optimistic UI update - Önce UI'ı güncelle, sonra API çağrısı yap
+      // Bu sayede sayfa yenilenmeden kullanıcı değişikliği görebilir
+      setTripData({
+        ...tripData,
+        isRecommended: newRecommendedStatus
+      });
 
-              if (success) {
-                // Planı yeniden yükle
-                await loadSinglePlan(tripData.id as string);
-                Alert.alert(
-                  'Başarılı',
-                  newRecommendedStatus
-                    ? 'Seyahat planınız başarıyla önerilenlere eklendi.'
-                    : 'Seyahat planınız önerilerden kaldırıldı.'
-                );
-              } else {
-                Alert.alert(
-                  'Yetki Hatası',
-                  'Sadece planı oluşturan kullanıcı öneri durumunu değiştirebilir.',
-                  [{ text: 'Tamam' }]
-                );
-                setLoading(false);
-              }
-            },
-          },
-        ],
-        { cancelable: true }
+      // Haptic feedback
+      if (Platform.OS === 'ios') {
+        try {
+          const Haptics = require('expo-haptics');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (error) {
+          console.log('Haptic feedback not available');
+        }
+      }
+
+      // Başarılı mesajını ayarla ve modalı göster
+      setSuccessMessage(
+        newRecommendedStatus
+          ? 'Seyahat planınız başarıyla önerilenlere eklendi.'
+          : 'Seyahat planınız önerilerden kaldırıldı.'
       );
+      setSuccessModalVisible(true);
+
+      // Arka planda API çağrısını yap
+      const success = await FirebaseService.TravelPlan.toggleRecommendation(
+        tripData.id as string,
+        newRecommendedStatus,
+        userId // Kullanıcı ID'sini gönder
+      );
+
+      if (!success) {
+        // API çağrısı başarısız olursa UI'ı geri al
+        setTripData({
+          ...tripData,
+          isRecommended: !newRecommendedStatus
+        });
+
+        Alert.alert(
+          'Hata',
+          'Öneri durumu değiştirilemedi. Lütfen tekrar deneyin.',
+          [{ text: 'Tamam' }]
+        );
+      }
     } catch (error) {
       console.error('Öneri durumu değiştirme hatası:', error);
+
+      // Hata durumunda UI'ı geri al
+      setTripData({
+        ...tripData,
+        isRecommended: !(!(tripData.isRecommended || false))
+      });
+
       Alert.alert(
         'Hata',
         'İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.'
@@ -1459,13 +1513,38 @@ export default function TripDetailsScreen() {
   const handlePhotoAdded = async () => {
     console.log('Fotoğraf eklendi, plan yeniden yükleniyor...');
     if (planId) {
-      // Planı yeniden yükle
-      const success = await loadSinglePlan(planId);
+      try {
+        // Firebase'den planı getir ama sayfayı yenileme
+        const plan = await FirebaseService.TravelPlan.getTravelPlanById(planId);
 
-      if (!success) {
-        console.error('Plan yeniden yüklenemedi');
-      } else {
-        console.log('Plan başarıyla yeniden yüklendi');
+        if (plan && Object.keys(plan).length > 0) {
+          // Fotoğrafları parse et
+          if (plan.tripPhotos) {
+            const photos = parseTripPhotos(plan.tripPhotos);
+            setTripPhotos(photos);
+          }
+
+          // Planı güncelle
+          setTripData({
+            ...tripData,
+            ...plan,
+            // Önerme durumunu koru
+            isRecommended: plan.isRecommended !== undefined ? plan.isRecommended : tripData.isRecommended,
+            // Beğeni durumunu koru
+            likes: plan.likes !== undefined ? plan.likes : tripData.likes,
+            likedBy: plan.likedBy || tripData.likedBy
+          });
+
+          console.log('Plan başarıyla güncellendi');
+
+          // Başarılı mesajı göster
+          setSuccessMessage('Fotoğraf başarıyla eklendi.');
+          setSuccessModalVisible(true);
+        } else {
+          console.error('Plan bulunamadı');
+        }
+      } catch (error) {
+        console.error('Fotoğraf ekleme sonrası plan güncelleme hatası:', error);
       }
     }
   };
@@ -1583,7 +1662,8 @@ export default function TripDetailsScreen() {
           ]}
           onPress={() => {
             if (!userId) {
-              Alert.alert('Giriş Gerekli', 'Beğeni yapabilmek için giriş yapmalısınız.');
+              setSuccessMessage('Beğeni yapabilmek için giriş yapmalısınız.');
+              setSuccessModalVisible(true);
               return;
             }
 
@@ -1627,12 +1707,9 @@ export default function TripDetailsScreen() {
 
             // Show a brief success message
             if (!isCurrentlyLiked) {
-              Alert.alert(
-                'Beğenildi!',
-                'Bu seyahat planını beğendiniz. Beğendiğiniz planlar önerilen seyahatler bölümünde görüntülenebilir.',
-                [{ text: 'Tamam', style: 'default' }],
-                { cancelable: true }
-              );
+              // Beğeni mesajını göster
+              setSuccessMessage('Bu seyahat planını beğendiniz. Beğendiğiniz planlar önerilen seyahatler bölümünde görüntülenebilir.');
+              setSuccessModalVisible(true);
             }
 
             // Then perform the actual API call in the background without waiting
@@ -1645,7 +1722,8 @@ export default function TripDetailsScreen() {
                     likes: currentLikes,
                     likedBy: tripData.likedBy || []
                   });
-                  Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+                  setSuccessMessage('Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+                  setSuccessModalVisible(true);
                 }
               })
               .catch(error => {
@@ -1656,7 +1734,8 @@ export default function TripDetailsScreen() {
                   likes: currentLikes,
                   likedBy: tripData.likedBy || []
                 });
-                Alert.alert('Hata', 'Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+                setSuccessMessage('Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+                setSuccessModalVisible(true);
               });
           }}
           activeOpacity={0.7}
@@ -2054,7 +2133,7 @@ export default function TripDetailsScreen() {
                       if (Platform.OS === 'ios') {
                         try {
                           const Haptics = require('expo-haptics');
-                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                         } catch (error) {
                           console.log('Haptic feedback not available');
                         }
@@ -2066,6 +2145,40 @@ export default function TripDetailsScreen() {
                     </ThemedText>
                   </TouchableOpacity>
                 </View>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Başarılı Mesajı Modalı */}
+          <Modal
+            animationType="fade"
+            transparent={true}
+            visible={successModalVisible}
+            onRequestClose={() => setSuccessModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.successModalContent}>
+                <View style={styles.successModalHeader}>
+                  <MaterialCommunityIcons
+                    name="check-circle"
+                    size={40}
+                    color="#4CAF50"
+                  />
+                  <ThemedText style={styles.successModalTitle}>
+                    İşlem Başarılı
+                  </ThemedText>
+                </View>
+
+                <ThemedText style={styles.successModalText}>
+                  {successMessage}
+                </ThemedText>
+
+                <TouchableOpacity
+                  style={styles.successModalButton}
+                  onPress={() => setSuccessModalVisible(false)}
+                >
+                  <ThemedText style={styles.successModalButtonText}>Tamam</ThemedText>
+                </TouchableOpacity>
               </View>
             </View>
           </Modal>
@@ -2528,7 +2641,9 @@ export default function TripDetailsScreen() {
                           )}
                           <View style={styles.viewMoreContainer}>
                             <ThemedText style={styles.viewMoreText}>Detayları Göster</ThemedText>
-                            <MaterialCommunityIcons name="chevron-right" size={16} color="#4c669f" />
+                            <ThemedText>
+                              <MaterialCommunityIcons name="chevron-right" size={16} color="#4c669f" />
+                            </ThemedText>
                           </View>
                         </TouchableOpacity>
                       ))}
@@ -2741,7 +2856,9 @@ export default function TripDetailsScreen() {
                 <View style={styles.section}>
                   <View style={styles.sectionTitleContainer}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <MaterialCommunityIcons name="earth" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                      <ThemedText>
+                        <MaterialCommunityIcons name="earth" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                      </ThemedText>
                       <ThemedText style={styles.sectionTitle} numberOfLines={2}>Kültürel Farklılıklar ve Öneriler</ThemedText>
                     </View>
                   </View>
@@ -2946,7 +3063,9 @@ export default function TripDetailsScreen() {
                 <View style={styles.section}>
                   <View style={styles.sectionTitleContainer}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <MaterialCommunityIcons name="map-marker-radius" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                      <ThemedText>
+                        <MaterialCommunityIcons name="map-marker-radius" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                      </ThemedText>
                       <ThemedText style={styles.sectionTitle} numberOfLines={2}>Yerel Yaşam Önerileri</ThemedText>
                     </View>
                   </View>
@@ -3097,7 +3216,9 @@ export default function TripDetailsScreen() {
             <View style={styles.section}>
               <View style={styles.sectionTitleContainer}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  <ThemedText>
+                    <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  </ThemedText>
                   <ThemedText style={styles.sectionTitle} numberOfLines={2}>Hava Durumu</ThemedText>
                 </View>
               </View>
@@ -3110,7 +3231,9 @@ export default function TripDetailsScreen() {
             <View style={styles.section}>
               <View style={styles.sectionTitleContainer}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  <ThemedText>
+                    <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  </ThemedText>
                   <ThemedText style={styles.sectionTitle} numberOfLines={2}>Hava Durumu</ThemedText>
                 </View>
               </View>
@@ -3123,7 +3246,9 @@ export default function TripDetailsScreen() {
             <View style={styles.section}>
               <View style={styles.sectionTitleContainer}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <MaterialCommunityIcons name="image-multiple" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  <ThemedText>
+                    <MaterialCommunityIcons name="image-multiple" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  </ThemedText>
                   <ThemedText style={styles.sectionTitle} numberOfLines={2}>Seyahat Fotoğrafları</ThemedText>
                 </View>
               </View>
@@ -3142,7 +3267,9 @@ export default function TripDetailsScreen() {
             <View style={styles.section}>
               <View style={styles.sectionTitleContainer}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <MaterialCommunityIcons name="comment-text-multiple" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  <ThemedText>
+                    <MaterialCommunityIcons name="comment-text-multiple" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  </ThemedText>
                   <ThemedText style={styles.sectionTitle} numberOfLines={2}>Yorumlar ve Deneyimler</ThemedText>
                 </View>
               </View>
@@ -3160,19 +3287,13 @@ export default function TripDetailsScreen() {
             </View>
           )}
 
-          {/* İtinerary string olarak kalmışsa göster */}
-          {tripData.itinerary && typeof tripData.itinerary === 'string' && tripData.itinerary !== '' && (
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Seyahat Planı (JSON)</ThemedText>
-              <View style={styles.card}>
-                <ThemedText style={styles.rawResponse} numberOfLines={10} ellipsizeMode="tail">{tripData.itinerary}</ThemedText>
-              </View>
-            </View>
-          )}
+          {/* İtinerary string olarak kalmışsa gösterme */}
         </View>
       ) : (
         <View style={styles.errorContainer}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={50} color="#ff6b6b" />
+          <ThemedText>
+            <MaterialCommunityIcons name="alert-circle-outline" size={50} color="#ff6b6b" />
+          </ThemedText>
           <ThemedText style={styles.errorText}>
             Seyahat planı yüklenemedi. Lütfen tekrar deneyin.
           </ThemedText>
@@ -3430,45 +3551,41 @@ const styles = StyleSheet.create({
   },
   activityTime: {
     color: AppStyles.colors.primary,
-    fontWeight: '700',
     marginBottom: AppStyles.spacing.xs,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterBold',
     fontSize: 14,
   },
   activityName: {
     fontSize: 18,
     color: AppStyles.colors.dark.text,
-    fontWeight: '600',
     marginBottom: AppStyles.spacing.xs,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
   },
   activityDetails: {
     color: AppStyles.colors.dark.textMuted,
     marginBottom: AppStyles.spacing.sm,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     lineHeight: 20,
   },
   destinationName: {
     fontSize: 22,
-    fontWeight: '700',
     color: '#fff',
     marginBottom: 16,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterBold',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     paddingBottom: 8,
   },
   hotelName: {
     fontSize: 20,
-    fontWeight: '700',
     color: '#fff',
     marginBottom: 10,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterBold',
   },
   infoItem: {
     color: '#ccc',
     marginBottom: 10,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     lineHeight: 20,
     fontSize: 14,
     flexWrap: 'wrap',
@@ -3476,7 +3593,7 @@ const styles = StyleSheet.create({
   description: {
     color: '#999',
     marginTop: 10,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     lineHeight: 20,
     backgroundColor: 'rgba(0, 0, 0, 0.2)',
     padding: 10,
@@ -3486,17 +3603,16 @@ const styles = StyleSheet.create({
   },
   subTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#fff',
     marginTop: 16,
     marginBottom: 10,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
   },
   listItem: {
     color: '#ccc',
     marginBottom: 6,
     marginLeft: 8,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     lineHeight: 20,
     fontSize: 15,
   },
@@ -3512,7 +3628,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ccc',
     textAlign: 'center',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   errorContainer: {
     flex: 1,
@@ -3526,11 +3642,11 @@ const styles = StyleSheet.create({
     color: '#ccc',
     textAlign: 'center',
     marginBottom: 24,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   rawResponse: {
     color: '#ccc',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   weatherLoadingContainer: {
     alignItems: 'center',
@@ -3540,7 +3656,7 @@ const styles = StyleSheet.create({
   weatherLoadingText: {
     color: '#ccc',
     marginTop: 8,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   sectionTitleContainer: {
     marginBottom: 16,
@@ -3553,10 +3669,9 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#fff',
     marginBottom: 10,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
   },
   calendarButton: {
     flexDirection: 'row',
@@ -3578,8 +3693,7 @@ const styles = StyleSheet.create({
   calendarButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
   },
   // Plan listesi stilleri
   listContent: {
@@ -3602,10 +3716,9 @@ const styles = StyleSheet.create({
   },
   planDestination: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#fff',
     marginBottom: 8,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
     flexShrink: 1,
   },
   planDetails: {
@@ -3627,7 +3740,7 @@ const styles = StyleSheet.create({
     color: '#ccc',
     marginLeft: 4,
     fontSize: 13,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     flexShrink: 1,
   },
   emptyContainer: {
@@ -3642,7 +3755,7 @@ const styles = StyleSheet.create({
     color: '#ccc',
     textAlign: 'center',
     marginBottom: 24,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   createButton: {
     backgroundColor: '#4c669f',
@@ -3658,8 +3771,7 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
   },
   // Aktivite detay modalı için stiller
   modalOverlay: {
@@ -3694,15 +3806,14 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 22,
-    fontWeight: '700',
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterBold',
     marginBottom: 5,
   },
   modalTime: {
     fontSize: 16,
     color: '#4c669f',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   modalBody: {
     flex: 1,
@@ -3717,14 +3828,13 @@ const styles = StyleSheet.create({
   },
   modalSectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#fff',
     marginBottom: 10,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
   },
   modalText: {
     color: '#ccc',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     lineHeight: 22,
     fontSize: 15,
   },
@@ -3732,7 +3842,7 @@ const styles = StyleSheet.create({
     color: '#ccc',
     marginBottom: 8,
     marginLeft: 8,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     lineHeight: 20,
     fontSize: 15,
   },
@@ -3750,9 +3860,8 @@ const styles = StyleSheet.create({
   viewMoreText: {
     color: '#4c669f',
     fontSize: 14,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
     marginRight: 5,
-    fontWeight: '600',
   },
 
   // Aktivite Fotoğrafları Stilleri
@@ -3765,7 +3874,7 @@ const styles = StyleSheet.create({
   photosLoadingText: {
     marginTop: 10,
     color: AppStyles.colors.dark.textMuted,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   activityPhotoContainer: {
     width: 150,
@@ -3787,7 +3896,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     padding: 20,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
 
   // Fotoğraf Görüntüleme Modalı Stilleri
@@ -3839,7 +3948,7 @@ const styles = StyleSheet.create({
   },
   photoInfoText: {
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     fontSize: 14,
   },
 
@@ -3865,17 +3974,16 @@ const styles = StyleSheet.create({
   },
   recommendModalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
     marginLeft: 12,
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterBold',
   },
   recommendModalText: {
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 24,
     color: '#ccc',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   recommendModalButtons: {
     flexDirection: 'row',
@@ -3891,8 +3999,7 @@ const styles = StyleSheet.create({
   },
   recommendModalCancelButtonText: {
     color: '#fff',
-    fontWeight: '600',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
   },
   recommendModalActionButton: {
     flex: 1,
@@ -3909,7 +4016,56 @@ const styles = StyleSheet.create({
   },
   recommendModalActionButtonText: {
     color: '#ffffff',
-    fontWeight: '600',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterSemiBold',
+  },
+
+  // Başarılı Mesajı Modalı Stilleri
+  successModalContent: {
+    backgroundColor: '#111',
+    borderRadius: 16,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    ...AppStyles.shadows.medium,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  successModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  successModalTitle: {
+    fontSize: 20,
+    color: '#fff',
+    marginLeft: 12,
+    fontFamily: 'InterBold',
+  },
+  successModalText: {
+    color: '#ccc',
+    fontSize: 16,
+    marginBottom: 20,
+    lineHeight: 24,
+    fontFamily: 'InterRegular',
+    textAlign: 'center',
+  },
+  successModalButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignSelf: 'center',
+    marginTop: 10,
+    ...AppStyles.shadows.small,
+  },
+  successModalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'InterSemiBold',
+    textAlign: 'center',
   },
 });

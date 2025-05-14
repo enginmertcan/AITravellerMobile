@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     flex: 1,
   },
   ratingContainer: {
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4c669f',
     marginBottom: 10,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   infoRow: {
     flexDirection: 'row',

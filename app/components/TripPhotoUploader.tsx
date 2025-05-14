@@ -253,12 +253,12 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
       );
     } else {
       return (
-        <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="image-off" size={50} color="#4c669f" />
+        <TouchableOpacity style={styles.emptyContainer} onPress={handleSelectImage}>
+          <MaterialCommunityIcons name="image-plus" size={50} color="#4c669f" />
           <ThemedText style={styles.emptyText}>
-            Henüz fotoğraf eklenmemiş.
+            Fotoğraf eklemek için dokunun
           </ThemedText>
-        </View>
+        </TouchableOpacity>
       );
     }
   };

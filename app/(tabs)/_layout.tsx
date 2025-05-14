@@ -32,7 +32,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: 12, // Yazı boyutunu küçülttüm
           fontWeight: '600',
-          fontFamily: 'SpaceMono',
+          fontFamily: 'InterRegular',
           marginBottom: Platform.OS === 'ios' ? 0 : 2,
           paddingBottom: 2,
           marginTop: 2,

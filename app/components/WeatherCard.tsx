@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   dayButtonText: {
     color: '#E0E0E0',
     fontSize: 15,
-    fontFamily: 'System',
+    fontFamily: 'InterRegular',
     fontWeight: '500',
   },
   selectedDayText: {
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
   dayTempText: {
     color: '#E0E0E0',
     fontSize: 13,
-    fontFamily: 'System',
+    fontFamily: 'InterRegular',
     fontWeight: '500',
     marginTop: 2,
   },
@@ -551,12 +551,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 6,
-    fontFamily: 'System',
+    fontFamily: 'InterSemiBold',
   },
   date: {
     color: '#AEAEB2',
     fontSize: 15,
-    fontFamily: 'System',
+    fontFamily: 'InterRegular',
     fontWeight: '400',
   },
   mainInfoContainer: {
@@ -577,13 +577,13 @@ const styles = StyleSheet.create({
     fontSize: 48, // Sıcaklığı biraz küçülttüm
     fontWeight: '200', // Daha ince bir font (modern görünüm)
     color: '#FFFFFF',
-    fontFamily: 'System',
+    fontFamily: 'InterRegular',
     lineHeight: 82, // Satır yüksekliğini de fontSize'a uygun azalttım
   },
   feelsLike: {
     color: '#C7C7CC',
     fontSize: 16,
-    fontFamily: 'System',
+    fontFamily: 'InterRegular',
     fontWeight: '400',
     marginTop: 6,
   },
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 25,
     paddingHorizontal: 15,
-    fontFamily: 'System',
+    fontFamily: 'InterRegular',
     lineHeight: 23,
     fontWeight: '400',
   },
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   detailLabel: {
     color: '#AEAEB2',
     fontSize: 13,
-    fontFamily: 'System',
+    fontFamily: 'InterRegular',
     fontWeight: '500',
     marginBottom: 4,
   },
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17, // Değer fontunu büyüttüm
     fontWeight: '500',
-    fontFamily: 'System',
+    fontFamily: 'InterRegular',
   },
   weatherLoadingContainer: {
     alignItems: 'center',

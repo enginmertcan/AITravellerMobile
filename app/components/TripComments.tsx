@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Alert, Image, Modal } from 'react-native';
+import { View, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Alert, Image, Modal } from 'react-native';
+import { ThemedText } from '@/components/ThemedText';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { FirebaseService } from '../services/firebase.service';
 import { TripComment } from '../types/travel';
@@ -8,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
+import AppStyles from '@/constants/AppStyles';
 
 interface TripCommentsProps {
   travelPlanId: string;
@@ -319,6 +321,17 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
   // Yorum öğesi
   const renderCommentItem = ({ item }: { item: TripComment }) => {
+    // Yorum öğesi için dinamik stiller
+    const itemStyles = {
+      commentItem: dynamicStyles.commentItem,
+      photoContainer: dynamicStyles.photoContainer,
+      editInput: dynamicStyles.editInput,
+      cancelButton: dynamicStyles.cancelButton,
+      userName: dynamicStyles.userName,
+      commentDate: dynamicStyles.commentDate,
+      commentContent: dynamicStyles.commentContent,
+      editButtonText: dynamicStyles.editButtonText,
+    };
     const isCurrentUser = userId === item.userId;
     const hasPhoto = item.photoUrl || item.photoData;
 
@@ -362,43 +375,44 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
     };
 
     return (
-      <View style={styles.commentItem}>
+      <View style={itemStyles.commentItem}>
         <View style={styles.commentHeader}>
-          <Text style={styles.userName}>{item.userName}</Text>
-          <Text style={styles.commentDate}>{formatDate(item.createdAt)}</Text>
+          <ThemedText style={dynamicStyles.userName}>{item.userName}</ThemedText>
+          <ThemedText style={dynamicStyles.commentDate}>{formatDate(item.createdAt)}</ThemedText>
         </View>
 
         {editingComment === item.id ? (
           <View style={styles.editContainer}>
             <TextInput
-              style={styles.editInput}
+              style={itemStyles.editInput}
               value={editText}
               onChangeText={setEditText}
+              placeholderTextColor={AppStyles.colors.dark.textMuted}
               multiline
             />
             <View style={styles.editButtons}>
               <TouchableOpacity
-                style={[styles.editButton, styles.cancelButton]}
+                style={[styles.editButton, itemStyles.cancelButton]}
                 onPress={() => setEditingComment(null)}
               >
-                <Text style={styles.editButtonText}>İptal</Text>
+                <ThemedText style={dynamicStyles.editButtonText}>İptal</ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.editButton, styles.saveButton]}
                 onPress={() => handleUpdateComment(item.id)}
                 disabled={submitting}
               >
-                <Text style={styles.editButtonText}>Kaydet</Text>
+                <ThemedText style={dynamicStyles.editButtonText}>Kaydet</ThemedText>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           <>
-            <Text style={styles.commentContent}>{item.content}</Text>
+            <ThemedText style={dynamicStyles.commentContent}>{item.content}</ThemedText>
 
             {hasPhoto && (
               <TouchableOpacity
-                style={styles.photoContainer}
+                style={itemStyles.photoContainer}
                 onPress={() => {
                   console.log(`Fotoğrafa tıklandı: ${item.id}`);
 
@@ -442,9 +456,9 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
                 {item.photoLocation && (
                   <View style={styles.photoLocationBadge}>
                     <MaterialCommunityIcons name="map-marker" size={12} color="#fff" />
-                    <Text style={styles.photoLocationText} numberOfLines={1} ellipsizeMode="tail">
+                    <ThemedText style={styles.photoLocationText} numberOfLines={1} ellipsizeMode="tail">
                       {item.photoLocation}
-                    </Text>
+                    </ThemedText>
                   </View>
                 )}
               </TouchableOpacity>
@@ -472,9 +486,101 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
     );
   };
 
+  // Dark mode stiller
+  const dynamicStyles = {
+    container: {
+      ...styles.container,
+      backgroundColor: '#111',
+      borderColor: '#4c669f',
+    },
+    commentItem: {
+      ...styles.commentItem,
+      backgroundColor: 'rgba(17, 17, 17, 0.85)',
+      borderColor: '#4c669f',
+    },
+    input: {
+      ...styles.input,
+      backgroundColor: '#111',
+      borderColor: '#4c669f',
+      color: AppStyles.colors.dark.text,
+    },
+    photoButton: {
+      ...styles.photoButton,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      borderColor: '#4c669f',
+    },
+    previewContainer: {
+      ...styles.previewContainer,
+      backgroundColor: '#111',
+      borderColor: '#4c669f',
+    },
+    photoContainer: {
+      ...styles.photoContainer,
+      backgroundColor: '#111',
+    },
+    editInput: {
+      ...styles.editInput,
+      backgroundColor: '#111',
+      borderColor: '#4c669f',
+      color: AppStyles.colors.dark.text,
+    },
+    cancelButton: {
+      ...styles.cancelButton,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      borderColor: '#4c669f',
+    },
+    locationContainer: {
+      ...styles.locationContainer,
+      backgroundColor: 'rgba(17, 17, 17, 0.85)',
+    },
+    locationText: {
+      ...styles.locationText,
+      color: AppStyles.colors.dark.text,
+    },
+    clearButton: {
+      ...styles.clearButton,
+      backgroundColor: 'rgba(17, 17, 17, 0.85)',
+    },
+    inputContainer: {
+      ...styles.inputContainer,
+      borderTopColor: '#4c669f',
+    },
+    noComments: {
+      ...styles.noComments,
+      color: AppStyles.colors.dark.textMuted,
+    },
+    userName: {
+      ...styles.userName,
+      color: AppStyles.colors.dark.text,
+    },
+    commentDate: {
+      ...styles.commentDate,
+      color: AppStyles.colors.dark.textMuted,
+    },
+    commentContent: {
+      ...styles.commentContent,
+      color: AppStyles.colors.dark.text,
+    },
+    title: {
+      ...styles.title,
+      color: AppStyles.colors.dark.text,
+      backgroundColor: '#111',
+      borderWidth: 1,
+      borderColor: '#4c669f',
+    },
+    editButtonText: {
+      ...styles.editButtonText,
+      color: AppStyles.colors.dark.text,
+    },
+    modalContent: {
+      ...styles.modalContent,
+      backgroundColor: '#111',
+    },
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Yorumlar</Text>
+    <View style={dynamicStyles.container}>
+      <ThemedText style={dynamicStyles.title}>Yorumlar</ThemedText>
 
       {loading ? (
         <ActivityIndicator size="large" color="#0066cc" style={styles.loader} />
@@ -489,39 +595,40 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
               nestedScrollEnabled={true}
             />
           ) : (
-            <Text style={styles.noComments}>Henüz yorum yapılmamış. İlk yorumu siz yapın!</Text>
+            <ThemedText style={dynamicStyles.noComments}>Henüz yorum yapılmamış. İlk yorumu siz yapın!</ThemedText>
           )}
         </>
       )}
 
       {/* Fotoğraf Önizleme */}
       {selectedImage && (
-        <View style={styles.previewContainer}>
+        <View style={dynamicStyles.previewContainer}>
           <Image source={{ uri: selectedImage }} style={styles.previewImage} />
           {photoLocation ? (
-            <View style={styles.locationContainer}>
+            <View style={dynamicStyles.locationContainer}>
               <MaterialCommunityIcons name="map-marker" size={14} color="#4c669f" />
-              <Text style={styles.locationText} numberOfLines={1}>{photoLocation}</Text>
+              <ThemedText style={dynamicStyles.locationText} numberOfLines={1}>{photoLocation}</ThemedText>
             </View>
           ) : null}
-          <TouchableOpacity style={styles.clearButton} onPress={handleClearImage}>
+          <TouchableOpacity style={dynamicStyles.clearButton} onPress={handleClearImage}>
             <Ionicons name="close-circle" size={24} color="#d9534f" />
           </TouchableOpacity>
         </View>
       )}
 
-      <View style={styles.inputContainer}>
+      <View style={dynamicStyles.inputContainer}>
         <View style={styles.inputRow}>
           <TextInput
-            style={styles.input}
+            style={dynamicStyles.input}
             placeholder="Yorum yazın..."
+            placeholderTextColor={AppStyles.colors.dark.textMuted}
             value={newComment}
             onChangeText={setNewComment}
             multiline
           />
           <View style={styles.buttonGroup}>
             <TouchableOpacity
-              style={styles.photoButton}
+              style={dynamicStyles.photoButton}
               onPress={handleSelectImage}
             >
               <Ionicons name="camera" size={20} color="#4c669f" />
@@ -554,7 +661,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
           onPress={() => setModalVisible(false)}
         >
           {selectedPhotoForModal && (
-            <View style={styles.modalContent}>
+            <View style={dynamicStyles.modalContent}>
               <Image
                 source={{ uri: selectedPhotoForModal.url }}
                 style={styles.modalImage}
@@ -579,9 +686,9 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
               {selectedPhotoForModal.location && (
                 <View style={styles.modalLocationBadge}>
                   <MaterialCommunityIcons name="map-marker" size={16} color="#fff" />
-                  <Text style={styles.modalLocationText} numberOfLines={1} ellipsizeMode="tail">
+                  <ThemedText style={styles.modalLocationText} numberOfLines={1} ellipsizeMode="tail">
                     {selectedPhotoForModal.location}
-                  </Text>
+                  </ThemedText>
                 </View>
               )}
               <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
@@ -599,12 +706,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent', // Will be set dynamically
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginBottom: 16,
+    overflow: 'hidden',
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
   loader: {
     marginTop: 20,
@@ -613,39 +728,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   commentItem: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#111',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    borderColor: '#4c669f',
+    ...AppStyles.shadows.medium,
   },
   commentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(76, 102, 159, 0.3)',
   },
   userName: {
-    fontWeight: 'bold',
+    fontFamily: 'InterSemiBold',
     fontSize: 15,
-    color: '#333',
+    color: AppStyles.colors.dark.text,
   },
   commentDate: {
     fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
+    color: AppStyles.colors.dark.textMuted,
+    fontFamily: 'InterRegular',
   },
   commentContent: {
-    fontSize: 14,
+    marginVertical: 12,
     lineHeight: 22,
-    marginBottom: 10,
-    color: '#444',
+    fontSize: 15,
+    color: AppStyles.colors.dark.text,
+    fontFamily: 'InterRegular',
   },
   photoContainer: {
     marginTop: 8,
@@ -721,7 +836,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 12,
     left: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: 'rgba(17, 17, 17, 0.85)',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
@@ -729,20 +844,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.3,
     shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: '#4c669f',
   },
   locationText: {
-    color: '#333',
+    color: '#fff',
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: 'InterRegular',
     marginLeft: 4,
   },
   clearButton: {
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: 'rgba(17, 17, 17, 0.85)',
     borderRadius: 18,
     width: 36,
     height: 36,
@@ -750,8 +867,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: '#4c669f',
   },
   inputContainer: {
     marginTop: 16,
@@ -766,18 +885,20 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#4c669f',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
     maxHeight: 100,
+    backgroundColor: '#111',
+    color: '#fff',
   },
   buttonGroup: {
     flexDirection: 'row',
     marginLeft: 8,
   },
   photoButton: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -785,18 +906,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#4c669f',
   },
   submitButton: {
-    backgroundColor: '#0066cc',
+    backgroundColor: '#4c669f',
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    ...AppStyles.shadows.small,
   },
   disabledButton: {
-    backgroundColor: '#ccc',
+    backgroundColor: 'rgba(76, 102, 159, 0.5)',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -804,18 +926,28 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   actionButton: {
-    padding: 6,
+    padding: 8,
     marginLeft: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...AppStyles.shadows.small,
   },
   editContainer: {
     marginTop: 8,
   },
   editInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#4c669f',
     borderRadius: 8,
     padding: 8,
     minHeight: 60,
+    backgroundColor: '#111',
+    color: '#fff',
+    fontFamily: 'InterRegular',
   },
   editButtons: {
     flexDirection: 'row',
@@ -823,27 +955,33 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   editButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     marginLeft: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelButton: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#4c669f',
   },
   saveButton: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#4c669f',
+    ...AppStyles.shadows.small,
   },
   editButtonText: {
-    color: '#333',
-    fontSize: 12,
+    color: AppStyles.colors.dark.text,
+    fontSize: 14,
+    fontFamily: 'InterSemiBold',
+    marginLeft: 4,
   },
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -859,6 +997,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 10,
+    borderWidth: 1,
+    borderColor: '#4c669f',
   },
   modalImage: {
     width: '100%',

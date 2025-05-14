@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   sortOption: {
     flexDirection: 'row',
@@ -653,7 +653,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#4c669f',
     marginLeft: 15,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   selectedSortOptionText: {
     color: '#fff',
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     flex: 1,
   },
   typeSelector: {
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
   typeButtonText: {
     color: '#4c669f',
     marginLeft: 8,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     fontSize: 14,
   },
   selectedTypeButtonText: {
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     flex: 1,
   },
   sortIndicator: {
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4c669f',
     marginLeft: 5,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   content: {
     flex: 1,
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ccc',
     textAlign: 'center',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   placeCard: {
     backgroundColor: '#111',
@@ -778,13 +778,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginBottom: 4,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   placeAddress: {
     fontSize: 12,
     color: '#999',
     marginBottom: 8,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   detailsContainer: {
     flexDirection: 'row',
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ccc',
     marginLeft: 4,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   distanceContainer: {
     flexDirection: 'row',
@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ccc',
     marginLeft: 4,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   directionButton: {
     padding: 12,
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ccc',
     textAlign: 'center',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   mapContainer: {
     flex: 1,

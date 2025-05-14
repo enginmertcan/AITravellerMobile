@@ -822,7 +822,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     fontSize: 16,
     padding: 8,
   },
@@ -846,7 +846,7 @@ const styles = StyleSheet.create({
   },
   countryName: {
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     fontSize: 16,
   },
   inputContainer: {
@@ -886,13 +886,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     marginBottom: 8,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     marginTop: 10,
   },
   subtitle: {
     fontSize: 16,
     color: '#999',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   formContainer: {
     padding: 20,
@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginBottom: 16,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   tripTypeContainer: {
     flexDirection: 'row',
@@ -929,7 +929,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 12,
     marginBottom: 4,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   tripTypeTitleActive: {
     color: '#4c669f',
@@ -938,7 +938,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     textAlign: 'center',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   tripTypeDescActive: {
     color: '#999',
@@ -964,7 +964,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   searchResults: {
     backgroundColor: '#111',
@@ -987,13 +987,13 @@ const styles = StyleSheet.create({
   searchResultMainText: {
     fontSize: 16,
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     fontWeight: '600',
   },
   searchResultSecondaryText: {
     fontSize: 14,
     color: '#666',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     marginTop: 2,
   },
   detailCard: {
@@ -1012,12 +1012,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 4,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   detailValue: {
     fontSize: 16,
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   durationControl: {
     flexDirection: 'row',
@@ -1035,7 +1035,7 @@ const styles = StyleSheet.create({
   durationText: {
     fontSize: 16,
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   optionsGrid: {
     flexDirection: 'row',
@@ -1061,7 +1061,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 4,
     textAlign: 'center',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   optionTitleActive: {
     color: '#4c669f',
@@ -1070,7 +1070,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     textAlign: 'center',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   optionDescActive: {
     color: '#999',
@@ -1091,7 +1091,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 4,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   pickerContainer: {
     flexDirection: 'row',
@@ -1109,7 +1109,7 @@ const styles = StyleSheet.create({
   },
   pickerItem: {
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   submitButton: {
     flexDirection: 'row',
@@ -1136,7 +1136,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
     marginLeft: 8,
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
@@ -1152,7 +1152,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 12,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   infoCard: {
     flexDirection: 'row',
@@ -1170,7 +1170,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
     lineHeight: 20,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   progressBarContainer: {
     width: '100%',
@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4c669f',
     marginTop: 8,
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
   },
   clearButton: {
     padding: 4,
