@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, ScrollView, Platform, Alert } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,6 +13,13 @@ export default function ProfileScreen() {
   const [travelPlansCount, setTravelPlansCount] = useState(0);
   const [countriesCount, setCountriesCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [navigating, setNavigating] = useState(true);
+
+  // Doğrudan profile-settings sayfasına yönlendirme
+  useEffect(() => {
+    // Sayfa yüklendiğinde doğrudan profile-settings sayfasına yönlendir
+    router.replace('/(tabs)/profile-settings');
+  }, []);
 
   // Kullanıcının seyahat planlarını ve ziyaret ettiği ülkeleri getir
   useEffect(() => {
@@ -71,6 +78,16 @@ export default function ProfileScreen() {
       color: '#4c669f',
     },
   ];
+
+  // Yükleme ekranı göster
+  if (navigating) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4c669f" />
+        <ThemedText style={styles.loadingText}>Profil yükleniyor...</ThemedText>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -141,7 +158,18 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.signOutButton}
-          onPress={() => signOut()}
+          onPress={async () => {
+            try {
+              // Önce çıkış işlemini gerçekleştir
+              await signOut();
+
+              // Sonra giriş sayfasına yönlendir
+              router.replace('/(auth)/sign-in');
+            } catch (error) {
+              console.error("Çıkış yapılırken hata oluştu:", error);
+              Alert.alert("Hata", "Çıkış yapılırken bir sorun oluştu. Lütfen tekrar deneyin.");
+            }
+          }}
         >
           <MaterialCommunityIcons name="logout" size={20} color="#ff4444" />
           <ThemedText style={styles.signOutText}>Çıkış Yap</ThemedText>
@@ -156,6 +184,18 @@ export default function ProfileScreen() {
 import AppStyles from '@/constants/AppStyles';
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: AppStyles.colors.dark.background,
+    paddingTop: AppStyles.safeAreaInsets.top,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: AppStyles.colors.dark.text,
+  },
   container: {
     ...AppStyles.layout.safeContainer,
   },

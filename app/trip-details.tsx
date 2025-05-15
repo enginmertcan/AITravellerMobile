@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, Alert, Modal, Dimensions, Image, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, Alert, Modal, Dimensions, Image, Platform, RefreshControl, Linking } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -8,6 +8,7 @@ import { safeParseJSON, parseTripPhotos } from './types/travel';
 import { FirebaseService } from './services/firebase.service';
 import { useAuth } from '@clerk/clerk-expo';
 import { getWeatherForecast, WeatherData } from './services/weather.service';
+import AppStyles from '@/constants/AppStyles';
 import WeatherCard from './components/WeatherCard';
 import TripPhotoUploader from './components/TripPhotoUploader';
 import TripComments from './components/TripComments';
@@ -16,7 +17,6 @@ import HotelPhotosService from './services/HotelPhotosService';
 import AIHotelPhotosService from './services/ai-hotel-photos.service';
 import ActivityPhotosService from './services/ActivityPhotosService';
 import * as Calendar from 'expo-calendar';
-import AppStyles from '@/constants/AppStyles';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TripDetailsScreen() {
@@ -57,11 +57,27 @@ export default function TripDetailsScreen() {
 
   // Takvim izinlerini kontrol et
   const checkCalendarPermission = async () => {
-    const { status } = await Calendar.requestCalendarPermissionsAsync();
-    if (status === 'granted') {
-      setCalendarPermission(true);
-      return true;
-    } else {
+    try {
+      // Önce mevcut izinleri kontrol et
+      const { status: existingStatus } = await Calendar.getCalendarPermissionsAsync();
+
+      // Eğer zaten izin verilmişse, doğrudan true döndür
+      if (existingStatus === 'granted') {
+        setCalendarPermission(true);
+        return true;
+      }
+
+      // İzin yoksa, izin iste
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status === 'granted') {
+        setCalendarPermission(true);
+        return true;
+      } else {
+        setCalendarPermission(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Takvim izni kontrol hatası:', error);
       setCalendarPermission(false);
       return false;
     }
@@ -1352,11 +1368,8 @@ export default function TripDetailsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, planId]);
 
-  // Uygulama başladığında takvim izinlerini kontrol et
-  useEffect(() => {
-    checkCalendarPermission();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Uygulama başladığında takvim izinlerini kontrol etme
+  // Sadece kullanıcı takvime ekle butonuna bastığında izin isteyeceğiz
 
   // Fotoğraflar değiştiğinde UI'ı güncelle
   useEffect(() => {
@@ -1867,10 +1880,10 @@ export default function TripDetailsScreen() {
                     }
                   }
 
-                  // Takvim modalını göster
+                  // Takvime ekle işlemini onay ile başlat
                   Alert.alert(
                     "Takvime Ekle",
-                    `${tripData.destination} seyahatinizi takviminize eklemek istiyor musunuz?`,
+                    `"${tripData.destination}" seyahatinizi takviminize eklemek istiyor musunuz?`,
                     [
                       {
                         text: "İptal",
@@ -3310,14 +3323,14 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    padding: AppStyles.spacing.lg,
-    paddingTop: AppStyles.spacing.md,
+    padding: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: AppStyles.colors.dark.border,
-    paddingBottom: AppStyles.spacing.md,
-    marginBottom: AppStyles.spacing.sm,
+    paddingBottom: 16,
+    marginBottom: 8,
   },
   // Otel başlık stili
   hotelHeader: {
@@ -3502,11 +3515,13 @@ const styles = StyleSheet.create({
     color: '#e91e63',
   },
   title: {
-    ...AppStyles.typography.subtitle,
-    color: AppStyles.colors.dark.text,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
     flex: 1,
     marginHorizontal: AppStyles.spacing.sm,
-    marginTop: AppStyles.spacing.sm,
+    fontFamily: 'InterRegular',
+    paddingRight: 10,
   },
   content: {
     padding: AppStyles.spacing.lg,

@@ -22,7 +22,7 @@ export function Header() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <ThemedText style={styles.title}>{getHeaderTitle(pathname)}</ThemedText>
+        <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">{getHeaderTitle(pathname)}</ThemedText>
         <TouchableOpacity style={styles.action}>
           <MaterialCommunityIcons name="bell-outline" size={24} color="#fff" />
         </TouchableOpacity>
@@ -34,7 +34,7 @@ export function Header() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#000',
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 10,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
@@ -46,10 +46,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
-    fontFamily: 'SpaceMono',
+    fontFamily: 'InterRegular',
+    paddingRight: 10,
   },
   action: {
     width: 40,
@@ -59,4 +60,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-}); 
+});

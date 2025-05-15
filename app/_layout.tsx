@@ -5,8 +5,9 @@ import * as SecureStore from 'expo-secure-store';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import Constants from 'expo-constants';
+import { AuthGuard } from './components/AuthGuard';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -66,13 +67,15 @@ export default function RootLayout() {
       publishableKey={clerkPublishableKey}
       tokenCache={tokenCache}
     >
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-        </Stack>
-      </ThemeProvider>
+      <AuthGuard>
+        <ThemeProvider value={DarkTheme}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+          </Stack>
+        </ThemeProvider>
+      </AuthGuard>
     </ClerkProvider>
   );
 }

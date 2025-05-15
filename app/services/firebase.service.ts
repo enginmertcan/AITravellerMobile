@@ -2518,6 +2518,62 @@ export const CommentPhotoService = {
   },
 
   /**
+   * Birden fazla fotoğrafı bir yoruma ekler
+   */
+  async addMultipleCommentPhotos(commentId: string, travelPlanId: string, photos: Array<{data: string, location?: string}>): Promise<Array<{url: string, location?: string}>> {
+    try {
+      console.log(`Çoklu yorum fotoğrafları ekleniyor: ${commentId}, fotoğraf sayısı: ${photos.length}`);
+
+      if (!commentId?.trim() || !travelPlanId?.trim()) {
+        console.warn("Geçersiz yorum ID'si veya seyahat planı ID'si");
+        throw new Error("Geçersiz yorum ID'si veya seyahat planı ID'si");
+      }
+
+      if (!photos || photos.length === 0) {
+        console.warn("Fotoğraf verisi bulunamadı");
+        return [];
+      }
+
+      const uploadedPhotos: Array<{url: string, location?: string}> = [];
+
+      // Her fotoğrafı ayrı ayrı ekle
+      for (const photo of photos) {
+        if (!photo.data || !photo.data.trim()) {
+          console.warn("Geçersiz fotoğraf verisi, atlanıyor");
+          continue;
+        }
+
+        try {
+          // Fotoğrafı ekle
+          const photoId = await this.addCommentPhoto(
+            commentId,
+            travelPlanId,
+            photo.data,
+            photo.location
+          );
+
+          // Başarıyla eklenen fotoğrafı listeye ekle
+          uploadedPhotos.push({
+            url: photo.data, // Base64 verisi URL olarak kullanılıyor
+            location: photo.location
+          });
+
+          console.log(`Fotoğraf başarıyla eklendi: ${photoId}`);
+        } catch (photoError) {
+          console.error(`Fotoğraf ekleme hatası:`, photoError);
+          // Bir fotoğraf eklenemese bile diğerlerini eklemeye devam et
+        }
+      }
+
+      console.log(`${uploadedPhotos.length} fotoğraf başarıyla eklendi`);
+      return uploadedPhotos;
+    } catch (error) {
+      console.error("Çoklu fotoğraf ekleme hatası:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Yorum ID'sine göre fotoğrafları getirir
    */
   async getPhotosByCommentId(commentId: string): Promise<any[]> {
@@ -2709,15 +2765,30 @@ export const CommentService = {
       // 3. Her yoruma ait fotoğrafları eşleştir
       if (photos.length > 0) {
         comments.forEach(comment => {
-          // Bu yoruma ait fotoğrafı bul
-          const commentPhoto = photos.find(photo => photo.commentId === comment.id);
+          // Bu yoruma ait tüm fotoğrafları bul
+          const commentPhotos = photos.filter(photo => photo.commentId === comment.id);
 
-          if (commentPhoto) {
-            console.log(`Yorum ${comment.id} için fotoğraf bulundu`);
+          if (commentPhotos.length > 0) {
+            console.log(`Yorum ${comment.id} için ${commentPhotos.length} fotoğraf bulundu`);
 
-            // Fotoğraf verilerini yoruma ekle
-            comment.photoData = commentPhoto.photoData;
-            comment.photoLocation = commentPhoto.photoLocation;
+            // Geriye uyumluluk için ilk fotoğrafı eski alanlara ekle
+            const firstPhoto = commentPhotos[0];
+            comment.photoData = firstPhoto.photoData;
+            comment.photoLocation = firstPhoto.photoLocation;
+
+            // Birden fazla fotoğraf varsa, photosJson alanını oluştur
+            if (commentPhotos.length > 0) {
+              // Fotoğrafları JSON formatında sakla
+              const photosArray = commentPhotos.map(photo => ({
+                url: photo.photoData,
+                location: photo.photoLocation || undefined
+              }));
+
+              // Eğer yorum nesnesinde zaten photosJson alanı yoksa ekle
+              if (!comment.photosJson) {
+                comment.photosJson = JSON.stringify(photosArray);
+              }
+            }
           }
         });
       }
@@ -2735,20 +2806,24 @@ export const CommentService = {
   /**
    * Yeni bir yorum ekler
    */
-  async addComment(comment: Omit<TripComment, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async addComment(comment: Omit<TripComment, 'id' | 'createdAt' | 'updatedAt'>, photos?: Array<{data: string, location?: string}>): Promise<string> {
     try {
       console.log(`Yorum ekleniyor: ${comment.travelPlanId}`);
       console.log(`Kullanıcı: ${comment.userName} (${comment.userId})`);
       console.log(`İçerik: ${comment.content?.substring(0, 30)}...`);
 
-      // Fotoğraf verilerini geçici olarak sakla
+      // Fotoğraf verilerini geçici olarak sakla (geriye uyumluluk için)
       const photoData = comment.photoData;
       const photoLocation = comment.photoLocation;
+
+      // photosJson alanını geçici olarak sakla
+      const photosJson = comment.photosJson;
 
       // Yorum nesnesinden fotoğraf verilerini çıkar (ayrı koleksiyona taşıyacağız)
       delete comment.photoData;
       delete comment.photoUrl;
       delete comment.photoLocation;
+      delete comment.photosJson;
 
       if (!comment.travelPlanId?.trim() || !comment.userId?.trim()) {
         console.warn("Geçersiz seyahat planı ID'si veya kullanıcı ID'si");
@@ -2769,10 +2844,39 @@ export const CommentService = {
       const commentId = docRef.id;
       console.log('Yorum başarıyla eklendi, ID:', commentId);
 
-      // Eğer fotoğraf verisi varsa, ayrı koleksiyona ekle
-      if (photoData && photoData.trim() !== '') {
+      // Çoklu fotoğraf desteği
+      if (photos && photos.length > 0) {
         try {
-          console.log(`Fotoğraf verisi var, uzunluk: ${photoData.length}`);
+          console.log(`${photos.length} fotoğraf ayrı koleksiyona ekleniyor...`);
+
+          // Çoklu fotoğrafları ekle
+          const uploadedPhotos = await CommentPhotoService.addMultipleCommentPhotos(
+            commentId,
+            comment.travelPlanId,
+            photos
+          );
+
+          // Yüklenen fotoğrafların URL'lerini ve konum bilgilerini içeren JSON'ı oluştur
+          const photosJsonData = JSON.stringify(uploadedPhotos);
+
+          // Yorumu güncelle, fotoğraf URL'lerini ekle
+          await this.updateComment(commentId, {
+            photosJson: photosJsonData,
+            // Geriye uyumluluk için ilk fotoğrafı da eski alanlara ekle
+            photoUrl: uploadedPhotos.length > 0 ? uploadedPhotos[0].url : undefined,
+            photoLocation: uploadedPhotos.length > 0 ? uploadedPhotos[0].location : undefined
+          });
+
+          console.log(`Fotoğraflar başarıyla eklendi ve yorum güncellendi`);
+        } catch (photoError) {
+          console.error(`Fotoğraf ekleme hatası:`, photoError);
+          // Fotoğraf eklenemese bile yorumu silmiyoruz
+        }
+      }
+      // Geriye uyumluluk için tek fotoğraf desteği
+      else if (photoData && photoData.trim() !== '') {
+        try {
+          console.log(`Tek fotoğraf verisi var, uzunluk: ${photoData.length}`);
           console.log(`Fotoğraf ayrı koleksiyona ekleniyor...`);
 
           // CommentPhotoService kullanarak fotoğrafı ekle
@@ -2783,10 +2887,64 @@ export const CommentService = {
             photoLocation
           );
 
+          // Tek fotoğrafı JSON formatında kaydet
+          const singlePhotoJson = JSON.stringify([{
+            url: photoData,
+            location: photoLocation
+          }]);
+
+          // Yorumu güncelle
+          await this.updateComment(commentId, {
+            photosJson: singlePhotoJson,
+            photoUrl: photoData,
+            photoLocation: photoLocation
+          });
+
           console.log(`Fotoğraf başarıyla ayrı koleksiyona eklendi`);
         } catch (photoError) {
           console.error(`Fotoğraf ekleme hatası:`, photoError);
           // Fotoğraf eklenemese bile yorumu silmiyoruz
+        }
+      }
+      // Eğer photosJson alanı varsa, direkt olarak kullan
+      else if (photosJson) {
+        try {
+          console.log(`photosJson alanı mevcut, yorumu güncelliyoruz...`);
+
+          // Yorumu güncelle
+          await this.updateComment(commentId, {
+            photosJson: photosJson
+          });
+
+          // photosJson'dan fotoğrafları parse et
+          try {
+            const parsedPhotos = JSON.parse(photosJson);
+            if (Array.isArray(parsedPhotos) && parsedPhotos.length > 0) {
+              // Her fotoğrafı ayrı koleksiyona ekle
+              for (const photo of parsedPhotos) {
+                if (photo.url) {
+                  await CommentPhotoService.addCommentPhoto(
+                    commentId,
+                    comment.travelPlanId,
+                    photo.url,
+                    photo.location
+                  );
+                }
+              }
+
+              // Geriye uyumluluk için ilk fotoğrafı da eski alanlara ekle
+              await this.updateComment(commentId, {
+                photoUrl: parsedPhotos[0].url,
+                photoLocation: parsedPhotos[0].location
+              });
+            }
+          } catch (parseError) {
+            console.error(`photosJson parse hatası:`, parseError);
+          }
+
+          console.log(`Yorum photosJson ile güncellendi`);
+        } catch (jsonError) {
+          console.error(`photosJson güncelleme hatası:`, jsonError);
         }
       }
 
@@ -2800,7 +2958,7 @@ export const CommentService = {
   /**
    * Bir yorumu günceller
    */
-  async updateComment(id: string, comment: Partial<TripComment>): Promise<boolean> {
+  async updateComment(id: string, comment: Partial<TripComment>, photos?: Array<{data: string, location?: string}>): Promise<boolean> {
     try {
       console.log(`Yorum güncelleniyor: ${id}`);
 
@@ -2809,11 +2967,18 @@ export const CommentService = {
         return false;
       }
 
-      // Fotoğraf verilerini geçici olarak sakla
+      // Fotoğraf verilerini geçici olarak sakla (geriye uyumluluk için)
       const photoData = comment.photoData;
       const photoLocation = comment.photoLocation;
 
+      // photosJson alanını geçici olarak sakla
+      const photosJson = comment.photosJson;
+
       // Yorum nesnesinden fotoğraf verilerini çıkar (ayrı koleksiyonda saklayacağız)
+      // Eğer photosJson alanı güncelleme için gönderilmişse, onu silme
+      if (!photosJson) {
+        delete comment.photosJson;
+      }
       delete comment.photoData;
       delete comment.photoUrl;
       delete comment.photoLocation;
@@ -2834,20 +2999,69 @@ export const CommentService = {
       await updateDoc(commentRef, updateData);
       console.log('Yorum güncellendi:', id);
 
-      // Eğer fotoğraf verisi varsa, ayrı koleksiyonda güncelle veya ekle
-      if (photoData && photoData.trim() !== '') {
+      // Yorumun mevcut verilerini al (travelPlanId için gerekli)
+      const commentDoc = await getDoc(commentRef);
+      const commentData = commentDoc.exists() ? commentDoc.data() : null;
+      const travelPlanId = commentData?.travelPlanId || '';
+
+      // Çoklu fotoğraf desteği
+      if (photos && photos.length > 0) {
         try {
-          console.log(`Fotoğraf verisi var, uzunluk: ${photoData.length}`);
+          console.log(`${photos.length} fotoğraf güncelleniyor...`);
+
+          // Önce bu yoruma ait mevcut fotoğrafları getir ve sil
+          const existingPhotos = await CommentPhotoService.getPhotosByCommentId(id);
+
+          if (existingPhotos.length > 0) {
+            console.log(`${existingPhotos.length} mevcut fotoğraf bulundu, siliniyor...`);
+
+            for (const photo of existingPhotos) {
+              await CommentPhotoService.deletePhoto(photo.id);
+              console.log(`Fotoğraf silindi: ${photo.id}`);
+            }
+          }
+
+          // Çoklu fotoğrafları ekle
+          const uploadedPhotos = await CommentPhotoService.addMultipleCommentPhotos(
+            id,
+            travelPlanId,
+            photos
+          );
+
+          // Yüklenen fotoğrafların URL'lerini ve konum bilgilerini içeren JSON'ı oluştur
+          const photosJsonData = JSON.stringify(uploadedPhotos);
+
+          // Yorumu güncelle, fotoğraf URL'lerini ekle
+          await updateDoc(commentRef, {
+            photosJson: photosJsonData,
+            // Geriye uyumluluk için ilk fotoğrafı da eski alanlara ekle
+            photoUrl: uploadedPhotos.length > 0 ? uploadedPhotos[0].url : undefined,
+            photoLocation: uploadedPhotos.length > 0 ? uploadedPhotos[0].location : undefined,
+            updatedAt: serverTimestamp()
+          });
+
+          console.log(`Fotoğraflar başarıyla güncellendi`);
+        } catch (photoError) {
+          console.error(`Fotoğraf güncelleme hatası:`, photoError);
+          // Fotoğraf güncellenemese bile devam et
+        }
+      }
+      // Geriye uyumluluk için tek fotoğraf desteği
+      else if (photoData && photoData.trim() !== '') {
+        try {
+          console.log(`Tek fotoğraf verisi var, uzunluk: ${photoData.length}`);
 
           // Önce bu yoruma ait mevcut fotoğrafları getir
           const existingPhotos = await CommentPhotoService.getPhotosByCommentId(id);
 
           if (existingPhotos.length > 0) {
-            // Mevcut fotoğraf varsa güncelle
-            console.log(`Mevcut fotoğraf bulundu, güncelleniyor...`);
+            // Mevcut fotoğrafları sil
+            console.log(`${existingPhotos.length} mevcut fotoğraf bulundu, siliniyor...`);
 
-            // Mevcut fotoğrafı sil
-            await CommentPhotoService.deletePhoto(existingPhotos[0].id);
+            for (const photo of existingPhotos) {
+              await CommentPhotoService.deletePhoto(photo.id);
+              console.log(`Fotoğraf silindi: ${photo.id}`);
+            }
           }
 
           // Yeni fotoğrafı ekle
@@ -2856,15 +3070,79 @@ export const CommentService = {
           // CommentPhotoService kullanarak fotoğrafı ekle
           await CommentPhotoService.addCommentPhoto(
             id,
-            comment.travelPlanId || existingPhotos[0]?.travelPlanId,
+            travelPlanId || existingPhotos[0]?.travelPlanId,
             photoData,
             photoLocation
           );
 
+          // Tek fotoğrafı JSON formatında kaydet
+          const singlePhotoJson = JSON.stringify([{
+            url: photoData,
+            location: photoLocation
+          }]);
+
+          // Yorumu güncelle
+          await updateDoc(commentRef, {
+            photosJson: singlePhotoJson,
+            photoUrl: photoData,
+            photoLocation: photoLocation,
+            updatedAt: serverTimestamp()
+          });
+
           console.log(`Fotoğraf başarıyla ayrı koleksiyona eklendi`);
         } catch (photoError) {
           console.error(`Fotoğraf güncelleme hatası:`, photoError);
-          // Fotoğraf güncellenemese bile yorumu silmiyoruz
+          // Fotoğraf güncellenemese bile devam et
+        }
+      }
+      // Eğer photosJson alanı varsa ve güncelleme için gönderilmişse
+      else if (photosJson) {
+        try {
+          console.log(`photosJson alanı mevcut, fotoğraflar güncelleniyor...`);
+
+          // Önce bu yoruma ait mevcut fotoğrafları getir
+          const existingPhotos = await CommentPhotoService.getPhotosByCommentId(id);
+
+          if (existingPhotos.length > 0) {
+            // Mevcut fotoğrafları sil
+            console.log(`${existingPhotos.length} mevcut fotoğraf bulundu, siliniyor...`);
+
+            for (const photo of existingPhotos) {
+              await CommentPhotoService.deletePhoto(photo.id);
+              console.log(`Fotoğraf silindi: ${photo.id}`);
+            }
+          }
+
+          // photosJson'dan fotoğrafları parse et
+          try {
+            const parsedPhotos = JSON.parse(photosJson);
+            if (Array.isArray(parsedPhotos) && parsedPhotos.length > 0) {
+              // Her fotoğrafı ayrı koleksiyona ekle
+              for (const photo of parsedPhotos) {
+                if (photo.url) {
+                  await CommentPhotoService.addCommentPhoto(
+                    id,
+                    travelPlanId,
+                    photo.url,
+                    photo.location
+                  );
+                }
+              }
+
+              // Geriye uyumluluk için ilk fotoğrafı da eski alanlara ekle
+              await updateDoc(commentRef, {
+                photoUrl: parsedPhotos[0].url,
+                photoLocation: parsedPhotos[0].location,
+                updatedAt: serverTimestamp()
+              });
+            }
+          } catch (parseError) {
+            console.error(`photosJson parse hatası:`, parseError);
+          }
+
+          console.log(`Fotoğraflar photosJson ile güncellendi`);
+        } catch (jsonError) {
+          console.error(`photosJson güncelleme hatası:`, jsonError);
         }
       }
 

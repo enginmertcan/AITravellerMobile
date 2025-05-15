@@ -62,7 +62,7 @@ export default function NearbyPlacesScreen() {
   useEffect(() => {
     const loadUserLocation = async () => {
       try {
-        
+
         const location = await NearbyPlacesService.getCurrentLocation();
         setUserLocation(location);
       } catch (error) {
@@ -320,7 +320,7 @@ export default function NearbyPlacesScreen() {
         >
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.title}>Yakın Yerler</ThemedText>
+        <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">Yakın Yerler</ThemedText>
 
         <TouchableOpacity
           style={styles.headerButton}
@@ -427,7 +427,7 @@ export default function NearbyPlacesScreen() {
       </View>
 
       <View style={styles.sectionHeader}>
-        <ThemedText style={styles.sectionTitle}>
+        <ThemedText style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">
           {getPlaceTypeTitle()} {userLocation ? '(Yakınınızda)' : ''}
         </ThemedText>
 
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 30,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
@@ -659,11 +659,13 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
     fontFamily: 'InterRegular',
     flex: 1,
+    paddingHorizontal: 10,
+    marginRight: 10,
   },
   typeSelector: {
     paddingHorizontal: 20,
@@ -704,11 +706,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
     fontFamily: 'InterRegular',
     flex: 1,
+    paddingRight: 10,
   },
   sortIndicator: {
     flexDirection: 'row',

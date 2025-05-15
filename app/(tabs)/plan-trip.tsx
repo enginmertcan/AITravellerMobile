@@ -1,19 +1,17 @@
 import React from 'react';
 import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, Image } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { useState, useEffect } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useAuth } from '@clerk/clerk-expo';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
-import { AI_PROMPT, budgetOptions, companionOptions } from '@/app/constants/options';
+import { budgetOptions, companionOptions } from '@/app/constants/options';
 import { chatSession } from '@/app/services/ai.service';
 import { FirebaseService } from '@/app/services/firebase.service';
 import { getCountries } from '@/app/services/location.service';
 import { searchPlaces, getPlaceDetails, type Place as PlaceType } from '@/app/services/places.service';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 // AsyncStorage kaldırıldı
 
 // Firebase servisindeki formatTravelPlanForWeb fonksiyonunu kullan
@@ -33,13 +31,11 @@ interface Country {
 
 export default function PlanTripScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
   const { userId, isSignedIn } = useAuth(); // useAuth hook'unu en üst seviyede çağırıyoruz
   const [isDomestic, setIsDomestic] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStage, setLoadingStage] = useState('');
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [countries, setCountries] = useState<Country[]>([]);
   const [formState, setFormState] = useState<{
     city: string;
@@ -424,7 +420,7 @@ export default function PlanTripScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <ThemedText style={styles.title}>Seyahat Planı Oluştur</ThemedText>
+        <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">Seyahat Planı Oluştur</ThemedText>
         <ThemedText style={styles.subtitle}>
           Yapay zeka asistanımız size özel bir seyahat planı hazırlayacak
         </ThemedText>
@@ -879,15 +875,14 @@ const styles = StyleSheet.create({
   header: {
     padding: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 16,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 8,
     fontFamily: 'InterRegular',
-    marginTop: 10,
+    paddingRight: 10,
   },
   subtitle: {
     fontSize: 16,

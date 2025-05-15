@@ -1,14 +1,19 @@
-import { StyleSheet, View, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSignUp, useAuth } from '@clerk/clerk-expo';
 import { router, Redirect } from 'expo-router';
 import { useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import AppStyles from '@/constants/AppStyles';
 
 export default function SignUpScreen() {
   const { isSignedIn } = useAuth();
   const { signUp, setActive } = useSignUp();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const theme = isDark ? AppStyles.colors.dark : AppStyles.colors.light;
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -64,8 +69,9 @@ export default function SignUpScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.background }]}
     >
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -73,46 +79,70 @@ export default function SignUpScreen() {
         <LinearGradient
           colors={['#4c669f', '#3b5998', '#192f6a']}
           style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
-          <ThemedText style={styles.title}>Hesap Oluştur</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            AI Traveller'a hoş geldiniz
-          </ThemedText>
+          <View style={styles.headerContent}>
+            <View style={styles.logoContainer}>
+              <MaterialCommunityIcons name="account-plus" size={36} color="#fff" />
+            </View>
+            <View style={styles.textContainer}>
+              <ThemedText style={styles.title}>Hesap Oluştur</ThemedText>
+              <ThemedText style={styles.subtitle}>
+                AI Traveller'a hoş geldiniz
+              </ThemedText>
+            </View>
+          </View>
         </LinearGradient>
 
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: theme.card }]}>
+          <ThemedText style={styles.formTitle}>Kayıt Ol</ThemedText>
+
           <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Ad"
-              value={firstName}
-              onChangeText={setFirstName}
-              placeholderTextColor="#666"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Soyad"
-              value={lastName}
-              onChangeText={setLastName}
-              placeholderTextColor="#666"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="E-posta"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholderTextColor="#666"
-            />
-            <View style={styles.passwordContainer}>
+            <View style={[styles.inputWrapper, { backgroundColor: theme.inputBackground }]}>
+              <Ionicons name="person-outline" size={22} color={theme.textMuted} style={styles.inputIcon} />
               <TextInput
-                style={styles.passwordInput}
+                style={[styles.input, { color: theme.text }]}
+                placeholder="Ad"
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholderTextColor={theme.textMuted}
+              />
+            </View>
+
+            <View style={[styles.inputWrapper, { backgroundColor: theme.inputBackground }]}>
+              <Ionicons name="people-outline" size={22} color={theme.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="Soyad"
+                value={lastName}
+                onChangeText={setLastName}
+                placeholderTextColor={theme.textMuted}
+              />
+            </View>
+
+            <View style={[styles.inputWrapper, { backgroundColor: theme.inputBackground }]}>
+              <Ionicons name="mail-outline" size={22} color={theme.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder="E-posta"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholderTextColor={theme.textMuted}
+              />
+            </View>
+
+            <View style={[styles.inputWrapper, { backgroundColor: theme.inputBackground }]}>
+              <Ionicons name="lock-closed-outline" size={22} color={theme.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
                 placeholder="Şifre"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.textMuted}
               />
               <TouchableOpacity
                 style={styles.eyeIcon}
@@ -120,8 +150,8 @@ export default function SignUpScreen() {
               >
                 <Ionicons
                   name={showPassword ? 'eye-off' : 'eye'}
-                  size={24}
-                  color="#666"
+                  size={22}
+                  color={theme.textMuted}
                 />
               </TouchableOpacity>
             </View>
@@ -132,9 +162,16 @@ export default function SignUpScreen() {
             onPress={onSignUp}
             disabled={loading}
           >
-            <ThemedText style={styles.buttonText}>
-              {loading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
-            </ThemedText>
+            {loading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Ionicons name="person-add-outline" size={22} color="#fff" style={styles.buttonIcon} />
+                <ThemedText style={styles.buttonText}>
+                  Kayıt Ol
+                </ThemedText>
+              </>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -142,7 +179,7 @@ export default function SignUpScreen() {
             onPress={() => router.push('/(auth)/sign-in')}
           >
             <ThemedText style={styles.signInText}>
-              Zaten hesabınız var mı? Giriş yapın
+              Zaten hesabınız var mı? <ThemedText style={styles.signInTextBold}>Giriş yapın</ThemedText>
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -154,69 +191,113 @@ export default function SignUpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   scrollContent: {
     flexGrow: 1,
   },
   header: {
-    padding: 32,
-    paddingTop: 60,
+    padding: 24,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
+    paddingBottom: 40,
+  },
+  headerContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-start',
+    width: '100%',
+  },
+  logoContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
   title: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#fff',
     opacity: 0.9,
-    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  textContainer: {
+    flex: 1,
+    paddingRight: 10,
   },
   content: {
     flex: 1,
-    backgroundColor: '#fff',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    marginTop: -20,
-    padding: 20,
+    marginTop: -30,
+    padding: 24,
+    paddingTop: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 10,
+  },
+  formTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 24,
+    textAlign: 'center',
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    fontSize: 16,
-    color: '#333',
-  },
-  passwordContainer: {
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    overflow: 'hidden',
   },
-  passwordInput: {
+  inputIcon: {
+    paddingHorizontal: 16,
+  },
+  input: {
     flex: 1,
-    padding: 16,
+    paddingVertical: 16,
     fontSize: 16,
-    color: '#333',
   },
   eyeIcon: {
-    padding: 16,
+    paddingHorizontal: 16,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  buttonIcon: {
+    marginRight: 12,
   },
   signUpButton: {
     backgroundColor: '#4c669f',
@@ -228,11 +309,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   signInLink: {
-    marginTop: 20,
+    marginTop: 24,
     alignItems: 'center',
+    paddingVertical: 8,
   },
   signInText: {
-    color: '#4c669f',
     fontSize: 16,
   },
+  signInTextBold: {
+    fontWeight: 'bold',
+    color: '#4c669f',
+  }
 });

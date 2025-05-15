@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { TravelPlan } from './types/travel';
 import { FirebaseService } from './services/firebase.service';
 import { useAuth } from '@clerk/clerk-expo';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { LinearGradient } from 'expo-linear-gradient';
 import AppStyles from '@/constants/AppStyles';
 
@@ -352,12 +352,11 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppStyles.colors.dark.background,
-    paddingTop: 50,
     paddingBottom: 20,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    padding: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },

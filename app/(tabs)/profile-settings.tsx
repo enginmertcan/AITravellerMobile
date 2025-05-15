@@ -1,24 +1,61 @@
-import { StyleSheet, View, TouchableOpacity, TextInput, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, TextInput, Alert, ScrollView, ActivityIndicator, Modal, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useUser } from '@clerk/clerk-expo';
+import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import AppStyles from '@/constants/AppStyles';
+import { BlurView } from 'expo-blur';
 
 export default function ProfileSettingsScreen() {
   const { user } = useUser();
+  const { signOut } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [lastName, setLastName] = useState(user?.lastName || '');
   const [username, setUsername] = useState(user?.username || '');
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? AppStyles.colors.dark : AppStyles.colors.light;
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
+  // Çıkış yapma fonksiyonu
+  const handleLogout = () => {
+    setLogoutModalVisible(true);
+  };
+
+  // Çıkış işlemini gerçekleştir
+  const performLogout = async () => {
+    try {
+      setLoggingOut(true);
+
+      // Önce modalı kapat, kullanıcı deneyimini iyileştirmek için
+      setLogoutModalVisible(false);
+
+      try {
+        // Önce çıkış işlemini gerçekleştir
+        await signOut();
+
+        // Sonra giriş sayfasına yönlendir
+        router.replace('/(auth)/sign-in');
+      } catch (error) {
+        console.error("Çıkış yapılırken hata oluştu:", error);
+        Alert.alert("Hata", "Çıkış yapılırken bir sorun oluştu. Lütfen tekrar deneyin.");
+      } finally {
+        setLoggingOut(false);
+      }
+    } catch (error) {
+      console.error("Çıkış yapılırken hata oluştu:", error);
+      Alert.alert("Hata", "Çıkış yapılırken bir sorun oluştu. Lütfen tekrar deneyin.");
+      setLoggingOut(false);
+      setLogoutModalVisible(false);
+    }
+  };
 
   const handleUpdateProfile = async () => {
     try {
@@ -89,22 +126,15 @@ export default function ProfileSettingsScreen() {
   ];
 
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient
-        colors={['#4c669f', '#3b5998', '#192f6a']}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Profil Ayarları</ThemedText>
-          <View style={{width: 24}} />
+    <>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <View style={{width: 24}} />
+            <ThemedText style={styles.headerTitle}>Profil Ayarları</ThemedText>
+            <View style={{width: 24}} />
+          </View>
         </View>
-      </LinearGradient>
 
       <View style={styles.content}>
         <View style={styles.profileImageSection}>
@@ -165,18 +195,22 @@ export default function ProfileSettingsScreen() {
           <ThemedText style={styles.sectionTitle}>E-posta Adresleri</ThemedText>
           {user?.emailAddresses.map((email: any) => (
             <View key={email.id} style={styles.emailItem}>
-              <View style={styles.emailInfo}>
+              <View style={styles.emailMainInfo}>
                 <ThemedText style={styles.emailText}>{email.emailAddress}</ThemedText>
-                {email.verification.status === 'verified' && (
-                  <View style={styles.verifiedBadge}>
-                    <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-                    <ThemedText style={styles.verifiedText}>Doğrulanmış</ThemedText>
-                  </View>
-                )}
+                <View style={styles.badgesContainer}>
+                  {email.verification.status === 'verified' && (
+                    <View style={styles.verifiedBadge}>
+                      <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+                      <ThemedText style={styles.verifiedText}>Doğrulanmış</ThemedText>
+                    </View>
+                  )}
+                  {email.id === user.primaryEmailAddressId && (
+                    <View style={styles.primaryBadgeContainer}>
+                      <ThemedText style={styles.primaryBadge}>Birincil</ThemedText>
+                    </View>
+                  )}
+                </View>
               </View>
-              {email.id === user.primaryEmailAddressId && (
-                <ThemedText style={styles.primaryBadge}>Birincil</ThemedText>
-              )}
             </View>
           ))}
         </View>
@@ -197,8 +231,75 @@ export default function ProfileSettingsScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Hesap</ThemedText>
+          <TouchableOpacity
+            style={[styles.menuItem, styles.logoutButton]}
+            onPress={handleLogout}
+            disabled={loggingOut}
+          >
+            <View style={styles.menuItemContent}>
+              <MaterialCommunityIcons name="logout" size={24} color="#FF6B6B" />
+              <ThemedText style={[styles.menuItemText, styles.logoutText]}>
+                {loggingOut ? "Çıkış yapılıyor..." : "Çıkış Yap"}
+              </ThemedText>
+            </View>
+            {loggingOut ? (
+              <ActivityIndicator size="small" color="#FF6B6B" />
+            ) : (
+              <Ionicons name="chevron-forward" size={24} color="#999" />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
+
+    {/* Çıkış Yapma Modalı */}
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={logoutModalVisible}
+      onRequestClose={() => setLogoutModalVisible(false)}
+    >
+      <BlurView intensity={10} style={styles.modalOverlay} tint={isDark ? 'dark' : 'light'}>
+        <View style={[styles.modalContainer, { backgroundColor: theme.card }]}>
+          <View style={styles.modalHeader}>
+            <MaterialCommunityIcons name="logout" size={40} color="#FF6B6B" />
+            <ThemedText style={styles.modalTitle}>Çıkış Yap</ThemedText>
+          </View>
+
+          <View style={styles.modalBody}>
+            <ThemedText style={styles.modalText}>
+              Hesabınızdan çıkış yapmak istediğinize emin misiniz?
+            </ThemedText>
+          </View>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton, { borderColor: theme.border }]}
+              onPress={() => setLogoutModalVisible(false)}
+              disabled={loggingOut}
+            >
+              <ThemedText style={styles.cancelButtonText}>İptal</ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.logoutModalButton]}
+              onPress={performLogout}
+              disabled={loggingOut}
+            >
+              {loggingOut ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <ThemedText style={styles.logoutModalButtonText}>Çıkış Yap</ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </BlurView>
+    </Modal>
+    </>
   );
 }
 
@@ -306,6 +407,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: AppStyles.colors.dark.border,
   },
+  emailMainInfo: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
   emailInfo: {
     flex: 1,
     flexDirection: 'row',
@@ -314,19 +420,36 @@ const styles = StyleSheet.create({
   emailText: {
     fontSize: 16,
     color: AppStyles.colors.dark.text,
-    marginRight: 8,
+    marginBottom: 4,
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 4,
   },
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: 8,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   verifiedText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#4CAF50',
     marginLeft: 4,
   },
+  primaryBadgeContainer: {
+    backgroundColor: 'rgba(76, 102, 159, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
   primaryBadge: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#4c669f',
     fontWeight: 'bold',
   },
@@ -349,5 +472,73 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 12,
     color: AppStyles.colors.dark.text,
+  },
+  logoutButton: {
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+  },
+  logoutText: {
+    color: '#FF6B6B',
+  },
+  // Modal stilleri
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    width: Dimensions.get('window').width * 0.85,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginTop: 12,
+  },
+  modalBody: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  modalText: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    borderRightWidth: 1,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  logoutModalButton: {
+    backgroundColor: '#FF6B6B',
+  },
+  logoutModalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

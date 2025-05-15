@@ -1,14 +1,13 @@
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Platform, StyleSheet, View } from 'react-native';
-import { useColorScheme } from '@/hooks/useColorScheme';
+
 import { colors, safeAreaInsets, borderRadius } from '@/constants/AppStyles';
 import { HapticTab } from '@/components/HapticTab';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? colors.dark : colors.light;
+  // Her zaman karanlık tema kullanıyoruz
+  const theme = colors.dark;
 
   return (
     <Tabs
@@ -47,7 +46,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Ana Sayfa',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="home" size={24} color={color} />
           ),
         }}
@@ -56,7 +55,7 @@ export default function TabLayout() {
         name="ai-planner"
         options={{
           title: 'Seyahatler',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="compass" size={24} color={color} />
           ),
         }}
@@ -65,7 +64,7 @@ export default function TabLayout() {
         name="trip-details"
         options={{
           title: 'Planlarım',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="map-marker" size={24} color={color} />
           ),
         }}
@@ -74,18 +73,32 @@ export default function TabLayout() {
         name="recommended-trips"
         options={{
           title: 'Önerilen',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="star" size={24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="profile-settings"
         options={{
           title: 'Profil',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="account" size={24} color={color} />
           ),
+        }}
+      />
+
+      {/* Hidden screens */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="plan-trip"
+        options={{
+          href: null, // Hide from tab bar
         }}
       />
     </Tabs>
