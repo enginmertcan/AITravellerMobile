@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Alert, Image, Modal, ScrollView } from 'react-native';
+import { View, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Alert, Image, Modal, ScrollView, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { FirebaseService } from '../services/firebase.service';
@@ -108,56 +108,110 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        quality: 0.5, // Kaliteyi düşürelim
+        quality: 1.0, // En yüksek kalite
         aspect: [4, 3],
+        exif: false, // EXIF verilerini alma (daha hızlı)
       });
+
+      console.log('Fotoğraf seçme sonucu:', result.canceled ? 'İptal edildi' : 'Seçildi');
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         // Yeni fotoğraf URI'sini al
         const newImageUri = result.assets[0].uri;
+        console.log('Seçilen fotoğraf URI:', newImageUri);
 
-        // Konum bilgisi iste
-        Alert.prompt(
-          'Konum Bilgisi',
-          'Fotoğrafın çekildiği yeri belirtin (opsiyonel):',
-          [
-            {
-              text: 'İptal',
-              onPress: () => {
-                // Geriye uyumluluk için
-                setSelectedImage(newImageUri);
-                setPhotoLocation('');
+        // Fotoğrafın varlığını kontrol et
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(newImageUri);
+          if (!fileInfo.exists) {
+            console.error('Seçilen fotoğraf dosyası bulunamadı:', newImageUri);
+            Alert.alert('Hata', 'Seçilen fotoğraf dosyası bulunamadı.');
+            return;
+          }
+          console.log('Fotoğraf dosya boyutu:', fileInfo.size);
 
-                // Yeni çoklu fotoğraf desteği
-                setSelectedImages(prevImages => [
-                  ...prevImages,
-                  { uri: newImageUri, location: '' }
-                ]);
-              },
-              style: 'cancel',
-            },
-            {
-              text: 'Tamam',
-              onPress: (location) => {
-                const locationText = location || '';
+          // Dosya boyutu çok küçükse uyarı ver (muhtemelen bozuk dosya)
+          if (fileInfo.size < 1000) {
+            console.warn('Fotoğraf dosyası çok küçük, muhtemelen bozuk:', fileInfo.size);
+            Alert.alert('Uyarı', 'Seçilen fotoğraf geçersiz görünüyor. Lütfen başka bir fotoğraf seçin.');
+            return;
+          }
+        } catch (fileError) {
+          console.error('Dosya kontrolü hatası:', fileError);
+        }
 
-                // Geriye uyumluluk için
-                setSelectedImage(newImageUri);
-                setPhotoLocation(locationText);
-
-                // Yeni çoklu fotoğraf desteği
-                setSelectedImages(prevImages => [
-                  ...prevImages,
-                  { uri: newImageUri, location: locationText }
-                ]);
-              },
-            },
-          ]
-        );
+        // Fotoğrafı doğrudan ekle (konum bilgisi olmadan)
+        console.log('Fotoğraf doğrudan ekleniyor...');
+        await addPhotoToSelection(newImageUri, '');
       }
     } catch (error) {
       console.error('Fotoğraf seçme hatası:', error);
       Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
+    }
+  };
+
+  // Fotoğrafı seçime ekle (yardımcı fonksiyon)
+  const addPhotoToSelection = async (uri: string, location: string) => {
+    try {
+      // Fotoğrafı daha kalıcı bir yere kopyala
+      const fileExtension = uri.split('.').pop() || 'jpg';
+      const fileName = `photo_${new Date().getTime()}.${fileExtension}`;
+      const destinationUri = `${FileSystem.documentDirectory}photos/${fileName}`;
+
+      // photos dizini yoksa oluştur
+      const photosDir = `${FileSystem.documentDirectory}photos`;
+      const photosDirInfo = await FileSystem.getInfoAsync(photosDir);
+      if (!photosDirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(photosDir, { intermediates: true });
+        console.log('Photos dizini oluşturuldu:', photosDir);
+      }
+
+      // Dosyayı kopyala
+      await FileSystem.copyAsync({
+        from: uri,
+        to: destinationUri
+      });
+
+      console.log(`Fotoğraf kopyalandı: ${uri} -> ${destinationUri}`);
+
+      // Dosyanın varlığını kontrol et
+      const fileInfo = await FileSystem.getInfoAsync(destinationUri);
+      if (!fileInfo.exists) {
+        console.error('Kopyalanan dosya bulunamadı:', destinationUri);
+        Alert.alert('Hata', 'Fotoğraf kaydedilemedi.');
+        return;
+      }
+
+      console.log('Kopyalanan dosya boyutu:', fileInfo.size);
+
+      // Geriye uyumluluk için
+      setSelectedImage(destinationUri);
+      setPhotoLocation(location);
+
+      // Yeni çoklu fotoğraf desteği
+      setSelectedImages(prevImages => {
+        const newImages = [
+          ...prevImages,
+          { uri: destinationUri, location }
+        ];
+        console.log(`Fotoğraf listeye eklendi, toplam: ${newImages.length}`);
+        return newImages;
+      });
+    } catch (error) {
+      console.error('Fotoğraf kopyalama hatası:', error);
+      Alert.alert('Hata', 'Fotoğraf kaydedilemedi.');
+
+      // Hata durumunda orijinal URI'yi kullan
+      setSelectedImage(uri);
+      setPhotoLocation(location);
+
+      setSelectedImages(prevImages => {
+        const newImages = [
+          ...prevImages,
+          { uri, location }
+        ];
+        return newImages;
+      });
     }
   };
 
@@ -193,69 +247,71 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
     setSubmitting(true);
     try {
+      console.log('Yorum ekleme işlemi başlatılıyor...');
+      console.log(`Seçilen fotoğraf sayısı: ${selectedImages.length}`);
+
       // Çoklu fotoğraf desteği için
-      const photoUploadPromises: Array<Promise<{data: string, location?: string}>> = [];
+      const photoUploadPromises: Array<Promise<{uri: string, location?: string}>> = [];
 
       // Seçilen tüm fotoğrafları işle
       for (const image of selectedImages) {
         try {
-          console.log(`Fotoğraf base64'e dönüştürülüyor: ${image.uri.substring(0, 30)}...`);
+          console.log(`Fotoğraf işleniyor: ${image.uri.substring(0, 30)}...`);
 
-          // Resmi base64'e dönüştür
-          const base64Data = await FileSystem.readAsStringAsync(image.uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
+          // Fotoğrafın varlığını kontrol et
+          const fileInfo = await FileSystem.getInfoAsync(image.uri);
+          if (!fileInfo.exists) {
+            console.error('Fotoğraf dosyası bulunamadı:', image.uri);
+            continue; // Bu fotoğrafı atla
+          }
+          console.log(`Fotoğraf dosya boyutu: ${fileInfo.size}`);
 
-          console.log(`Base64 dönüşümü başarılı, veri uzunluğu: ${base64Data.length}`);
-
-          // Fotoğraf verilerini listeye ekle
+          // Fotoğraf URI'sini listeye ekle (base64'e dönüştürmeden)
           photoUploadPromises.push(Promise.resolve({
-            data: base64Data,
+            uri: image.uri,
             location: image.location
           }));
         } catch (error) {
-          console.error(`Fotoğraf dönüştürme hatası (${image.uri.substring(0, 30)}...):`, error);
-          // Bir fotoğraf dönüştürülemese bile diğerlerini işlemeye devam et
+          console.error(`Fotoğraf işleme hatası (${image.uri.substring(0, 30)}...):`, error);
+          // Bir fotoğraf işlenemese bile diğerlerini işlemeye devam et
         }
       }
 
       // Geriye uyumluluk için tek fotoğraf desteği
-      let base64Data = null;
-      let photoLocationValue = null;
-
       // Eğer fotoğraf seçilmişse ve çoklu fotoğraf listesi boşsa, yükle
       if (selectedImage && selectedImages.length === 0) {
         try {
-          console.log('Tek fotoğraf base64\'e dönüştürülüyor...');
+          console.log('Tek fotoğraf işleniyor...');
 
-          // Resmi base64'e dönüştür
-          base64Data = await FileSystem.readAsStringAsync(selectedImage, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-
-          console.log(`Base64 dönüşümü başarılı, veri uzunluğu: ${base64Data.length}`);
+          // Fotoğrafın varlığını kontrol et
+          const fileInfo = await FileSystem.getInfoAsync(selectedImage);
+          if (!fileInfo.exists) {
+            console.error('Fotoğraf dosyası bulunamadı:', selectedImage);
+            Alert.alert('Hata', 'Seçilen fotoğraf dosyası bulunamadı.');
+            setSubmitting(false);
+            return;
+          }
+          console.log(`Fotoğraf dosya boyutu: ${fileInfo.size}`);
 
           // Konum bilgisi varsa ekle
-          if (photoLocation && photoLocation.trim() !== '') {
-            photoLocationValue = photoLocation.trim();
-            console.log(`Fotoğraf konum bilgisi: ${photoLocationValue}`);
-          }
+          const photoLocationValue = photoLocation && photoLocation.trim() !== '' ? photoLocation.trim() : undefined;
 
-          // Tek fotoğrafı da çoklu fotoğraf listesine ekle
+          // Fotoğraf URI'sini listeye ekle
           photoUploadPromises.push(Promise.resolve({
-            data: base64Data,
-            location: photoLocationValue || undefined
+            uri: selectedImage,
+            location: photoLocationValue
           }));
         } catch (error) {
-          console.error('Fotoğraf dönüştürme hatası:', error);
+          console.error('Fotoğraf işleme hatası:', error);
           Alert.alert('Hata', 'Fotoğraf işlenirken bir hata oluştu.');
           setSubmitting(false);
           return;
         }
       }
 
-      // Tüm fotoğrafları base64'e dönüştür
-      const photoDataArray = await Promise.all(photoUploadPromises);
+      // Tüm fotoğraf URI'lerini al
+      const photoUriArray = await Promise.all(photoUploadPromises);
+      console.log(`İşlenen toplam fotoğraf sayısı: ${photoUriArray.length}`);
 
       // 1. Önce yorumu ekle
       const commentData: Omit<TripComment, 'id' | 'createdAt' | 'updatedAt'> = {
@@ -269,7 +325,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
       console.log('Yorum Firebase\'e gönderiliyor...');
 
       // Çoklu fotoğraf desteği ile yorum ekle
-      const commentId = await FirebaseService.Comment.addComment(commentData, photoDataArray);
+      const commentId = await FirebaseService.Comment.addComment(commentData, photoUriArray);
       console.log(`Yorum başarıyla eklendi, ID: ${commentId}`);
 
       // Formu temizle
@@ -373,6 +429,62 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
     }
   };
 
+  // Fotoğraf kaynağını belirle - Geliştirilmiş versiyon (global)
+  const getImageSource = (photoUrl?: string, photoData?: string, itemId?: string) => {
+    console.log(`Fotoğraf kaynağı belirleniyor: ${itemId || 'global'}`);
+
+    try {
+      // Önce photoUrl kontrolü (daha güvenilir)
+      if (photoUrl && photoUrl.trim() !== '') {
+        // Firebase Storage URL'i mi kontrol et
+        if (photoUrl.includes('firebasestorage.googleapis.com') ||
+            photoUrl.startsWith('https://') ||
+            photoUrl.startsWith('http://')) {
+          console.log(`  ${itemId || 'global'} için URL kullanılıyor: ${photoUrl.substring(0, 30)}...`);
+          return { uri: photoUrl };
+        }
+
+        // Base64 verisi olabilir
+        if (photoUrl.startsWith('data:image')) {
+          console.log(`  ${itemId || 'global'} için data:image URL'i kullanılıyor`);
+          return { uri: photoUrl };
+        }
+
+        // Base64 verisi ama prefix yok
+        if (photoUrl.length > 100) {
+          console.log(`  ${itemId || 'global'} için base64 verisi prefix eklenerek kullanılıyor`);
+          return { uri: `data:image/jpeg;base64,${photoUrl}` };
+        }
+      }
+
+      // Sonra photoData kontrolü
+      if (photoData && photoData.trim() !== '') {
+        console.log(`  ${itemId || 'global'} için base64 verisi kullanılıyor (uzunluk: ${photoData.length})`);
+
+        // Base64 formatını kontrol et ve düzelt
+        let base64Data = photoData;
+
+        // Eğer data:image ile başlıyorsa, sadece base64 kısmını al
+        if (base64Data.startsWith('data:image')) {
+          console.log('  Veri data:image formatında, ayıklanıyor...');
+          const parts = base64Data.split('base64,');
+          if (parts.length > 1) {
+            base64Data = parts[1];
+          }
+        }
+
+        // React Native için doğru format
+        console.log('  Base64 verisi URI formatına dönüştürülüyor');
+        return { uri: `data:image/jpeg;base64,${base64Data}` };
+      }
+    } catch (error) {
+      console.error(`  Fotoğraf kaynağı belirleme hatası: ${error}`);
+    }
+
+    console.log(`  ${itemId || 'global'} için fotoğraf kaynağı bulunamadı, placeholder kullanılıyor`);
+    return require('../assets/images/placeholder.png');
+  };
+
   // Yorum öğesi
   const renderCommentItem = ({ item }: { item: TripComment }) => {
     // Yorum öğesi için dinamik stiller
@@ -387,55 +499,27 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
       editButtonText: dynamicStyles.editButtonText,
     };
     const isCurrentUser = userId === item.userId;
-    const hasPhoto = item.photoUrl || item.photoData;
 
-    // Fotoğraf kaynağını belirle - Geliştirilmiş versiyon
-    const getImageSource = (photoUrl?: string, photoData?: string) => {
-      console.log(`Fotoğraf kaynağı belirleniyor: ${item.id}`);
 
-      try {
-        // Önce photoUrl kontrolü (daha güvenilir)
-        if (photoUrl && photoUrl.trim() !== '') {
-          console.log(`  ${item.id} için URL kullanılıyor: ${photoUrl.substring(0, 30)}...`);
-          return { uri: photoUrl };
-        }
-
-        // Sonra photoData kontrolü
-        if (photoData && photoData.trim() !== '') {
-          console.log(`  ${item.id} için base64 verisi kullanılıyor (uzunluk: ${photoData.length})`);
-
-          // Base64 formatını kontrol et ve düzelt
-          let base64Data = photoData;
-
-          // Eğer data:image ile başlıyorsa, sadece base64 kısmını al
-          if (base64Data.startsWith('data:image')) {
-            console.log('  Veri data:image formatında, ayıklanıyor...');
-            const parts = base64Data.split('base64,');
-            if (parts.length > 1) {
-              base64Data = parts[1];
-            }
-          }
-
-          // React Native için doğru format
-          console.log('  Base64 verisi URI formatına dönüştürülüyor');
-          return { uri: `data:image/jpeg;base64,${base64Data}` };
-        }
-      } catch (error) {
-        console.error(`  Fotoğraf kaynağı belirleme hatası: ${error}`);
-      }
-
-      console.log(`  ${item.id} için fotoğraf kaynağı bulunamadı, placeholder kullanılıyor`);
-      return require('../assets/images/placeholder.png');
-    };
 
     // Yorumun tüm fotoğraflarını al
     const getCommentPhotos = (): Array<{url: string, location?: string}> => {
+      console.log(`Yorum fotoğrafları alınıyor: ${item.id}`);
+
       // Eğer photosJson alanı varsa, onu kullan
       if (item.photosJson) {
         try {
+          console.log(`photosJson alanı mevcut, parse ediliyor...`);
           const photos = JSON.parse(item.photosJson);
           if (Array.isArray(photos) && photos.length > 0) {
-            return photos;
+            console.log(`${photos.length} fotoğraf bulundu (photosJson)`);
+
+            // URL'leri kontrol et
+            const validPhotos = photos.filter(photo => photo && photo.url && photo.url.trim() !== '');
+            if (validPhotos.length > 0) {
+              console.log(`${validPhotos.length} geçerli fotoğraf URL'si bulundu`);
+              return validPhotos;
+            }
           }
         } catch (e) {
           console.error(`JSON parse hatası (${item.id}):`, e);
@@ -443,19 +527,29 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
       }
 
       // Geriye uyumluluk için eski alanları kontrol et
-      if (item.photoUrl || item.photoData) {
+      if (item.photoUrl) {
+        console.log(`photoUrl alanı mevcut: ${item.photoUrl?.substring(0, 30)}...`);
         return [{
-          url: item.photoUrl || item.photoData || '',
+          url: item.photoUrl,
           location: item.photoLocation
         }];
       }
 
+      // En son çare olarak photoData'yı kontrol et
+      if (item.photoData) {
+        console.log(`photoData alanı mevcut, uzunluk: ${item.photoData.length}`);
+        return [{
+          url: item.photoData,
+          location: item.photoLocation
+        }];
+      }
+
+      console.log(`Yorum için fotoğraf bulunamadı: ${item.id}`);
       return [];
     };
 
     // Yorumun fotoğraflarını al
     const commentPhotos = getCommentPhotos();
-    const hasPhotos = commentPhotos.length > 0;
 
     return (
       <View style={itemStyles.commentItem}>
@@ -510,7 +604,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
                       if (photoUrl) {
                         // Fotoğraf kaynağını belirle
-                        const imageSource = getImageSource(photoUrl, photoUrl);
+                        const imageSource = getImageSource(photoUrl, photoUrl, item.id);
 
                         if (imageSource && imageSource.uri) {
                           console.log(`Modal için fotoğraf URL'si: ${imageSource.uri.substring(0, 30)}...`);
@@ -545,7 +639,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
                     }}
                   >
                     <Image
-                      source={getImageSource(photo.url, photo.url)}
+                      source={getImageSource(photo.url, photo.url, item.id)}
                       style={[
                         styles.commentPhoto,
                         commentPhotos.length > 1 && styles.multiplePhotosImage
@@ -553,7 +647,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
                       resizeMode="cover"
                       onError={(error) => {
                         console.error(`Fotoğraf yükleme hatası (${item.id}):`, error.nativeEvent.error);
-                        Alert.alert('Hata', `Fotoğraf yüklenirken bir hata oluştu: ${error.nativeEvent.error}`);
+                        console.log(`Hatalı URL: ${photo.url?.substring(0, 50)}...`);
                       }}
                       defaultSource={require('../assets/images/placeholder.png')}
                     />
@@ -716,10 +810,51 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
         </>
       )}
 
-      {/* Fotoğraf Önizleme */}
-      {selectedImage && (
+      {/* Fotoğraf Önizleme - Çoklu Fotoğraf Desteği */}
+      {selectedImages.length > 0 ? (
+        <View style={styles.photosContainer}>
+          {selectedImages.map((image, index) => (
+            <View key={`preview-${index}`} style={[dynamicStyles.previewContainer, selectedImages.length > 1 && styles.multiplePhotosItem]}>
+              <Image
+                source={{ uri: image.uri }}
+                style={[styles.previewImage, selectedImages.length > 1 && styles.multiplePhotosImage]}
+                defaultSource={require('../assets/images/placeholder.png')}
+              />
+              {image.location ? (
+                <View style={dynamicStyles.locationContainer}>
+                  <MaterialCommunityIcons name="map-marker" size={12} color="#4c669f" />
+                  <ThemedText style={dynamicStyles.locationText} numberOfLines={1}>{image.location}</ThemedText>
+                </View>
+              ) : null}
+              <TouchableOpacity
+                style={dynamicStyles.clearButton}
+                onPress={() => {
+                  // Sadece bu fotoğrafı kaldır
+                  setSelectedImages(prevImages => prevImages.filter((_, i) => i !== index));
+                  console.log(`Fotoğraf kaldırıldı, kalan: ${selectedImages.length - 1}`);
+                }}
+              >
+                <Ionicons name="close-circle" size={20} color="#d9534f" />
+              </TouchableOpacity>
+            </View>
+          ))}
+          {selectedImages.length > 1 && (
+            <TouchableOpacity
+              style={styles.clearAllButton}
+              onPress={handleClearImage}
+            >
+              <Ionicons name="trash-outline" size={16} color="#fff" />
+              <ThemedText style={styles.clearAllText}>Tümünü Temizle</ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : selectedImage ? (
         <View style={dynamicStyles.previewContainer}>
-          <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+          <Image
+            source={{ uri: selectedImage }}
+            style={styles.previewImage}
+            defaultSource={require('../assets/images/placeholder.png')}
+          />
           {photoLocation ? (
             <View style={dynamicStyles.locationContainer}>
               <MaterialCommunityIcons name="map-marker" size={14} color="#4c669f" />
@@ -730,7 +865,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
             <Ionicons name="close-circle" size={24} color="#d9534f" />
           </TouchableOpacity>
         </View>
-      )}
+      ) : null}
 
       <View style={dynamicStyles.inputContainer}>
         <View style={styles.inputRow}>
@@ -750,9 +885,9 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
               <Ionicons name="camera" size={20} color="#4c669f" />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.submitButton, ((!newComment.trim() && !selectedImage) || submitting) && styles.disabledButton]}
+              style={[styles.submitButton, ((!newComment.trim() && selectedImages.length === 0 && !selectedImage) || submitting) && styles.disabledButton]}
               onPress={handleAddComment}
-              disabled={(!newComment.trim() && !selectedImage) || submitting}
+              disabled={(!newComment.trim() && selectedImages.length === 0 && !selectedImage) || submitting}
             >
               {submitting ? (
                 <ActivityIndicator size="small" color="#fff" />
@@ -784,18 +919,10 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
                 resizeMode="contain"
                 onError={(error) => {
                   console.error('Modal fotoğraf yükleme hatası:', error.nativeEvent.error);
+                  console.log(`Hatalı modal URL: ${selectedPhotoForModal.url?.substring(0, 50)}...`);
 
-                  // Hata mesajı göster
-                  Alert.alert(
-                    'Hata',
-                    'Fotoğraf yüklenirken bir hata oluştu. Lütfen tekrar deneyin.',
-                    [
-                      {
-                        text: 'Tamam',
-                        onPress: () => setModalVisible(false)
-                      }
-                    ]
-                  );
+                  // Modalı kapat
+                  setModalVisible(false);
                 }}
                 defaultSource={require('../assets/images/placeholder.png')}
               />
@@ -850,9 +977,13 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
             {galleryPhotos.map((photo, index) => (
               <View key={`gallery-${index}`} style={styles.gallerySlide}>
                 <Image
-                  source={{ uri: photo.url }}
+                  source={getImageSource(photo.url, photo.url, 'gallery')}
                   style={styles.galleryImage}
                   resizeMode="contain"
+                  onError={(error) => {
+                    console.error(`Galeri fotoğraf yükleme hatası:`, error.nativeEvent.error);
+                    console.log(`Hatalı galeri URL: ${photo.url?.substring(0, 50)}...`);
+                  }}
                   defaultSource={require('../assets/images/placeholder.png')}
                 />
                 {photo.location && (
@@ -1270,6 +1401,109 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 6,
   },
+
+  // Galeri stilleri
+  galleryContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    position: 'relative',
+  },
+  galleryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  galleryCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(76, 102, 159, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  galleryCounter: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  gallerySlide: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height - 150,
+    resizeMode: 'contain',
+  },
+  galleryLocationBadge: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    backgroundColor: 'rgba(76, 102, 159, 0.85)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+    maxWidth: '80%',
+  },
+  galleryLocationText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  galleryNavigation: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+  },
+  galleryNavButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(76, 102, 159, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  galleryNavButtonDisabled: {
+    backgroundColor: 'rgba(76, 102, 159, 0.3)',
+  },
+  clearAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(217, 83, 79, 0.8)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginTop: 12,
+    alignSelf: 'center',
+  },
+  clearAllText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+
 });
 
 export default TripComments;

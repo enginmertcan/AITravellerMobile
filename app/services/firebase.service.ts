@@ -43,7 +43,6 @@ export const TravelPlanService = {
 
       // Firestore'a ekle
       const docRef = await addDoc(travelPlanRef, planWithTimestamp);
-      console.log('Seyahat planı oluşturuldu:', docRef.id);
 
       return docRef.id;
     } catch (error) {
@@ -73,7 +72,6 @@ export const TravelPlanService = {
    * - userId: string
    */
   formatTravelPlanForWeb(travelPlan: Partial<TravelPlan>): Partial<TravelPlan> {
-    console.log('Web uyumluluğu için veri formatı düzenleniyor...');
 
     // Yeni bir nesne oluştur (orijinal nesneyi değiştirmemek için)
     // Index signature ekleyerek TypeScript hatalarını önle
@@ -109,7 +107,6 @@ export const TravelPlanService = {
 
     // tripSummary alanını kontrol et ve eksikse oluştur
     if (!formattedPlan.tripSummary || typeof formattedPlan.tripSummary !== 'object') {
-      console.log('tripSummary alanı oluşturuluyor...');
 
       // Süre bilgisini belirle
       let durationValue = formattedPlan.duration || "Belirtilmemiş";
@@ -143,7 +140,6 @@ export const TravelPlanService = {
 
     // Eğer günlük planlar varsa, bunları itinerary'ye dönüştür
     if (dayKeys.length > 0) {
-      console.log('Günlük planlar bulundu, itinerary alanına taşınıyor...');
 
       // Günlük planları itinerary dizisine dönüştür
       const itineraryArray = dayKeys.map(dayKey => {
@@ -192,7 +188,6 @@ export const TravelPlanService = {
 
       // culturalDifferences alanını ekle
       if (formattedPlan.culturalDifferences) {
-        console.log('culturalDifferences alanı itinerary\'ye ekleniyor');
         if (typeof formattedPlan.culturalDifferences === 'string') {
           try {
             itineraryObj.culturalDifferences = JSON.parse(formattedPlan.culturalDifferences);
@@ -207,7 +202,6 @@ export const TravelPlanService = {
 
       // localTips alanını ekle
       if (formattedPlan.localTips) {
-        console.log('localTips alanı itinerary\'ye ekleniyor');
         if (typeof formattedPlan.localTips === 'string') {
           try {
             itineraryObj.localTips = JSON.parse(formattedPlan.localTips);
@@ -231,11 +225,10 @@ export const TravelPlanService = {
         delete formattedPlan[dayKey];
       });
 
-      console.log('Günlük planlar itinerary alanına taşındı');
     }
     // Eğer itinerary zaten varsa ve string değilse
     else if (formattedPlan.itinerary && typeof formattedPlan.itinerary !== 'string') {
-      console.log('İtinerary alanı string değil, düzenleniyor...');
+
 
       // İtinerary'yi web formatına dönüştür
       try {
@@ -472,7 +465,6 @@ export const TravelPlanService = {
 
     // Yerel ipuçları için eksik alanları tamamla
     if (!formattedPlan.localTips || typeof formattedPlan.localTips === 'string' && formattedPlan.localTips.trim() === '') {
-      console.log('localTips alanı oluşturuluyor...');
 
       // Varsayılan localTips objesi oluştur
       const localTipsObj = {
@@ -755,12 +747,10 @@ export const TravelPlanService = {
         // Ayrıca DD/MM/YYYY formatında da sakla (API çağrıları için)
         (formattedPlan as any).startDateDDMMYYYY = `${today.getUTCDate().toString().padStart(2, '0')}/${(today.getUTCMonth() + 1).toString().padStart(2, '0')}/${today.getUTCFullYear()}`;
 
-        console.log('Orijinal tarih saklandı (hata durumu - ISO format):', originalDate);
       }
     }
 
     // Veri formatını kontrol et - web uygulamasının beklediği formatta olduğundan emin ol
-    console.log('Web uyumluluğu için veri formatı düzenlendi:', Object.keys(formattedPlan));
 
     return formattedPlan;
   },
@@ -852,7 +842,6 @@ export const TravelPlanService = {
               cleanString = `{${cleanString}}`;
             }
 
-            console.log('Cleaned culturalDifferences string:', cleanString);
 
             try {
               const parsedCulturalDifferences = JSON.parse(cleanString);
@@ -962,7 +951,6 @@ export const TravelPlanService = {
           }
         } else if (!data.localTips) {
           // localTips yoksa oluştur
-          console.log('Creating new localTips object for plan:', doc.id);
           data.localTips = {
             localTransportationGuide: data.localTransportationGuide || "Bilgi bulunmuyor",
             emergencyContacts: data.emergencyContacts || "Acil durumlarda 112'yi arayın",
@@ -978,7 +966,6 @@ export const TravelPlanService = {
         // Vize bilgilerini de parse et
         if (data.visaInfo && typeof data.visaInfo === 'string') {
           try {
-            console.log('Parsing visaInfo string from web app for plan:', doc.id);
             const parsedVisaInfo = JSON.parse(data.visaInfo);
             if (parsedVisaInfo && typeof parsedVisaInfo === 'object') {
               data.visaInfo = parsedVisaInfo;
@@ -991,7 +978,6 @@ export const TravelPlanService = {
         // tripSummary alanını da parse et
         if (data.tripSummary && typeof data.tripSummary === 'string') {
           try {
-            console.log('Parsing tripSummary string from web app for plan:', doc.id);
             const parsedTripSummary = JSON.parse(data.tripSummary);
             if (parsedTripSummary && typeof parsedTripSummary === 'object') {
               data.tripSummary = parsedTripSummary;
@@ -1180,17 +1166,14 @@ export const TravelPlanService = {
             // visaInfo, culturalDifferences ve localTips alanlarını itinerary'den çıkar
             // ve üst seviye alanlara taşı
             if (parsedItinerary.visaInfo && !data.visaInfo) {
-              console.log('Extracting visaInfo from itinerary');
               data.visaInfo = parsedItinerary.visaInfo;
             }
 
             if (parsedItinerary.culturalDifferences && !data.culturalDifferences) {
-              console.log('Extracting culturalDifferences from itinerary');
               data.culturalDifferences = parsedItinerary.culturalDifferences;
             }
 
             if (parsedItinerary.localTips && !data.localTips) {
-              console.log('Extracting localTips from itinerary');
               data.localTips = parsedItinerary.localTips;
             }
           }
@@ -1202,8 +1185,7 @@ export const TravelPlanService = {
       // Web uygulamasından gelen string formatındaki culturalDifferences ve localTips alanlarını parse et
       if (data.culturalDifferences && typeof data.culturalDifferences === 'string') {
         try {
-          console.log('Parsing culturalDifferences string from web app');
-          console.log('Original culturalDifferences string:', data.culturalDifferences);
+
 
           // Önce string içindeki kaçış karakterlerini temizle
           let cleanString = data.culturalDifferences
@@ -1215,7 +1197,6 @@ export const TravelPlanService = {
             cleanString = `{${cleanString}}`;
           }
 
-          console.log('Cleaned culturalDifferences string:', cleanString);
 
           try {
             const parsedCulturalDifferences = JSON.parse(cleanString);
@@ -1562,7 +1543,7 @@ export const TravelPlanService = {
         updatedAt: serverTimestamp()
       });
 
-      console.log(`Seyahat planı beğeni durumu güncellendi. Yeni beğeni sayısı: ${likedBy.length}`);
+
 
       return true;
     } catch (error) {
@@ -1917,9 +1898,9 @@ export const TravelPlanService = {
 
         uploadTask.on(
           'state_changed',
-          (snapshot) => {
+          (_snapshot) => {
             // Yükleme durumunu izle
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            // İlerleme durumu gerekirse burada kullanılabilir
           },
           (error) => {
             // Hata durumunda
@@ -1983,9 +1964,9 @@ export const TravelPlanService = {
       return new Promise((resolve, reject) => {
         uploadTask.on(
           'state_changed',
-          (snapshot) => {
+          (_snapshot) => {
             // Yükleme durumunu izle
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            // İlerleme durumu gerekirse burada kullanılabilir
           },
           (error) => {
             // Hata durumunda
@@ -2578,8 +2559,6 @@ export const CommentPhotoService = {
    */
   async getPhotosByCommentId(commentId: string): Promise<any[]> {
     try {
-      console.log(`Yorum fotoğrafları getiriliyor: ${commentId}`);
-
       if (!commentId?.trim()) {
         console.warn("Geçersiz yorum ID'si");
         return [];
@@ -2592,8 +2571,6 @@ export const CommentPhotoService = {
       );
 
       const querySnapshot = await getDocs(q);
-      console.log(`${querySnapshot.size} fotoğraf bulundu`);
-
       const photos: any[] = [];
 
       querySnapshot.forEach(doc => {
@@ -2606,12 +2583,9 @@ export const CommentPhotoService = {
 
         // Base64 formatını kontrol et
         if (data.photoData) {
-          console.log(`Fotoğraf verisi mevcut, uzunluk: ${data.photoData.length}`);
-
           // Eğer data:image ile başlamıyorsa, ekle
           if (!data.photoData.startsWith('data:image')) {
             data.photoData = `data:image/jpeg;base64,${data.photoData}`;
-            console.log('Base64 verisi data:image formatına dönüştürüldü');
           }
         }
 
@@ -2634,8 +2608,6 @@ export const CommentPhotoService = {
    */
   async getPhotosByTravelPlanId(travelPlanId: string): Promise<any[]> {
     try {
-      console.log(`Seyahat planı yorum fotoğrafları getiriliyor: ${travelPlanId}`);
-
       if (!travelPlanId?.trim()) {
         console.warn("Geçersiz seyahat planı ID'si");
         return [];
@@ -2648,8 +2620,6 @@ export const CommentPhotoService = {
       );
 
       const querySnapshot = await getDocs(q);
-      console.log(`${querySnapshot.size} fotoğraf bulundu`);
-
       const photos: any[] = [];
 
       querySnapshot.forEach(doc => {
@@ -2662,12 +2632,9 @@ export const CommentPhotoService = {
 
         // Base64 formatını kontrol et
         if (data.photoData) {
-          console.log(`Fotoğraf verisi mevcut, uzunluk: ${data.photoData.length}`);
-
           // Eğer data:image ile başlamıyorsa, ekle
           if (!data.photoData.startsWith('data:image')) {
             data.photoData = `data:image/jpeg;base64,${data.photoData}`;
-            console.log('Base64 verisi data:image formatına dönüştürüldü');
           }
         }
 
@@ -2690,8 +2657,6 @@ export const CommentPhotoService = {
    */
   async deletePhoto(photoId: string): Promise<boolean> {
     try {
-      console.log(`Yorum fotoğrafı siliniyor: ${photoId}`);
-
       if (!photoId?.trim()) {
         console.warn("Geçersiz fotoğraf ID'si");
         return false;
@@ -2700,7 +2665,6 @@ export const CommentPhotoService = {
       const photoRef = doc(db, COMMENT_PHOTOS_COLLECTION, photoId);
       await deleteDoc(photoRef);
 
-      console.log('Yorum fotoğrafı silindi:', photoId);
       return true;
     } catch (error) {
       console.error("Yorum fotoğrafı silme hatası:", error);
@@ -2716,8 +2680,6 @@ export const CommentService = {
    */
   async getCommentsByTravelPlanId(travelPlanId: string): Promise<TripComment[]> {
     try {
-      console.log(`Seyahat planı yorumları getiriliyor: ${travelPlanId}`);
-
       if (!travelPlanId?.trim()) {
         console.warn("Geçersiz seyahat planı ID'si");
         return [];
@@ -2731,14 +2693,10 @@ export const CommentService = {
       );
 
       const querySnapshot = await getDocs(q);
-      console.log(`${querySnapshot.size} yorum bulundu`);
-
       const comments: TripComment[] = [];
 
       querySnapshot.forEach(doc => {
         const data = doc.data();
-        console.log(`Yorum verisi alındı, ID: ${doc.id}`);
-        console.log(`Yorum içeriği: ${data.content?.substring(0, 30)}...`);
 
         // Timestamp'i Date'e dönüştür
         const createdAt = data.createdAt instanceof Timestamp
@@ -2758,9 +2716,7 @@ export const CommentService = {
       });
 
       // 2. Sonra bu seyahat planına ait tüm yorum fotoğraflarını getir
-      console.log(`Yorum fotoğrafları getiriliyor...`);
       const photos = await CommentPhotoService.getPhotosByTravelPlanId(travelPlanId);
-      console.log(`${photos.length} yorum fotoğrafı bulundu`);
 
       // 3. Her yoruma ait fotoğrafları eşleştir
       if (photos.length > 0) {
@@ -2769,8 +2725,6 @@ export const CommentService = {
           const commentPhotos = photos.filter(photo => photo.commentId === comment.id);
 
           if (commentPhotos.length > 0) {
-            console.log(`Yorum ${comment.id} için ${commentPhotos.length} fotoğraf bulundu`);
-
             // Geriye uyumluluk için ilk fotoğrafı eski alanlara ekle
             const firstPhoto = commentPhotos[0];
             comment.photoData = firstPhoto.photoData;
@@ -2808,10 +2762,6 @@ export const CommentService = {
    */
   async addComment(comment: Omit<TripComment, 'id' | 'createdAt' | 'updatedAt'>, photos?: Array<{data: string, location?: string}>): Promise<string> {
     try {
-      console.log(`Yorum ekleniyor: ${comment.travelPlanId}`);
-      console.log(`Kullanıcı: ${comment.userName} (${comment.userId})`);
-      console.log(`İçerik: ${comment.content?.substring(0, 30)}...`);
-
       // Fotoğraf verilerini geçici olarak sakla (geriye uyumluluk için)
       const photoData = comment.photoData;
       const photoLocation = comment.photoLocation;
@@ -2842,13 +2792,10 @@ export const CommentService = {
       // Firestore'a ekle
       const docRef = await addDoc(commentsRef, commentWithTimestamp);
       const commentId = docRef.id;
-      console.log('Yorum başarıyla eklendi, ID:', commentId);
 
       // Çoklu fotoğraf desteği
       if (photos && photos.length > 0) {
         try {
-          console.log(`${photos.length} fotoğraf ayrı koleksiyona ekleniyor...`);
-
           // Çoklu fotoğrafları ekle
           const uploadedPhotos = await CommentPhotoService.addMultipleCommentPhotos(
             commentId,
@@ -2866,8 +2813,6 @@ export const CommentService = {
             photoUrl: uploadedPhotos.length > 0 ? uploadedPhotos[0].url : undefined,
             photoLocation: uploadedPhotos.length > 0 ? uploadedPhotos[0].location : undefined
           });
-
-          console.log(`Fotoğraflar başarıyla eklendi ve yorum güncellendi`);
         } catch (photoError) {
           console.error(`Fotoğraf ekleme hatası:`, photoError);
           // Fotoğraf eklenemese bile yorumu silmiyoruz
@@ -2876,9 +2821,6 @@ export const CommentService = {
       // Geriye uyumluluk için tek fotoğraf desteği
       else if (photoData && photoData.trim() !== '') {
         try {
-          console.log(`Tek fotoğraf verisi var, uzunluk: ${photoData.length}`);
-          console.log(`Fotoğraf ayrı koleksiyona ekleniyor...`);
-
           // CommentPhotoService kullanarak fotoğrafı ekle
           await CommentPhotoService.addCommentPhoto(
             commentId,
@@ -2899,8 +2841,6 @@ export const CommentService = {
             photoUrl: photoData,
             photoLocation: photoLocation
           });
-
-          console.log(`Fotoğraf başarıyla ayrı koleksiyona eklendi`);
         } catch (photoError) {
           console.error(`Fotoğraf ekleme hatası:`, photoError);
           // Fotoğraf eklenemese bile yorumu silmiyoruz
@@ -2909,8 +2849,6 @@ export const CommentService = {
       // Eğer photosJson alanı varsa, direkt olarak kullan
       else if (photosJson) {
         try {
-          console.log(`photosJson alanı mevcut, yorumu güncelliyoruz...`);
-
           // Yorumu güncelle
           await this.updateComment(commentId, {
             photosJson: photosJson
@@ -2941,8 +2879,6 @@ export const CommentService = {
           } catch (parseError) {
             console.error(`photosJson parse hatası:`, parseError);
           }
-
-          console.log(`Yorum photosJson ile güncellendi`);
         } catch (jsonError) {
           console.error(`photosJson güncelleme hatası:`, jsonError);
         }
@@ -3007,13 +2943,11 @@ export const CommentService = {
       // Çoklu fotoğraf desteği
       if (photos && photos.length > 0) {
         try {
-          console.log(`${photos.length} fotoğraf güncelleniyor...`);
 
           // Önce bu yoruma ait mevcut fotoğrafları getir ve sil
           const existingPhotos = await CommentPhotoService.getPhotosByCommentId(id);
 
           if (existingPhotos.length > 0) {
-            console.log(`${existingPhotos.length} mevcut fotoğraf bulundu, siliniyor...`);
 
             for (const photo of existingPhotos) {
               await CommentPhotoService.deletePhoto(photo.id);
@@ -3049,14 +2983,12 @@ export const CommentService = {
       // Geriye uyumluluk için tek fotoğraf desteği
       else if (photoData && photoData.trim() !== '') {
         try {
-          console.log(`Tek fotoğraf verisi var, uzunluk: ${photoData.length}`);
 
           // Önce bu yoruma ait mevcut fotoğrafları getir
           const existingPhotos = await CommentPhotoService.getPhotosByCommentId(id);
 
           if (existingPhotos.length > 0) {
             // Mevcut fotoğrafları sil
-            console.log(`${existingPhotos.length} mevcut fotoğraf bulundu, siliniyor...`);
 
             for (const photo of existingPhotos) {
               await CommentPhotoService.deletePhoto(photo.id);

@@ -17,8 +17,7 @@ const GOOGLE_PLACES_API_KEY = API_CONFIG.GOOGLE_PLACES ||
                              'AIzaSyCuywyLDcnyRENGnIHnit-ym2rhQBnXMJw';
 
 // API anahtarını kontrol et ve log'a yaz
-console.log(`HotelPhotosService - Google Places API anahtarı: ${GOOGLE_PLACES_API_KEY ? 'Mevcut' : 'Eksik'}`);
-console.log(`HotelPhotosService - API anahtarı uzunluğu: ${GOOGLE_PLACES_API_KEY?.length || 0}`);
+// API key validation is handled by the Places API client
 
 // Maksimum fotoğraf sayısı (sabit bir limit yok)
 const MAX_PHOTOS = 20; // 10 geçerli fotoğraf göstermek için 20 tane getiriyoruz (ilk 1-2 tanesi null olabilir)
@@ -36,7 +35,6 @@ const HotelPhotosService = {
    */
   async fetchHotelPhotos(hotelName: string, city: string): Promise<string[]> {
     try {
-      console.log(`Otel fotoğrafları getiriliyor: ${hotelName}, ${city}`);
 
       // Adım 1: Places API Text Search ile oteli bul (Proxy üzerinden)
       const searchQuery = `${hotelName} hotel ${city}`;
@@ -51,7 +49,6 @@ const HotelPhotosService = {
 
       // İlk sonucu al (en alakalı)
       const placeId = searchData.results[0].place_id;
-      console.log(`Otel Place ID: ${placeId}`);
 
       // Adım 2: Fotoğraflar dahil yer detaylarını al (Proxy üzerinden)
       const detailsData = await ProxyApiService.placeDetails(placeId, 'photos', GOOGLE_PLACES_API_KEY);
@@ -66,7 +63,6 @@ const HotelPhotosService = {
         .slice(0, MAX_PHOTOS)
         .map((photo: any) => photo.photo_reference);
 
-      console.log(`${photoReferences.length} fotoğraf referansı bulundu`);
 
       // Adım 3: Her referans için fotoğraf URL'lerini al
       // Önce doğrudan URL'leri deneyelim, sorun olursa proxy URL'leri kullanırız
@@ -80,7 +76,6 @@ const HotelPhotosService = {
       );
 
       // Eğer doğrudan URL'ler çalışmazsa, proxy URL'leri kullanmak için hazır olalım
-      console.log(`Yedek proxy fotoğraf URL'leri hazırlandı: ${proxyPhotoUrls.length} adet`);
 
       // Null veya geçersiz URL'leri filtrele
       photoUrls = photoUrls.filter(url => {
@@ -93,17 +88,14 @@ const HotelPhotosService = {
                        url.startsWith('http');
 
         if (!isValid) {
-          console.log(`Geçersiz URL filtrelendi: ${url}`);
         }
 
         return isValid;
       });
 
-      console.log(`Filtreleme sonrası ${photoUrls.length} geçerli fotoğraf URL'si kaldı`);
 
       // Eğer doğrudan URL'ler yeterli değilse, proxy URL'leri kullan
       if (photoUrls.length < 10 && proxyPhotoUrls.length > 0) {
-        console.log(`Doğrudan URL'ler yeterli değil, proxy URL'leri ekleniyor...`);
 
         // Proxy URL'lerini filtrele ve ekle
         const validProxyUrls = proxyPhotoUrls.filter(url =>
@@ -116,10 +108,8 @@ const HotelPhotosService = {
 
         // Yeni proxy URL'lerini ekle
         photoUrls = [...photoUrls, ...newProxyUrls];
-        console.log(`${newProxyUrls.length} proxy URL eklendi, toplam: ${photoUrls.length}`);
       }
 
-      console.log(`Otel için ${photoUrls.length} fotoğraf bulundu: ${hotelName}`);
       return photoUrls;
     } catch (error) {
       console.error("Otel fotoğrafları getirme hatası:", error);
@@ -150,7 +140,6 @@ const HotelPhotosService = {
       );
 
       if (validExistingImages.length >= 10) {
-        console.log(`Otel zaten ${validExistingImages.length} geçerli fotoğrafa sahip, ek fotoğraf getirilmiyor`);
         return hotel;
       }
 
@@ -159,7 +148,6 @@ const HotelPhotosService = {
         const photoUrls = await this.fetchHotelPhotos(hotel.hotelName, city);
 
         if (photoUrls.length === 0) {
-          console.log("Ek fotoğraf bulunamadı");
           return hotel;
         }
 
@@ -178,14 +166,12 @@ const HotelPhotosService = {
           additionalImages: [...existingImages, ...newImages]
         };
 
-        console.log(`Otele ${newImages.length} yeni fotoğraf eklendi`);
         return updatedHotel;
       } catch (fetchError) {
         console.error("Otel fotoğrafları getirme hatası:", fetchError);
 
         // Alternatif yöntem: Doğrudan Google Places API'ye istek yap
         try {
-          console.log("Alternatif yöntem deneniyor...");
 
           // Basit bir arama sorgusu oluştur
           const searchQuery = `${hotel.hotelName} hotel ${city}`;
@@ -210,7 +196,6 @@ const HotelPhotosService = {
                 additionalImages: [...existingImages, { url: photoUrl }]
               };
 
-              console.log("Alternatif yöntemle 1 fotoğraf eklendi");
               return updatedHotel;
             }
           }
@@ -239,14 +224,12 @@ const HotelPhotosService = {
     }
 
     try {
-      console.log(`${hotels.length} otel için fotoğraflar zenginleştiriliyor`);
 
       // Her otel için fotoğrafları zenginleştir
       const enhancedHotels = await Promise.all(
         hotels.map(async (hotel) => await this.enhanceHotelWithPhotos(hotel, city))
       );
 
-      console.log("Oteller fotoğraflarla zenginleştirildi");
       return enhancedHotels;
     } catch (error) {
       console.error("Otelleri fotoğraflarla zenginleştirme hatası:", error);

@@ -29,7 +29,6 @@ const ProxyApiService = {
    */
   async placeTextSearch(query: string, apiKey: string = API_CONFIG.GOOGLE_PLACES): Promise<any> {
     try {
-      console.log(`Places Text Search isteği yapılıyor: ${query}`);
 
       // Doğrudan istek yapmayı dene (React Native'de CORS sorunu olmayabilir)
       try {
@@ -42,7 +41,6 @@ const ProxyApiService = {
           return data;
         }
       } catch (directError) {
-        console.log("Doğrudan istek başarısız, proxy deneniyor...", directError);
       }
 
       // Proxy üzerinden istek yap
@@ -81,7 +79,6 @@ const ProxyApiService = {
    */
   async placeDetails(placeId: string, fields: string = 'photos', apiKey: string = API_CONFIG.GOOGLE_PLACES): Promise<any> {
     try {
-      console.log(`Place Details isteği yapılıyor: ${placeId}`);
 
       // Doğrudan istek yapmayı dene (React Native'de CORS sorunu olmayabilir)
       try {

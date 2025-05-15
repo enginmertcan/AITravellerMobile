@@ -6,9 +6,7 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 // Çevre değişkenlerini kontrol et
-console.log('Çevre değişkenleri yükleniyor...');
-console.log('EXPO_PUBLIC_GOOGLE_PLACES_API_KEY:', process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ? 'Mevcut' : 'Eksik');
-console.log('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY:', process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ? 'Mevcut' : 'Eksik');
+// Environment variables will be loaded automatically
 
 module.exports = {
   name: "AITravellerMobile",

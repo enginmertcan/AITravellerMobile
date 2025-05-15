@@ -28,7 +28,7 @@ const HotelDetailModal = ({ visible, hotel, onClose }: HotelDetailModalProps) =>
 
       // Eğer otel zaten yeterli fotoğrafa sahipse, işlem yapma
       if (hotel.additionalImages && Array.isArray(hotel.additionalImages) && hotel.additionalImages.length >= 10) {
-        console.log(`Otel zaten ${hotel.additionalImages.length} fotoğrafa sahip, ek fotoğraf getirilmiyor`);
+
         setEnhancedHotel(hotel);
         return;
       }
@@ -37,15 +37,12 @@ const HotelDetailModal = ({ visible, hotel, onClose }: HotelDetailModalProps) =>
       try {
         // Otelin bulunduğu şehri belirle
         const city = hotel.hotelAddress?.split(',')[1]?.trim() || 'Istanbul';
-        console.log(`Otel şehri: ${city}`);
 
         // Ek fotoğrafları getir
-        console.log(`${hotel.hotelName} için ek fotoğraflar getiriliyor...`);
         const updatedHotel = await HotelPhotosService.enhanceHotelWithPhotos(hotel, city);
 
         // Fotoğraf sayısını kontrol et
         const photoCount = updatedHotel.additionalImages?.length || 0;
-        console.log(`Toplam ${photoCount} fotoğraf bulundu`);
 
         setEnhancedHotel(updatedHotel);
       } catch (error) {
@@ -128,11 +125,9 @@ const HotelDetailModal = ({ visible, hotel, onClose }: HotelDetailModalProps) =>
 
   // Limit to 10 images maximum (to avoid showing null/invalid images)
   if (allImages.length > 10) {
-    console.log(`Fazla fotoğraf var (${allImages.length}), ilk 10 tanesi gösteriliyor`);
     allImages = allImages.slice(0, 10);
   }
 
-  console.log(`Toplam ${allImages.length} fotoğraf gösterilecek`);
 
   // Final hotelImages array
   const hotelImages = allImages;

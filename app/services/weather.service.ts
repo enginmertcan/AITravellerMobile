@@ -89,7 +89,6 @@ function validateWeatherData(data: any): boolean {
 
 export async function getWeatherForecast(location: string, startDate: Date, days: number = 5): Promise<WeatherData[]> {
   try {
-    console.log(`getWeatherForecast called with location: ${location}, startDate: ${startDate.toISOString()}, days: ${days}`);
 
     if (!location || !startDate) {
       console.warn('Missing location or startDate in getWeatherForecast');
@@ -110,7 +109,6 @@ export async function getWeatherForecast(location: string, startDate: Date, days
 
     // Global değişkene ata (AI servisi için)
     (global as any).weatherStartDate = startDate.toISOString();
-    console.log('Global değişkene atanan hava durumu tarihi:', (global as any).weatherStartDate);
 
     // Bugünün tarihiyle karşılaştır
     const today = new Date();
@@ -118,7 +116,6 @@ export async function getWeatherForecast(location: string, startDate: Date, days
 
     // Eğer startDate bugünden önceyse, bugünü kullan
     if (startDate < today) {
-      console.log('startDate is in the past, using today instead:', today.toISOString());
       startDate = today;
     }
 
@@ -131,11 +128,9 @@ export async function getWeatherForecast(location: string, startDate: Date, days
     const formattedStartDate = startDate.toISOString().split('T')[0];
     const formattedEndDate = endDate.toISOString().split('T')[0];
 
-    console.log(`Fetching weather from ${formattedStartDate} to ${formattedEndDate} (${days} days) for ${formattedLocation}`);
 
     // API çağrısını yap - tarih aralığı için
     const apiUrl = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(formattedLocation)}/${formattedStartDate}/${formattedEndDate}?unitGroup=metric&include=days&key=${API_KEY}&contentType=json`;
-    console.log(`Weather API URL: ${apiUrl}`);
 
     const response = await fetch(
       apiUrl,
@@ -161,7 +156,6 @@ export async function getWeatherForecast(location: string, startDate: Date, days
       return [fallbackWeatherData];
     }
 
-    console.log(`Received weather data for ${data.days.length} days`);
 
     // Veriyi dönüştür ve tarihi formatla
     const weatherData = data.days.map((day: any, index: number) => {
@@ -201,7 +195,6 @@ export async function getWeatherForecast(location: string, startDate: Date, days
       };
     });
 
-    console.log(`Processed ${weatherData.length} days of weather data with dates: ${weatherData.map((d: WeatherData) => d.date).join(', ')}`);
     return weatherData;
 
   } catch (error) {
