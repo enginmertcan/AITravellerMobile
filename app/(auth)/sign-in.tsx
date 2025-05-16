@@ -1,7 +1,7 @@
 import { StyleSheet, View, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView, Image, ActivityIndicator, StatusBar } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSignIn, useAuth } from '@clerk/clerk-expo';
+import { useSignIn, useAuth, useOAuth } from '@clerk/clerk-expo';
 import { router, Redirect } from 'expo-router';
 import { useState } from 'react';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -31,46 +31,89 @@ export default function SignInScreen() {
     return <Redirect href="/(tabs)" />;
   }
 
-  const onSignInWithGoogle = async () => {
-    if (!signIn || !setActive) {
-      Alert.alert('Hata', 'Kimlik doğrulama servisi başlatılamadı.');
-      return;
-    }
+  // Google OAuth hook'unu kullan
+  const { startOAuthFlow: startGoogleOAuthFlow } = useOAuth({
+    strategy: 'oauth_google',
+    redirectUrl: 'aitravellermobile://oauth-native-callback',
+    redirectUrlComplete: 'aitravellermobile://oauth-native-callback'
+  });
 
+  // GitHub OAuth hook'unu kullan
+  const { startOAuthFlow: startGithubOAuthFlow } = useOAuth({
+    strategy: 'oauth_github',
+    redirectUrl: 'aitravellermobile://oauth-native-callback',
+    redirectUrlComplete: 'aitravellermobile://oauth-native-callback'
+  });
+
+  // Facebook OAuth hook'unu kullan
+  const { startOAuthFlow: startFacebookOAuthFlow } = useOAuth({
+    strategy: 'oauth_facebook',
+    redirectUrl: 'aitravellermobile://oauth-native-callback',
+    redirectUrlComplete: 'aitravellermobile://oauth-native-callback'
+  });
+
+  // OAuth ile giriş yapma fonksiyonu
+  const signInWithOAuth = async (provider: 'oauth_google' | 'oauth_github' | 'oauth_facebook') => {
     try {
-      const redirectUrl = `${Constants.expoConfig?.scheme}://oauth-native-callback`;
+      // Provider adını daha kullanıcı dostu hale getir
+      const providerName = provider === 'oauth_google'
+        ? 'Google'
+        : provider === 'oauth_github'
+          ? 'GitHub'
+          : 'Facebook';
 
-      const completeSignIn = await signIn.create({
-        strategy: "oauth_google",
-        redirectUrl,
-      });
+      console.log(`${providerName} ile giriş başlatılıyor...`);
 
-      // Tip dönüşümü ile güvenli erişim
-      const authUrl = (completeSignIn as any).firstFactorVerification?.verificationUrl ||
-                     (completeSignIn as any).url ||
-                     (completeSignIn as any).authorizeUrl;
+      // İlgili OAuth akışını başlat
+      let startOAuthFlow;
 
-      if (!authUrl) {
-        throw new Error('Authentication URL not found');
+      if (provider === 'oauth_google') {
+        startOAuthFlow = startGoogleOAuthFlow;
+      } else if (provider === 'oauth_github') {
+        startOAuthFlow = startGithubOAuthFlow;
+      } else {
+        startOAuthFlow = startFacebookOAuthFlow;
       }
 
-      const result = await WebBrowser.openAuthSessionAsync(
-        authUrl,
-        redirectUrl
-      );
+      const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow();
 
-      if (result.type === 'success') {
-        const { createdSessionId } = completeSignIn;
-        if (createdSessionId) {
-          await setActive({ session: createdSessionId });
-          router.replace('/(tabs)');
-        }
+      console.log(`OAuth akışı tamamlandı, createdSessionId:`, createdSessionId);
+
+      if (createdSessionId) {
+        await setActiveOAuth({ session: createdSessionId });
+        router.replace('/(tabs)');
       }
     } catch (err) {
-      console.error('Google sign in error:', err);
-      Alert.alert('Hata', 'Google ile giriş yapılırken bir hata oluştu.');
+      console.error(`${provider} sign in error:`, err);
+      console.error(`Hata detayları:`, JSON.stringify(err, null, 2));
+
+      // Daha açıklayıcı hata mesajı
+      let errorMessage = `${provider.replace('oauth_', '')} ile giriş yapılırken bir hata oluştu.`;
+
+      if (err instanceof Error) {
+        errorMessage += `\n\nHata: ${err.message}`;
+
+        // Clerk hatası ise daha fazla detay göster
+        if ((err as any).errors && Array.isArray((err as any).errors)) {
+          const clerkErrors = (err as any).errors;
+          if (clerkErrors.length > 0) {
+            errorMessage += `\n\nDetay: ${clerkErrors[0].message}`;
+          }
+        }
+      }
+
+      Alert.alert('Hata', errorMessage);
     }
   };
+
+  // Google ile giriş
+  const onSignInWithGoogle = () => signInWithOAuth('oauth_google');
+
+  // GitHub ile giriş
+  const onSignInWithGitHub = () => signInWithOAuth('oauth_github');
+
+  // Facebook ile giriş
+  const onSignInWithFacebook = () => signInWithOAuth('oauth_facebook');
 
   const onSignInWithEmail = async () => {
     if (!signIn || !setActive) {
@@ -208,6 +251,26 @@ export default function SignInScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.button, styles.githubButton]}
+            onPress={onSignInWithGitHub}
+          >
+            <Ionicons name="logo-github" size={22} color="#fff" style={styles.buttonIcon} />
+            <ThemedText style={styles.buttonText}>
+              GitHub ile Giriş Yap
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.facebookButton]}
+            onPress={onSignInWithFacebook}
+          >
+            <Ionicons name="logo-facebook" size={22} color="#fff" style={styles.buttonIcon} />
+            <ThemedText style={styles.buttonText}>
+              Facebook ile Giriş Yap
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.signUpLink}
             onPress={() => router.push('/(auth)/sign-up')}
           >
@@ -334,6 +397,12 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     backgroundColor: '#db4437',
+  },
+  githubButton: {
+    backgroundColor: '#333',
+  },
+  facebookButton: {
+    backgroundColor: '#3b5998',
   },
   buttonIcon: {
     marginRight: 12,

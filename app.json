@@ -13,15 +13,36 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Bu uygulama, yakınınızdaki turistik yerleri göstermek için konum bilginize ihtiyaç duyar.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Bu uygulama, yakınınızdaki turistik yerleri göstermek için konum bilginize ihtiyaç duyar."
-      }
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Bu uygulama, yakınınızdaki turistik yerleri göstermek için konum bilginize ihtiyaç duyar.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "aitravellermobile"
+            ]
+          }
+        ]
+      },
+      "bundleIdentifier": "com.aitraveller.mobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "package": "com.aitraveller.mobile",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "aitravellermobile"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -40,7 +61,15 @@
         }
       ],
       "expo-secure-store",
-      "expo-location"
+      "expo-location",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "13.0"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

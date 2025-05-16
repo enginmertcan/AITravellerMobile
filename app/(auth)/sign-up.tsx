@@ -1,16 +1,23 @@
 import { StyleSheet, View, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSignUp, useAuth } from '@clerk/clerk-expo';
+import { useSignUp, useSignIn, useAuth, useOAuth } from '@clerk/clerk-expo';
 import { router, Redirect } from 'expo-router';
 import { useState } from 'react';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import { useWarmUpBrowser } from '@/hooks/useWarmUpBrowser';
+import Constants from 'expo-constants';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import AppStyles from '@/constants/AppStyles';
 
+WebBrowser.maybeCompleteAuthSession();
+
 export default function SignUpScreen() {
+  useWarmUpBrowser();
   const { isSignedIn } = useAuth();
   const { signUp, setActive } = useSignUp();
+  const { signIn } = useSignIn();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? AppStyles.colors.dark : AppStyles.colors.light;
@@ -26,6 +33,90 @@ export default function SignUpScreen() {
   if (isSignedIn) {
     return <Redirect href="/(tabs)" />;
   }
+
+  // Google OAuth hook'unu kullan
+  const { startOAuthFlow: startGoogleOAuthFlow } = useOAuth({
+    strategy: 'oauth_google',
+    redirectUrl: 'aitravellermobile://oauth-native-callback',
+    redirectUrlComplete: 'aitravellermobile://oauth-native-callback'
+  });
+
+  // GitHub OAuth hook'unu kullan
+  const { startOAuthFlow: startGithubOAuthFlow } = useOAuth({
+    strategy: 'oauth_github',
+    redirectUrl: 'aitravellermobile://oauth-native-callback',
+    redirectUrlComplete: 'aitravellermobile://oauth-native-callback'
+  });
+
+  // Facebook OAuth hook'unu kullan
+  const { startOAuthFlow: startFacebookOAuthFlow } = useOAuth({
+    strategy: 'oauth_facebook',
+    redirectUrl: 'aitravellermobile://oauth-native-callback',
+    redirectUrlComplete: 'aitravellermobile://oauth-native-callback'
+  });
+
+  // OAuth ile kayıt/giriş yapma fonksiyonu
+  const signUpWithOAuth = async (provider: 'oauth_google' | 'oauth_github' | 'oauth_facebook') => {
+    try {
+      // Provider adını daha kullanıcı dostu hale getir
+      const providerName = provider === 'oauth_google'
+        ? 'Google'
+        : provider === 'oauth_github'
+          ? 'GitHub'
+          : 'Facebook';
+
+      console.log(`${providerName} ile kayıt/giriş başlatılıyor...`);
+
+      // İlgili OAuth akışını başlat
+      let startOAuthFlow;
+
+      if (provider === 'oauth_google') {
+        startOAuthFlow = startGoogleOAuthFlow;
+      } else if (provider === 'oauth_github') {
+        startOAuthFlow = startGithubOAuthFlow;
+      } else {
+        startOAuthFlow = startFacebookOAuthFlow;
+      }
+
+      const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow();
+
+      console.log(`OAuth akışı tamamlandı, createdSessionId:`, createdSessionId);
+
+      if (createdSessionId) {
+        await setActiveOAuth({ session: createdSessionId });
+        router.replace('/(tabs)');
+      }
+    } catch (err) {
+      console.error(`${provider} sign up error:`, err);
+      console.error(`Hata detayları:`, JSON.stringify(err, null, 2));
+
+      // Daha açıklayıcı hata mesajı
+      let errorMessage = `${provider.replace('oauth_', '')} ile kayıt/giriş yapılırken bir hata oluştu.`;
+
+      if (err instanceof Error) {
+        errorMessage += `\n\nHata: ${err.message}`;
+
+        // Clerk hatası ise daha fazla detay göster
+        if ((err as any).errors && Array.isArray((err as any).errors)) {
+          const clerkErrors = (err as any).errors;
+          if (clerkErrors.length > 0) {
+            errorMessage += `\n\nDetay: ${clerkErrors[0].message}`;
+          }
+        }
+      }
+
+      Alert.alert('Hata', errorMessage);
+    }
+  };
+
+  // Google ile kayıt/giriş
+  const onSignUpWithGoogle = () => signUpWithOAuth('oauth_google');
+
+  // GitHub ile kayıt/giriş
+  const onSignUpWithGitHub = () => signUpWithOAuth('oauth_github');
+
+  // Facebook ile kayıt/giriş
+  const onSignUpWithFacebook = () => signUpWithOAuth('oauth_facebook');
 
   const onSignUp = async () => {
     if (!signUp || !setActive) {
@@ -174,6 +265,42 @@ export default function SignUpScreen() {
             )}
           </TouchableOpacity>
 
+          <View style={styles.divider}>
+            <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+            <ThemedText style={[styles.dividerText, { color: theme.textMuted }]}>veya</ThemedText>
+            <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, styles.googleButton]}
+            onPress={onSignUpWithGoogle}
+          >
+            <Ionicons name="logo-google" size={22} color="#fff" style={styles.buttonIcon} />
+            <ThemedText style={styles.buttonText}>
+              Google ile Devam Et
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.githubButton]}
+            onPress={onSignUpWithGitHub}
+          >
+            <Ionicons name="logo-github" size={22} color="#fff" style={styles.buttonIcon} />
+            <ThemedText style={styles.buttonText}>
+              GitHub ile Devam Et
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.facebookButton]}
+            onPress={onSignUpWithFacebook}
+          >
+            <Ionicons name="logo-facebook" size={22} color="#fff" style={styles.buttonIcon} />
+            <ThemedText style={styles.buttonText}>
+              Facebook ile Devam Et
+            </ThemedText>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.signInLink}
             onPress={() => router.push('/(auth)/sign-in')}
@@ -302,6 +429,15 @@ const styles = StyleSheet.create({
   signUpButton: {
     backgroundColor: '#4c669f',
   },
+  googleButton: {
+    backgroundColor: '#db4437',
+  },
+  githubButton: {
+    backgroundColor: '#333',
+  },
+  facebookButton: {
+    backgroundColor: '#3b5998',
+  },
   buttonText: {
     color: '#fff',
     fontSize: 16,
@@ -319,5 +455,18 @@ const styles = StyleSheet.create({
   signInTextBold: {
     fontWeight: 'bold',
     color: '#4c669f',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
   }
 });
