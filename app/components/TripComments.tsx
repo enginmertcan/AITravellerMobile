@@ -348,10 +348,20 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
       console.log(`İşlenen toplam fotoğraf sayısı: ${photoUriArray.length}`);
 
       // 1. Önce yorumu ekle
+      // Kullanıcı adını doğru şekilde oluştur
+      let userName = 'Misafir';
+      if (user.fullName && user.fullName.trim() !== '') {
+        userName = user.fullName;
+      } else if (user.firstName || user.lastName) {
+        userName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      }
+
+      console.log('Yorum ekleyen kullanıcı:', userName);
+
       const commentData: Omit<TripComment, 'id' | 'createdAt' | 'updatedAt'> = {
         travelPlanId,
         userId,
-        userName: user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Misafir',
+        userName: userName,
         userPhotoUrl: user.imageUrl || undefined,
         content: newComment.trim(),
       };
@@ -465,7 +475,6 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
   // Fotoğraf kaynağını belirle - Tamamen yenilenmiş versiyon
   const getImageSource = (photoUrl?: string, photoData?: string, itemId?: string) => {
-    console.log(`Fotoğraf kaynağı belirleniyor: ${itemId || 'global'}`);
 
     try {
       // Önce photoUrl kontrolü (daha güvenilir)
@@ -610,8 +619,6 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
                   url: url,
                   location: photo.location
                 });
-
-                console.log(`Fotoğraf eklendi: ${url.substring(0, 30)}...`);
               }
             }
 
@@ -800,7 +807,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
                         </>
                       );
                     })}
-                    />
+
                     {photo.location && (
                       <View style={styles.photoLocationBadge}>
                         <MaterialCommunityIcons name="map-marker" size={12} color="#fff" />

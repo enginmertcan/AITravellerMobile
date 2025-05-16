@@ -6,7 +6,7 @@ import { router, useSegments } from 'expo-router';
  * AuthGuard bileşeni, kullanıcının oturum durumuna göre yönlendirme yapar.
  * Giriş yapmamış kullanıcılar sadece (auth) grubundaki sayfalara erişebilir.
  */
-export function AuthGuard({ children }: { children: React.ReactNode }) {
+function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded } = useAuth();
   const segments = useSegments();
 
@@ -20,7 +20,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // Kullanıcı giriş yapmamışsa ve auth grubunda değilse, giriş sayfasına yönlendir
     if (!isSignedIn && !inAuthGroup) {
       router.replace('/(auth)/sign-in');
-    } 
+    }
     // Kullanıcı giriş yapmışsa ve auth grubundaysa, ana sayfaya yönlendir
     else if (isSignedIn && inAuthGroup) {
       router.replace('/(tabs)');
@@ -29,3 +29,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
+
+export { AuthGuard };
+export default AuthGuard;

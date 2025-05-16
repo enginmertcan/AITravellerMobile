@@ -8,6 +8,7 @@ import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native
 import { useColorScheme } from '@/hooks/useColorScheme';
 import Constants from 'expo-constants';
 import { AuthGuard } from './components/AuthGuard';
+import { UserSyncProvider } from './components/UserSyncProvider';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -67,15 +68,17 @@ export default function RootLayout() {
       publishableKey={clerkPublishableKey}
       tokenCache={tokenCache}
     >
-      <AuthGuard>
-        <ThemeProvider value={DarkTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-          </Stack>
-        </ThemeProvider>
-      </AuthGuard>
+      <UserSyncProvider>
+        <AuthGuard>
+          <ThemeProvider value={DarkTheme}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+            </Stack>
+          </ThemeProvider>
+        </AuthGuard>
+      </UserSyncProvider>
     </ClerkProvider>
   );
 }

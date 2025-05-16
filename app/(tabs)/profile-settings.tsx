@@ -1,8 +1,7 @@
 import { StyleSheet, View, TouchableOpacity, TextInput, Alert, ScrollView, ActivityIndicator, Modal, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useUser, useAuth } from '@clerk/clerk-expo';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -10,10 +9,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import AppStyles from '@/constants/AppStyles';
 import { BlurView } from 'expo-blur';
+import { FirebaseService } from '@/app/services/firebase.service';
 
 export default function ProfileSettingsScreen() {
   const { user } = useUser();
-  const { signOut } = useAuth();
+  const { userId, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [firstName, setFirstName] = useState(user?.firstName || '');
@@ -23,6 +23,44 @@ export default function ProfileSettingsScreen() {
   const isDark = colorScheme === 'dark';
   const theme = isDark ? AppStyles.colors.dark : AppStyles.colors.light;
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
+  // Kullanıcı bilgilerini Firebase ile senkronize et
+  useEffect(() => {
+    if (user && userId) {
+      syncUserWithFirebase();
+    }
+  }, [user, userId]);
+
+  // Kullanıcı bilgilerini Firebase ile senkronize etme fonksiyonu
+  const syncUserWithFirebase = async () => {
+    if (!user || !userId) return;
+
+    try {
+      console.log('Kullanıcı bilgileri Firebase ile senkronize ediliyor...');
+
+      // Kullanıcı profil verilerini oluştur
+      const profileData = {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        email: user.primaryEmailAddress?.emailAddress,
+        imageUrl: user.imageUrl,
+        username: user.username,
+        lastSignInAt: new Date().toISOString(),
+      };
+
+      // Firebase'e kaydet
+      const success = await FirebaseService.User.upsertUserProfile(userId, profileData);
+
+      if (success) {
+        console.log('Kullanıcı profili Firebase ile başarıyla senkronize edildi');
+      } else {
+        console.error('Kullanıcı profili Firebase ile senkronize edilemedi');
+      }
+    } catch (error) {
+      console.error('Kullanıcı profili senkronizasyon hatası:', error);
+    }
+  };
 
   // Çıkış yapma fonksiyonu
   const handleLogout = () => {
@@ -60,13 +98,20 @@ export default function ProfileSettingsScreen() {
   const handleUpdateProfile = async () => {
     try {
       setLoading(true);
+
+      // Clerk profili güncelle
       await user?.update({
         firstName,
         lastName,
         username,
       });
+
+      // Firebase ile senkronize et
+      await syncUserWithFirebase();
+
       Alert.alert('Başarılı', 'Profil bilgileriniz güncellendi.');
     } catch (err: any) {
+      console.error('Profil güncelleme hatası:', err);
       Alert.alert(
         'Hata',
         err.errors?.[0]?.message || 'Profil güncellenirken bir hata oluştu.'
@@ -87,18 +132,31 @@ export default function ProfileSettingsScreen() {
 
       if (!result.canceled) {
         setLoading(true);
+
+        // Clerk profil fotoğrafını güncelle
+        const imageUri = result.assets[0].uri;
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
+
         await user?.setProfileImage({
-          file: result.assets[0],
+          file: blob,
         });
+
+        // Firebase ile senkronize et (kısa bir gecikme ekleyerek Clerk'in işlemi tamamlamasını bekle)
+        setTimeout(async () => {
+          await syncUserWithFirebase();
+        }, 1000);
+
         Alert.alert('Başarılı', 'Profil fotoğrafınız güncellendi.');
       }
     } catch (err: any) {
+      console.error('Profil fotoğrafı güncelleme hatası:', err);
       Alert.alert(
         'Hata',
         err.errors?.[0]?.message || 'Fotoğraf güncellenirken bir hata oluştu.'
       );
     } finally {
-      setLoading(false);
+      setLoading(false);  
     }
   };
 
