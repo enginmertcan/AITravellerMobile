@@ -38,8 +38,7 @@ const getPromptTemplate = (destination: string, duration: number, groupType: str
   // Gün sayısını kontrol et ve geçerli bir değer olduğundan emin ol
   const days = !isNaN(duration) && duration > 0 ? duration : 3;
 
-  console.log(`Prompt oluşturuluyor: Destinasyon=${destination}, Gün=${days}, Tarih=${startDate}`);
-
+ 
   return `ÖNEMLİ: Tüm yanıtlarınız kesinlikle Türkçe olmalıdır. İngilizce yanıt vermeyin.
 
 Aşağıdaki seyahat planını oluştur ve şu kurallara uy:
@@ -270,8 +269,7 @@ export const aiService = {
         }
       }
 
-      console.log('AI prompt için kullanılan gün sayısı:', days);
-      console.log('AI prompt için kullanılan tarih:', startDate);
+      
 
       const prompt = getPromptTemplate(
         destination,
@@ -285,7 +283,6 @@ export const aiService = {
 
       try {
         // Önce OpenAI API'yi dene
-        console.log('OpenAI API ile seyahat planı oluşturuluyor...');
 
         // OpenAI API'ye istek gönder
         const completion = await openai.chat.completions.create({
@@ -572,11 +569,9 @@ Başlangıç Tarihi: ${formattedDate}`;
               const month = (date.getMonth() + 1).toString().padStart(2, '0');
               const year = date.getFullYear();
               travelPlan.startDate = `${day}/${month}/${year}`;
-              console.log('Firebase için formatlanmış tarih:', travelPlan.startDate);
 
               // Ayrıca ISO formatında da saklayalım (trip-details.tsx'de kullanılacak)
               (travelPlan as any).startDateISO = date.toISOString();
-              console.log('Firebase için ISO formatında tarih:', (travelPlan as any).startDateISO);
             } else {
               console.error('Geçersiz tarih formatı:', formData.startDate);
               // Bugünün tarihini kullan
@@ -670,11 +665,9 @@ Başlangıç Tarihi: ${formattedDate}`;
               const month = (date.getMonth() + 1).toString().padStart(2, '0');
               const year = date.getFullYear();
               travelPlan.startDate = `${day}/${month}/${year}`;
-              console.log('Varsayılan plan için formatlanmış tarih:', travelPlan.startDate);
 
               // Ayrıca ISO formatında da saklayalım (trip-details.tsx'de kullanılacak)
               (travelPlan as any).startDateISO = date.toISOString();
-              console.log('Varsayılan plan için ISO formatında tarih:', (travelPlan as any).startDateISO);
             } else {
               console.error('Geçersiz tarih formatı:', formData.startDate);
               // Bugünün tarihini kullan

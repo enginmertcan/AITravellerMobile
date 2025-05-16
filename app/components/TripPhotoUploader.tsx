@@ -25,7 +25,6 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
 
   // Component mount olduğunda veya tripPhotos değiştiğinde log
   useEffect(() => {
-    console.log(`TripPhotoUploader: ${tripPhotos.length} fotoğraf alındı`);
 
     // Fotoğrafların içeriğini kontrol et
     if (tripPhotos.length > 0) {
@@ -76,22 +75,17 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
 
     try {
       setLoading(true);
-      console.log('Fotoğraf yükleme işlemi başlatılıyor...');
-      console.log('Kullanıcı ID:', userId);
-      console.log('Seyahat Planı ID:', travelPlanId);
-      console.log('Seçilen fotoğraf URI:', selectedImage);
+      
 
       // Fotoğrafı Firestore'a yükle
       try {
-        console.log('Fotoğraf işleniyor...');
-
+ 
         // Fotoğraf bilgilerini hazırla
         const timestamp = new Date().getTime();
         const photoUri = selectedImage;
 
         // Fotoğrafı Firestore'a base64 olarak kaydet
-        console.log('Fotoğraf base64 olarak Firestore\'a kaydediliyor...');
-
+ 
         try {
           // Resmi base64'e dönüştür
           const base64Data = await FileSystem.readAsStringAsync(photoUri, {
@@ -196,10 +190,8 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
 
   // Fotoğraf kaynağını belirle (URL veya base64)
   const getImageSource = (item: TripPhoto) => {
-    console.log(`Fotoğraf kaynağı belirleniyor: ${item.id}`);
-
+ 
     if (item.imageData) {
-      console.log(`${item.id} için base64 verisi kullanılıyor`);
       return { uri: `data:image/jpeg;base64,${item.imageData}` };
     } else if (item.imageUrl) {
       console.log(`${item.id} için URL kullanılıyor: ${item.imageUrl}`);
@@ -236,8 +228,7 @@ export default function TripPhotoUploader({ travelPlanId, userId, tripPhotos, on
 
   // Fotoğrafları render et
   const renderPhotoList = () => {
-    console.log(`Fotoğraf listesi render ediliyor, fotoğraf sayısı: ${tripPhotos.length}`);
-
+ 
     if (tripPhotos.length > 0) {
       return (
         <FlatList

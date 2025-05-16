@@ -156,7 +156,6 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
     });
 
     // Log the valid weather data
-    console.log(`WeatherCard found ${validWeatherData.length} valid days of weather data`);
 
     // Make sure each day is included only once by using the date as a key
     validWeatherData.forEach(day => {
@@ -205,7 +204,6 @@ export default function WeatherCard({ weatherData }: WeatherCardProps) {
       }
     });
 
-    console.log(`WeatherCard returning ${sortedData.length} sorted days of weather data`);
     return sortedData;
   }, [weatherData]);
 

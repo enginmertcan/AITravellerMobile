@@ -15,8 +15,7 @@ const StorageService = {
    */
   async uploadBase64Image(base64Data: string, path: string): Promise<string> {
     try {
-      console.log(`Resim yükleniyor: ${path}`);
-      console.log(`Storage bucket: ${storage.app.options.storageBucket}`);
+      
 
       // Base64 formatını kontrol et
       let processedData = base64Data;
@@ -28,11 +27,9 @@ const StorageService = {
 
       // Storage referansı oluştur
       const storageRef = ref(storage, path);
-      console.log(`Storage referansı oluşturuldu: ${storageRef.fullPath}`);
-
+ 
       // Fetch API ile doğrudan yükleme yap
-      console.log(`Fetch API ile yükleme yapılıyor...`);
-
+ 
       // Yükleme URL'i oluştur
       const bucket = storage.app.options.storageBucket;
       const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}`;
@@ -85,22 +82,19 @@ const StorageService = {
 
         // Yanıtı al
         const responseData = await altResponse.json();
-        console.log(`Alternatif yükleme başarılı:`, responseData);
-        return responseData;
+         return responseData;
       }
 
       // Yanıtı al
       const responseData = await response.json();
-      console.log(`Fetch yükleme başarılı:`, responseData);
-
+ 
       // Bekleme ekle - Firebase'in işlemi tamamlaması için
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       try {
         // Yüklenen dosyanın URL'ini al
         const downloadURL = await getDownloadURL(storageRef);
-        console.log(`Resim başarıyla yüklendi, URL: ${downloadURL}`);
-        return downloadURL;
+         return downloadURL;
       } catch (urlError) {
         console.error('Download URL alma hatası:', urlError);
 
@@ -108,13 +102,11 @@ const StorageService = {
         const token = responseData.downloadTokens || '';
         if (token) {
           const manualUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
-          console.log(`Manuel URL oluşturuldu: ${manualUrl}`);
-          return manualUrl;
+           return manualUrl;
         } else {
           // Üçüncü yöntem - Geçici dosya oluştur ve yükle
           try {
-            console.log(`Üçüncü yöntem deneniyor - Geçici dosya ile...`);
-
+ 
             // Geçici dosya yolu oluştur
             const tempFilePath = `${FileSystem.cacheDirectory}temp_upload_${Date.now()}.jpg`;
 
@@ -125,8 +117,7 @@ const StorageService = {
 
             // Dosya bilgilerini kontrol et
             const fileInfo = await FileSystem.getInfoAsync(tempFilePath);
-            console.log(`Geçici dosya oluşturuldu: ${tempFilePath}, var mı: ${fileInfo.exists}`);
-
+ 
             // Dosyayı yükle
             const fileFormData = new FormData();
             fileFormData.append('file', {
@@ -162,8 +153,7 @@ const StorageService = {
             const fileToken = fileResponseData.downloadTokens || '';
             if (fileToken) {
               const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media&token=${fileToken}`;
-              console.log(`Dosya URL oluşturuldu: ${fileUrl}`);
-              return fileUrl;
+               return fileUrl;
             }
           } catch (fileError) {
             console.error('Dosya yükleme hatası:', fileError);
@@ -231,8 +221,7 @@ const StorageService = {
 
           for (let attempt = 1; attempt <= 3; attempt++) {
             try {
-              console.log(`Resim ${i+1}/${images.length} için ${attempt}. deneme...`);
-              url = await this.uploadBase64Image(image.data, path);
+               url = await this.uploadBase64Image(image.data, path);
               success = true;
               break;
             } catch (attemptError) {

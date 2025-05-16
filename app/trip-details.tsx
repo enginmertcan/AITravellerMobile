@@ -112,12 +112,10 @@ export default function TripDetailsScreen() {
       try {
         // Önce startDateISO alanını kontrol et (en doğru tarih bilgisi burada olmalı)
         if ((tripData as any).startDateISO && typeof (tripData as any).startDateISO === 'string') {
-          console.log('startDateISO alanı bulundu:', (tripData as any).startDateISO);
           startDate = new Date((tripData as any).startDateISO);
         }
         // Tarih formatını kontrol et (ISO string, DD/MM/YYYY, "DD Ay YYYY" veya timestamp)
         else if (typeof tripData.startDate === 'string') {
-          console.log('startDate alanı kullanılıyor:', tripData.startDate);
           if (tripData.startDate.includes('/')) {
             // DD/MM/YYYY formatı
             const [day, month, year] = tripData.startDate.split('/').map(Number);
@@ -170,8 +168,7 @@ export default function TripDetailsScreen() {
           throw new Error('Geçersiz tarih formatı');
         }
 
-        console.log('Takvim için kullanılan tarih:', startDate.toISOString());
-
+ 
       } catch (error) {
         console.error('Tarih parse hatası:', error);
         Alert.alert(
@@ -253,8 +250,7 @@ export default function TripDetailsScreen() {
             const Haptics = require('expo-haptics');
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           } catch (error) {
-            console.log('Haptic feedback not available');
-          }
+           }
         }
 
         Alert.alert(
@@ -341,7 +337,6 @@ export default function TripDetailsScreen() {
           }
 
           if (parsedItinerary.localTips && !plan.localTips) {
-            console.log('localTips alanı itinerary\'den çıkarılıyor (selectPlan)');
             plan.localTips = parsedItinerary.localTips;
 
             // Ayrıca eski format alanlarını da doldur
@@ -557,13 +552,11 @@ export default function TripDetailsScreen() {
       let tripDate: Date;
 
       if ((plan as any).startDateISO && typeof (plan as any).startDateISO === 'string') {
-        console.log('startDateISO alanı bulundu:', (plan as any).startDateISO);
-        tripDate = new Date((plan as any).startDateISO);
+         tripDate = new Date((plan as any).startDateISO);
       }
       // Sonra startDateDDMMYYYY alanını kontrol et (API çağrıları için)
       else if ((plan as any).startDateDDMMYYYY && typeof (plan as any).startDateDDMMYYYY === 'string') {
-        console.log('startDateDDMMYYYY alanı bulundu:', (plan as any).startDateDDMMYYYY);
-        const [day, month, year] = (plan as any).startDateDDMMYYYY.split('/').map(Number);
+         const [day, month, year] = (plan as any).startDateDDMMYYYY.split('/').map(Number);
         if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
           // UTC kullanarak tarih oluştur - gün kayması sorununu önlemek için
           tripDate = new Date(Date.UTC(year, month - 1, day));
@@ -582,8 +575,7 @@ export default function TripDetailsScreen() {
       }
       // Sonra startDate alanını kontrol et
       else if (plan.startDate && typeof plan.startDate === 'string') {
-        console.log('Parsing startDate:', plan.startDate);
-
+ 
         // DD/MM/YYYY formatı
         if (plan.startDate.includes('/')) {
           const [day, month, year] = plan.startDate.split('/').map(Number);
@@ -594,13 +586,11 @@ export default function TripDetailsScreen() {
             // Eğer originalStartDate veya startDateISO yoksa, bunları ekleyelim
             if (!(plan as any).originalStartDate) {
               (plan as any).originalStartDate = tripDate.toISOString();
-              console.log('originalStartDate eklendi (DD/MM/YYYY formatından):', (plan as any).originalStartDate);
-            }
+             }
 
             if (!(plan as any).startDateISO) {
               (plan as any).startDateISO = tripDate.toISOString();
-              console.log('startDateISO eklendi (DD/MM/YYYY formatından):', (plan as any).startDateISO);
-            }
+             }
           } else {
             // Geçersiz format, bugünün tarihini kullan
             tripDate = new Date(Date.UTC(
@@ -632,20 +622,14 @@ export default function TripDetailsScreen() {
               if (!isNaN(day) && monthIndex !== undefined && !isNaN(year)) {
                 // UTC kullanarak tarih oluştur
                 tripDate = new Date(Date.UTC(year, monthIndex, day));
-                console.log('Türkçe tarih formatı algılandı ve dönüştürüldü:', tripDate.toISOString());
-
+ 
                 // ISO formatında startDate ve startDateISO alanlarını güncelle
                 (plan as any).startDateISO = tripDate.toISOString();
                 (plan as any).originalStartDate = tripDate.toISOString();
                 // DD/MM/YYYY formatında startDateDDMMYYYY alanını ekle
                 (plan as any).startDateDDMMYYYY = `${day.toString().padStart(2, '0')}/${(monthIndex + 1).toString().padStart(2, '0')}/${year}`;
 
-                console.log('Tarih alanları güncellendi:', {
-                  startDate: plan.startDate,
-                  startDateISO: (plan as any).startDateISO,
-                  originalStartDate: (plan as any).originalStartDate,
-                  startDateDDMMYYYY: (plan as any).startDateDDMMYYYY
-                });
+
               } else {
                 // Geçersiz format, bugünün tarihini kullan
                 tripDate = new Date(Date.UTC(
@@ -884,20 +868,17 @@ export default function TripDetailsScreen() {
       const forecast = await getWeatherForecast(destination, tripDate, durationDays);
 
       if (forecast && forecast.length > 0) {
-        console.log(`Received ${forecast.length} days of weather data with dates: ${forecast.map(d => d.date).join(', ')}`);
-
+ 
         // Hava durumu verilerini kontrol et
         if (forecast.length < durationDays) {
           console.warn(`Warning: Received fewer weather days (${forecast.length}) than requested (${durationDays})`);
         }
 
         setWeatherData(forecast);
-        console.log(`${forecast.length} günlük hava durumu verileri başarıyla alındı`);
-
+ 
         // Hava durumu verilerini detaylı olarak logla
         forecast.forEach((day, index) => {
-          console.log(`Day ${index + 1}: ${day.date}, Temp: ${day.temperature}°C, ${day.description}`);
-        });
+         });
       } else {
         console.warn('Hava durumu verileri alınamadı');
         setWeatherData(null);
@@ -1373,8 +1354,7 @@ export default function TripDetailsScreen() {
 
   // Fotoğraflar değiştiğinde UI'ı güncelle
   useEffect(() => {
-    console.log(`TripPhotos state güncellendi, fotoğraf sayısı: ${tripPhotos.length}`);
-  }, [tripPhotos]);
+   }, [tripPhotos]);
 
   // Plan listesine geri dönmek için
   const handleBackToList = () => {
@@ -1524,8 +1504,7 @@ export default function TripDetailsScreen() {
 
   // Fotoğraf eklendiğinde planı yeniden yükle
   const handlePhotoAdded = async () => {
-    console.log('Fotoğraf eklendi, plan yeniden yükleniyor...');
-    if (planId) {
+     if (planId) {
       try {
         // Firebase'den planı getir ama sayfayı yenileme
         const plan = await FirebaseService.TravelPlan.getTravelPlanById(planId);
@@ -1916,8 +1895,7 @@ export default function TripDetailsScreen() {
                 tripData.itinerary.hotelOptions && Array.isArray(tripData.itinerary.hotelOptions)) {
               // Tip dönüşümü yaparak hotelOptions'ı kullan
               hotelOptionsToUse = tripData.itinerary.hotelOptions as unknown as Hotel[];
-              console.log('İtinerary içindeki hotelOptions kullanılıyor');
-            }
+             }
 
             // Otel detaylarını göstermek için fonksiyon
             const handleHotelPress = async (hotel: Hotel) => {
@@ -2450,7 +2428,6 @@ export default function TripDetailsScreen() {
                         try {
                           const culturalObj = safeParseJSON(parsedItinerary.culturalDifferences);
                           if (culturalObj && typeof culturalObj === 'object') {
-                            console.log('culturalDifferences string içinden obje olarak parse edildi');
                             tripData.culturalDifferences = culturalObj;
 
                             // Ayrıca eski format alanlarını da doldur
@@ -2581,12 +2558,10 @@ export default function TripDetailsScreen() {
                 }
               }
 
-              console.log(`İtinerary gün sayısı: ${itineraryToUse.length}, Beklenen gün sayısı: ${expectedDays}`);
-
+ 
               // Eksik günleri tamamla
               if (itineraryToUse.length < expectedDays) {
-                console.log(`Eksik günler ekleniyor (${itineraryToUse.length} -> ${expectedDays})...`);
-
+ 
                 for (let i = itineraryToUse.length + 1; i <= expectedDays; i++) {
                   itineraryToUse.push({
                     day: `${i}. Gün`,
@@ -2813,8 +2788,7 @@ export default function TripDetailsScreen() {
 
             // Eksik alanları tamamla
             if (culturalDifferencesData) {
-              console.log('culturalDifferencesData içeriği doldurulmadan önce:', JSON.stringify(culturalDifferencesData));
-
+ 
               // Temel kültürel farklılıklar
               if (!culturalDifferencesData.culturalDifferences) {
                 culturalDifferencesData.culturalDifferences = "Bilgi bulunmuyor";
@@ -2855,8 +2829,7 @@ export default function TripDetailsScreen() {
                 culturalDifferencesData.localCommunicationTips = "Bilgi bulunmuyor";
               }
 
-              console.log('culturalDifferencesData içeriği doldurulduktan sonra:', JSON.stringify(culturalDifferencesData));
-            }
+             }
 
             // Diğer kültürel farklılık alanlarını kontrol et
             const hasLifestyleDifferences = tripData.lifestyleDifferences && typeof tripData.lifestyleDifferences === 'string';
@@ -3017,8 +2990,7 @@ export default function TripDetailsScreen() {
 
             // Eksik alanları tamamla
             if (localTipsData) {
-              console.log('localTipsData içeriği doldurulmadan önce:', JSON.stringify(localTipsData));
-
+ 
               // Yerel ulaşım rehberi
               if (!localTipsData.localTransportationGuide) {
                 localTipsData.localTransportationGuide = "Bilgi bulunmuyor";
@@ -3059,8 +3031,7 @@ export default function TripDetailsScreen() {
                 localTipsData.localLanguageAndCommunicationTips = "Bilgi bulunmuyor";
               }
 
-              console.log('localTipsData içeriği doldurulduktan sonra:', JSON.stringify(localTipsData));
-            }
+             }
 
             // Diğer yerel ipuçları alanlarını kontrol et
             const hasLocalTransportationGuide = tripData.localTransportationGuide && typeof tripData.localTransportationGuide === 'string';

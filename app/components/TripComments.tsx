@@ -225,7 +225,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
     setSelectedImages([]);
   };
 
-  // Fotoğrafa tıklama işlemi
+  // Fotoğrafa tıklama işlemi - Tamamen yenilenmiş versiyon
   const handlePhotoPress = (photo: { url: string, location?: string }) => {
     console.log(`Fotoğrafa tıklandı: ${photo.url.substring(0, 30)}...`);
     console.log(`Konum bilgisi: ${photo.location || 'Yok'}`);
@@ -237,7 +237,41 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
       return;
     }
 
-    setSelectedPhotoForModal(photo);
+    // URL'yi işle - daha kapsamlı format kontrolü
+    let processedUrl = photo.url;
+
+    // 1. HTTP/HTTPS URL'leri
+    if (processedUrl.includes('firebasestorage.googleapis.com') ||
+        processedUrl.startsWith('https://') ||
+        processedUrl.startsWith('http://')) {
+      console.log('HTTP URL formatı algılandı, doğrudan kullanılıyor');
+      // URL'yi olduğu gibi kullan
+    }
+    // 2. Data URI (base64)
+    else if (processedUrl.startsWith('data:image')) {
+      console.log('Data URI formatı algılandı, doğrudan kullanılıyor');
+      // URL'yi olduğu gibi kullan
+    }
+    // 3. Yerel dosya yolu
+    else if (processedUrl.startsWith('file://') || processedUrl.startsWith('/')) {
+      console.log('Yerel dosya yolu algılandı, doğrudan kullanılıyor');
+      // URL'yi olduğu gibi kullan
+    }
+    // 4. Base64 verisi (prefix olmadan)
+    else if (processedUrl.length > 100) {
+      console.log('Base64 verisi algılandı, prefix ekleniyor');
+      processedUrl = `data:image/jpeg;base64,${processedUrl}`;
+    }
+
+    console.log(`İşlenmiş URL: ${processedUrl.substring(0, 30)}...`);
+
+    // Modal için fotoğraf bilgilerini ayarla
+    setSelectedPhotoForModal({
+      url: processedUrl,
+      location: photo.location
+    });
+
+    // Modalı göster
     setModalVisible(true);
   };
 
@@ -251,7 +285,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
       console.log(`Seçilen fotoğraf sayısı: ${selectedImages.length}`);
 
       // Çoklu fotoğraf desteği için
-      const photoUploadPromises: Array<Promise<{uri: string, location?: string}>> = [];
+      const photoUploadPromises: Array<Promise<{data: string, location?: string}>> = [];
 
       // Seçilen tüm fotoğrafları işle
       for (const image of selectedImages) {
@@ -266,9 +300,9 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
           }
           console.log(`Fotoğraf dosya boyutu: ${fileInfo.size}`);
 
-          // Fotoğraf URI'sini listeye ekle (base64'e dönüştürmeden)
+          // Fotoğraf URI'sini data olarak ekle
           photoUploadPromises.push(Promise.resolve({
-            uri: image.uri,
+            data: image.uri,
             location: image.location
           }));
         } catch (error) {
@@ -296,9 +330,9 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
           // Konum bilgisi varsa ekle
           const photoLocationValue = photoLocation && photoLocation.trim() !== '' ? photoLocation.trim() : undefined;
 
-          // Fotoğraf URI'sini listeye ekle
+          // Fotoğraf URI'sini data olarak listeye ekle
           photoUploadPromises.push(Promise.resolve({
-            uri: selectedImage,
+            data: selectedImage,
             location: photoLocationValue
           }));
         } catch (error) {
@@ -429,60 +463,92 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
     }
   };
 
-  // Fotoğraf kaynağını belirle - Geliştirilmiş versiyon (global)
+  // Fotoğraf kaynağını belirle - Tamamen yenilenmiş versiyon
   const getImageSource = (photoUrl?: string, photoData?: string, itemId?: string) => {
     console.log(`Fotoğraf kaynağı belirleniyor: ${itemId || 'global'}`);
 
     try {
       // Önce photoUrl kontrolü (daha güvenilir)
       if (photoUrl && photoUrl.trim() !== '') {
-        // Firebase Storage URL'i mi kontrol et
+        // 1. HTTP/HTTPS URL'leri
         if (photoUrl.includes('firebasestorage.googleapis.com') ||
             photoUrl.startsWith('https://') ||
             photoUrl.startsWith('http://')) {
-          console.log(`  ${itemId || 'global'} için URL kullanılıyor: ${photoUrl.substring(0, 30)}...`);
+          console.log(`  ${itemId || 'global'} için HTTP URL kullanılıyor: ${photoUrl.substring(0, 30)}...`);
           return { uri: photoUrl };
         }
 
-        // Base64 verisi olabilir
+        // 2. Data URI (base64)
         if (photoUrl.startsWith('data:image')) {
           console.log(`  ${itemId || 'global'} için data:image URL'i kullanılıyor`);
+
+          // Bazı durumlarda data:image URL'leri React Native'de sorun çıkarabilir
+          // Bu durumda base64 kısmını ayıklayıp yeniden formatlamak gerekebilir
+          try {
+            const parts = photoUrl.split('base64,');
+            if (parts.length > 1) {
+              const base64Data = parts[1];
+              // Eğer base64 verisi geçerliyse, yeniden formatla
+              if (base64Data && base64Data.length > 10) {
+                console.log(`  ${itemId || 'global'} için data:image URL'i yeniden formatlandı`);
+                return { uri: `data:image/jpeg;base64,${base64Data}` };
+              }
+            }
+          } catch (innerError) {
+            console.log(`  Base64 ayıklama hatası, orijinal URL kullanılıyor: ${innerError}`);
+          }
+
+          // Ayıklama başarısız olursa orijinal URL'yi kullan
           return { uri: photoUrl };
         }
 
-        // Base64 verisi ama prefix yok
-        if (photoUrl.length > 100) {
+        // 3. Yerel dosya yolu
+        if (photoUrl.startsWith('file://') || photoUrl.startsWith('/')) {
+          console.log(`  ${itemId || 'global'} için yerel dosya yolu kullanılıyor: ${photoUrl.substring(0, 30)}...`);
+          return { uri: photoUrl };
+        }
+
+        // 4. Base64 verisi (prefix olmadan)
+        // Base64 verisi genellikle uzun olur ve özel karakterler içerir
+        if (photoUrl.length > 100 && /^[A-Za-z0-9+/=]+$/.test(photoUrl.substring(0, 20))) {
           console.log(`  ${itemId || 'global'} için base64 verisi prefix eklenerek kullanılıyor`);
           return { uri: `data:image/jpeg;base64,${photoUrl}` };
         }
+
+        // 5. Diğer URI formatları
+        console.log(`  ${itemId || 'global'} için bilinmeyen URI formatı, direkt kullanılıyor: ${photoUrl.substring(0, 30)}...`);
+        return { uri: photoUrl };
       }
 
       // Sonra photoData kontrolü
       if (photoData && photoData.trim() !== '') {
-        console.log(`  ${itemId || 'global'} için base64 verisi kullanılıyor (uzunluk: ${photoData.length})`);
+        console.log(`  ${itemId || 'global'} için photoData kullanılıyor (uzunluk: ${photoData.length})`);
 
-        // Base64 formatını kontrol et ve düzelt
-        let base64Data = photoData;
-
-        // Eğer data:image ile başlıyorsa, sadece base64 kısmını al
-        if (base64Data.startsWith('data:image')) {
-          console.log('  Veri data:image formatında, ayıklanıyor...');
-          const parts = base64Data.split('base64,');
-          if (parts.length > 1) {
-            base64Data = parts[1];
-          }
+        // 1. Data URI (base64)
+        if (photoData.startsWith('data:image')) {
+          console.log(`  ${itemId || 'global'} için photoData data:image formatında`);
+          return { uri: photoData };
         }
 
-        // React Native için doğru format
-        console.log('  Base64 verisi URI formatına dönüştürülüyor');
-        return { uri: `data:image/jpeg;base64,${base64Data}` };
+        // 2. Base64 verisi (prefix olmadan)
+        if (photoData.length > 100) {
+          console.log(`  ${itemId || 'global'} için photoData base64 formatına dönüştürülüyor`);
+          return { uri: `data:image/jpeg;base64,${photoData}` };
+        }
+
+        // 3. Diğer formatlar
+        console.log(`  ${itemId || 'global'} için photoData bilinmeyen formatta, direkt kullanılıyor`);
+        return { uri: photoData };
       }
+
+      // Hiçbir kaynak bulunamadıysa placeholder göster
+      console.log(`  ${itemId || 'global'} için fotoğraf kaynağı bulunamadı, placeholder kullanılıyor`);
+      return require('../assets/images/placeholder.png');
     } catch (error) {
       console.error(`  Fotoğraf kaynağı belirleme hatası: ${error}`);
+      console.log(`  Hata nedeniyle placeholder kullanılıyor`);
+      return require('../assets/images/placeholder.png');
     }
-
-    console.log(`  ${itemId || 'global'} için fotoğraf kaynağı bulunamadı, placeholder kullanılıyor`);
-    return require('../assets/images/placeholder.png');
   };
 
   // Yorum öğesi
@@ -502,23 +568,56 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
 
 
 
-    // Yorumun tüm fotoğraflarını al
+    // Yorumun tüm fotoğraflarını al - Geliştirilmiş versiyon
     const getCommentPhotos = (): Array<{url: string, location?: string}> => {
       console.log(`Yorum fotoğrafları alınıyor: ${item.id}`);
+      console.log(`Yorum verileri: photosJson=${!!item.photosJson}, photoUrl=${!!item.photoUrl}, photoData=${!!item.photoData}`);
 
-      // Eğer photosJson alanı varsa, onu kullan
-      if (item.photosJson) {
+      const photos: Array<{url: string, location?: string}> = [];
+
+      // 1. Önce photosJson alanını kontrol et (en güvenilir kaynak)
+      if (item.photosJson && item.photosJson.trim() !== '') {
         try {
           console.log(`photosJson alanı mevcut, parse ediliyor...`);
-          const photos = JSON.parse(item.photosJson);
-          if (Array.isArray(photos) && photos.length > 0) {
-            console.log(`${photos.length} fotoğraf bulundu (photosJson)`);
+          let parsedPhotos;
 
-            // URL'leri kontrol et
-            const validPhotos = photos.filter(photo => photo && photo.url && photo.url.trim() !== '');
-            if (validPhotos.length > 0) {
-              console.log(`${validPhotos.length} geçerli fotoğraf URL'si bulundu`);
-              return validPhotos;
+          try {
+            parsedPhotos = JSON.parse(item.photosJson);
+          } catch (innerError) {
+            // JSON parse hatası durumunda, string içindeki kaçış karakterlerini temizlemeyi dene
+            console.log('İlk JSON parse başarısız, string temizleniyor...');
+            const cleanString = item.photosJson
+              .replace(/\\"/g, '"')  // Kaçış karakterli çift tırnakları düzelt
+              .replace(/^"(.*)"$/, '$1'); // Başta ve sonda çift tırnak varsa kaldır
+
+            parsedPhotos = JSON.parse(cleanString);
+          }
+
+          if (Array.isArray(parsedPhotos) && parsedPhotos.length > 0) {
+            console.log(`${parsedPhotos.length} fotoğraf bulundu (photosJson)`);
+
+            // Her fotoğrafı işle
+            for (const photo of parsedPhotos) {
+              if (photo && photo.url && photo.url.trim() !== '') {
+                let url = photo.url;
+
+                // URL formatını düzelt
+                if (!url.startsWith('data:image') && !url.startsWith('http') && !url.startsWith('file://') && url.length > 100) {
+                  url = `data:image/jpeg;base64,${url}`;
+                }
+
+                photos.push({
+                  url: url,
+                  location: photo.location
+                });
+
+                console.log(`Fotoğraf eklendi: ${url.substring(0, 30)}...`);
+              }
+            }
+
+            if (photos.length > 0) {
+              console.log(`${photos.length} geçerli fotoğraf işlendi`);
+              return photos;
             }
           }
         } catch (e) {
@@ -526,20 +625,38 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
         }
       }
 
-      // Geriye uyumluluk için eski alanları kontrol et
-      if (item.photoUrl) {
+      // 2. Geriye uyumluluk için photoUrl alanını kontrol et
+      if (item.photoUrl && item.photoUrl.trim() !== '') {
         console.log(`photoUrl alanı mevcut: ${item.photoUrl?.substring(0, 30)}...`);
+        let url = item.photoUrl;
+
+        // URL formatını düzelt
+        if (!url.startsWith('data:image') && !url.startsWith('http') && !url.startsWith('file://') && url.length > 100) {
+          url = `data:image/jpeg;base64,${url}`;
+          console.log('photoUrl base64 formatına dönüştürüldü');
+        }
+
+        console.log(`Tek fotoğraf eklendi (photoUrl): ${url.substring(0, 30)}...`);
         return [{
-          url: item.photoUrl,
+          url: url,
           location: item.photoLocation
         }];
       }
 
-      // En son çare olarak photoData'yı kontrol et
-      if (item.photoData) {
+      // 3. En son çare olarak photoData alanını kontrol et
+      if (item.photoData && item.photoData.trim() !== '') {
         console.log(`photoData alanı mevcut, uzunluk: ${item.photoData.length}`);
+        let data = item.photoData;
+
+        // Base64 formatını düzelt
+        if (!data.startsWith('data:image')) {
+          data = `data:image/jpeg;base64,${data}`;
+          console.log('photoData base64 formatına dönüştürüldü');
+        }
+
+        console.log(`Tek fotoğraf eklendi (photoData): ${data.substring(0, 30)}...`);
         return [{
-          url: item.photoData,
+          url: data,
           location: item.photoLocation
         }];
       }
@@ -594,7 +711,7 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
                     key={`photo-${item.id}-${index}`}
                     style={[
                       itemStyles.photoContainer,
-                      commentPhotos.length > 1 && styles.multiplePhotosItem
+                      commentPhotos.length > 1 ? styles.multiplePhotosItem : styles.singlePhotoItem
                     ]}
                     onPress={() => {
                       console.log(`Fotoğrafa tıklandı: ${item.id}, fotoğraf ${index}`);
@@ -638,18 +755,51 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
                       }
                     }}
                   >
-                    <Image
-                      source={getImageSource(photo.url, photo.url, item.id)}
-                      style={[
-                        styles.commentPhoto,
-                        commentPhotos.length > 1 && styles.multiplePhotosImage
-                      ]}
-                      resizeMode="cover"
-                      onError={(error) => {
-                        console.error(`Fotoğraf yükleme hatası (${item.id}):`, error.nativeEvent.error);
-                        console.log(`Hatalı URL: ${photo.url?.substring(0, 50)}...`);
-                      }}
-                      defaultSource={require('../assets/images/placeholder.png')}
+                    {/* Fotoğraf bileşeni - Tamamen yenilenmiş versiyon */}
+                    {React.createElement(() => {
+                      // Fotoğraf yükleme durumunu takip etmek için state
+                      const [isLoading, setIsLoading] = React.useState(true);
+                      const [hasError, setHasError] = React.useState(false);
+
+                      return (
+                        <>
+                          {/* Yükleme göstergesi - sadece yüklenirken göster */}
+                          {isLoading && (
+                            <View style={styles.photoLoadingContainer}>
+                              <ActivityIndicator size="small" color="#0066cc" />
+                              <ThemedText style={styles.photoLoadingText}>Yükleniyor...</ThemedText>
+                            </View>
+                          )}
+
+                          {/* Fotoğraf */}
+                          <Image
+                            source={getImageSource(photo.url, photo.url, item.id)}
+                            style={[
+                              styles.commentPhoto,
+                              commentPhotos.length > 1 ? styles.multiplePhotosImage : styles.singlePhotoImage,
+                              hasError && styles.errorImage
+                            ]}
+                            resizeMode={commentPhotos.length > 1 ? "cover" : "contain"}
+                            onLoadStart={() => {
+                              console.log(`Fotoğraf yükleniyor (${item.id}): ${photo.url?.substring(0, 30)}...`);
+                              setIsLoading(true);
+                              setHasError(false);
+                            }}
+                            onLoad={() => {
+                              console.log(`Fotoğraf başarıyla yüklendi (${item.id})`);
+                              setIsLoading(false);
+                            }}
+                            onError={(error) => {
+                              console.error(`Fotoğraf yükleme hatası (${item.id}):`, error.nativeEvent.error);
+                              console.log(`Hatalı URL: ${photo.url?.substring(0, 50)}...`);
+                              setIsLoading(false);
+                              setHasError(true);
+                            }}
+                            defaultSource={require('../assets/images/placeholder.png')}
+                          />
+                        </>
+                      );
+                    })}
                     />
                     {photo.location && (
                       <View style={styles.photoLocationBadge}>
@@ -914,15 +1064,29 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
           {selectedPhotoForModal && (
             <View style={dynamicStyles.modalContent}>
               <Image
-                source={{ uri: selectedPhotoForModal.url }}
+                source={getImageSource(selectedPhotoForModal.url, selectedPhotoForModal.url, 'modal')}
                 style={styles.modalImage}
                 resizeMode="contain"
+                onLoadStart={() => {
+                  console.log(`Modal fotoğraf yükleniyor: ${selectedPhotoForModal.url?.substring(0, 30)}...`);
+                }}
+                onLoad={() => {
+                  console.log('Modal fotoğraf başarıyla yüklendi');
+                }}
                 onError={(error) => {
                   console.error('Modal fotoğraf yükleme hatası:', error.nativeEvent.error);
                   console.log(`Hatalı modal URL: ${selectedPhotoForModal.url?.substring(0, 50)}...`);
 
-                  // Modalı kapat
-                  setModalVisible(false);
+                  // Alternatif kaynak dene
+                  try {
+                    // Base64 formatını düzeltmeyi dene
+                    console.log('Alternatif kaynak deneniyor: base64 formatı düzeltiliyor');
+                    // Burada doğrudan state güncellemesi yapamıyoruz, sadece log
+                  } catch (e) {
+                    console.error('Alternatif kaynak hatası:', e);
+                    // Modalı kapat
+                    setModalVisible(false);
+                  }
                 }}
                 defaultSource={require('../assets/images/placeholder.png')}
               />
@@ -1050,9 +1214,45 @@ const styles = StyleSheet.create({
     width: '48%',
     margin: '1%',
     maxWidth: 150,
+    minWidth: 120,
+  },
+  singlePhotoItem: {
+    width: '96%',
+    margin: '2%',
+    maxWidth: 500,
+    minWidth: 250,
+    alignSelf: 'center',
   },
   multiplePhotosImage: {
     height: 120,
+    width: '100%',
+  },
+  singlePhotoImage: {
+    height: 250,
+    width: '100%',
+    resizeMode: 'cover',
+  },
+  photoLoadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    zIndex: 1,
+    borderRadius: 8,
+  },
+  photoLoadingText: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 5,
+    fontWeight: '500',
+  },
+  errorImage: {
+    opacity: 0.5,
+    backgroundColor: 'rgba(255,0,0,0.1)',
   },
   photoCountBadge: {
     position: 'absolute',
@@ -1122,24 +1322,28 @@ const styles = StyleSheet.create({
   },
   photoContainer: {
     marginTop: 8,
+    marginBottom: 8,
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
-    elevation: 2, // Android shadow
+    elevation: 3, // Android shadow - increased
     shadowColor: '#000', // iOS shadow
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
     backgroundColor: '#fff',
     transform: [{ scale: 1 }], // For transition effect
-    maxWidth: '80%', // Maksimum genişlik sınırlaması
+    maxWidth: '100%', // Maksimum genişlik sınırlaması - increased
     alignSelf: 'center', // Yatayda ortalama
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   commentPhoto: {
     width: '100%',
-    height: 150, // Daha küçük boyut
+    height: 180, // Daha büyük boyut
     borderRadius: 12,
     objectFit: 'cover',
+    backgroundColor: 'rgba(0,0,0,0.05)', // Hafif arka plan rengi
   },
   photoLocationBadge: {
     position: 'absolute',
