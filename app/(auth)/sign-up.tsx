@@ -1,21 +1,24 @@
 import { StyleSheet, View, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar } from 'react-native';
+import * as React from 'react';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSignUp, useSignIn, useAuth, useOAuth } from '@clerk/clerk-expo';
 import { router, Redirect } from 'expo-router';
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { useWarmUpBrowser } from '@/hooks/useWarmUpBrowser';
 import Constants from 'expo-constants';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import AppStyles from '@/constants/AppStyles';
+import * as Linking from 'expo-linking';
 
+// Tamamen yeni bir yaklaşımla WebBrowser yapılandırması
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SignUpScreen() {
   useWarmUpBrowser();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
   const { signUp, setActive } = useSignUp();
   const { signIn } = useSignIn();
   const colorScheme = useColorScheme();
@@ -28,95 +31,117 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
 
   // Kullanıcı zaten giriş yapmışsa, tabs'a yönlendir
-  if (isSignedIn) {
+  if (isLoaded && isSignedIn) {
     return <Redirect href="/(tabs)" />;
   }
 
-  // Google OAuth hook'unu kullan
-  const { startOAuthFlow: startGoogleOAuthFlow } = useOAuth({
-    strategy: 'oauth_google',
-    redirectUrl: 'aitravellermobile://oauth-native-callback',
-    redirectUrlComplete: 'aitravellermobile://oauth-native-callback'
-  });
+  // CLERK DOKÜMANLARINDAKİ ÖNERİLEN YAKLAŞIM
+  const REDIRECT_URL = Linking.createURL('oauth-callback');
+  
+  // Sadeleştirilmiş OAuth hook'ları
+  const { startOAuthFlow: googleAuth } = useOAuth({ strategy: "oauth_google", redirectUrl: REDIRECT_URL });
+  const { startOAuthFlow: githubAuth } = useOAuth({ strategy: "oauth_github", redirectUrl: REDIRECT_URL });
+  const { startOAuthFlow: facebookAuth } = useOAuth({ strategy: "oauth_facebook", redirectUrl: REDIRECT_URL });
 
-  // GitHub OAuth hook'unu kullan
-  const { startOAuthFlow: startGithubOAuthFlow } = useOAuth({
-    strategy: 'oauth_github',
-    redirectUrl: 'aitravellermobile://oauth-native-callback',
-    redirectUrlComplete: 'aitravellermobile://oauth-native-callback'
-  });
-
-  // Facebook OAuth hook'unu kullan
-  const { startOAuthFlow: startFacebookOAuthFlow } = useOAuth({
-    strategy: 'oauth_facebook',
-    redirectUrl: 'aitravellermobile://oauth-native-callback',
-    redirectUrlComplete: 'aitravellermobile://oauth-native-callback'
-  });
-
-  // OAuth ile kayıt/giriş yapma fonksiyonu
-  const signUpWithOAuth = async (provider: 'oauth_google' | 'oauth_github' | 'oauth_facebook') => {
+  // Basitleştirilmiş OAuth işleme fonksiyonu
+  const handleOAuthSignIn = async (
+    strategy: "oauth_google" | "oauth_github" | "oauth_facebook"
+  ) => {
     try {
-      // Provider adını daha kullanıcı dostu hale getir
-      const providerName = provider === 'oauth_google'
-        ? 'Google'
-        : provider === 'oauth_github'
-          ? 'GitHub'
-          : 'Facebook';
-
-      console.log(`${providerName} ile kayıt/giriş başlatılıyor...`);
-
-      // İlgili OAuth akışını başlat
-      let startOAuthFlow;
-
-      if (provider === 'oauth_google') {
-        startOAuthFlow = startGoogleOAuthFlow;
-      } else if (provider === 'oauth_github') {
-        startOAuthFlow = startGithubOAuthFlow;
+      setOauthLoading(true);
+      
+      // Doğru OAuth işleyicisini seç
+      let authFunction;
+      if (strategy === "oauth_google") {
+        authFunction = googleAuth;
+      } else if (strategy === "oauth_github") {
+        authFunction = githubAuth;
       } else {
-        startOAuthFlow = startFacebookOAuthFlow;
+        authFunction = facebookAuth;
+      }
+      
+      const strategyName = strategy === "oauth_google" 
+        ? "Google" 
+        : strategy === "oauth_github" 
+          ? "GitHub" 
+          : "Facebook";
+      
+      // Teknik olarak provider adını çıkar
+      const providerName = strategy.replace('oauth_', '');
+          
+      console.log(`${strategyName} ile giriş başlatılıyor...`);
+      console.log('Kullanılan redirect URL:', REDIRECT_URL);
+      console.log('Provider:', providerName);
+      
+      // OAuth akışını başlat
+      const result = await authFunction();
+      
+      // Sonucu kontrol et
+      if (!result) {
+        console.error("OAuth result is undefined");
+        Alert.alert("Hata", `${strategyName} ile giriş yapılamadı. Sonuç alınamadı.`);
+        return;
       }
 
-      const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow();
-
-      console.log(`OAuth akışı tamamlandı, createdSessionId:`, createdSessionId);
-
-      if (createdSessionId) {
-        await setActiveOAuth({ session: createdSessionId });
-        router.replace('/(tabs)');
+      // Gerçek strateji bilgisini logla
+      if (result.signIn?.firstFactorVerification?.strategy) {
+        console.log("Doğrulanan strateji:", result.signIn.firstFactorVerification.strategy);
       }
-    } catch (err) {
-      console.error(`${provider} sign up error:`, err);
-      console.error(`Hata detayları:`, JSON.stringify(err, null, 2));
-
-      // Daha açıklayıcı hata mesajı
-      let errorMessage = `${provider.replace('oauth_', '')} ile kayıt/giriş yapılırken bir hata oluştu.`;
-
-      if (err instanceof Error) {
-        errorMessage += `\n\nHata: ${err.message}`;
-
-        // Clerk hatası ise daha fazla detay göster
-        if ((err as any).errors && Array.isArray((err as any).errors)) {
-          const clerkErrors = (err as any).errors;
-          if (clerkErrors.length > 0) {
-            errorMessage += `\n\nDetay: ${clerkErrors[0].message}`;
+      
+      const { createdSessionId, setActive } = result;
+      
+      console.log("OAuth sonucu:", JSON.stringify(result, null, 2));
+      
+      if (createdSessionId && setActive) {
+        // Oturumu etkinleştir
+        await setActive({ session: createdSessionId });
+        router.replace("/(tabs)");
+      } else if (result.authSessionResult?.type === "success") {
+        // URL'den oturum kimliği çıkarıp oauth-callback sayfasına yönlendir
+        console.log(`OAuth callback sayfasına yönlendiriliyor...`);
+        router.push({
+          pathname: "/(auth)/oauth-callback",
+          params: { 
+            url: result.authSessionResult.url
           }
-        }
+        });
+      } else {
+        console.error(`${strategyName} oturumu oluşturulamadı`);
+        // Kullanıcı tarayıcıda işlemi tamamlamadıysa veya bir hata oluştuysa
+        Alert.alert(
+          "Bilgi", 
+          `${strategyName} ile giriş işlemi tamamlanamadı. Tarayıcıda kimlik doğrulama işlemini tamamlayın veya tekrar deneyin.`,
+          [
+            { text: "Tamam", style: "default" }
+          ]
+        );
       }
-
-      Alert.alert('Hata', errorMessage);
+    } catch (err: any) {
+      console.error("OAuth error:", err);
+      console.error("Error details:", JSON.stringify(err, null, 2));
+      
+      let errorMessage = "Giriş yapılırken bir hata oluştu.";
+      
+      if (err && err.message) {
+        errorMessage += "\n\n" + err.message;
+      }
+      
+      if (err && err.errors && err.errors.length > 0) {
+        errorMessage += "\n\n" + err.errors[0].message;
+      }
+      
+      Alert.alert("Hata", errorMessage);
+    } finally {
+      setOauthLoading(false);
     }
   };
 
-  // Google ile kayıt/giriş
-  const onSignUpWithGoogle = () => signUpWithOAuth('oauth_google');
-
-  // GitHub ile kayıt/giriş
-  const onSignUpWithGitHub = () => signUpWithOAuth('oauth_github');
-
-  // Facebook ile kayıt/giriş
-  const onSignUpWithFacebook = () => signUpWithOAuth('oauth_facebook');
+  const onSignUpWithGoogle = () => handleOAuthSignIn("oauth_google");
+  const onSignUpWithGitHub = () => handleOAuthSignIn("oauth_github");
+  const onSignUpWithFacebook = () => handleOAuthSignIn("oauth_facebook");
 
   const onSignUp = async () => {
     if (!signUp || !setActive) {

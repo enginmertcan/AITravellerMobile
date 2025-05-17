@@ -15,6 +15,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import AppStyles from '@/constants/AppStyles';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as NearbyPlacesService from './services/nearby-places.service';
@@ -30,8 +31,8 @@ enum SortOption {
 }
 
 const SORT_OPTIONS = [
-  { id: SortOption.RATING, name: 'Yıldıza Göre', icon: 'star' },
-  { id: SortOption.DISTANCE, name: 'Uzaklığa Göre', icon: 'map-marker-distance' },
+  { id: SortOption.RATING, name: 'Yıldıza Göre', icon: 'star' as const },
+  { id: SortOption.DISTANCE, name: 'Uzaklığa Göre', icon: 'map-marker-distance' as const },
 ];
 
 const PLACE_TYPES = [
@@ -548,9 +549,7 @@ export default function NearbyPlacesScreen() {
                     // Google Maps'te yol tarifi için URL oluştur
                     const url = `https://www.google.com/maps/dir/?api=1&destination=${place.geometry.location.lat},${place.geometry.location.lng}&destination_place_id=${place.id}&travelmode=driving`;
                     // URL'yi açmak için Linking kullan
-                    import('expo-linking').then(Linking => {
-                      Linking.openURL(url);
-                    });
+                    Linking.openURL(url);
                   }}
                 >
                   <MaterialCommunityIcons name="directions" size={24} color="#4c669f" />

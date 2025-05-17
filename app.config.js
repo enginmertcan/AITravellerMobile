@@ -18,13 +18,39 @@ module.exports = {
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
   ios: {
-    supportsTablet: true
+    supportsTablet: true,
+    bundleIdentifier: 'com.aitraveller.mobile',
+    infoPlist: {
+      CFBundleURLTypes: [
+        {
+          CFBundleURLSchemes: ['aitravellermobile']
+        }
+      ],
+      LSApplicationQueriesSchemes: ['https', 'http']
+    },
+    config: {
+      usesNonExemptEncryption: false
+    }
   },
   android: {
     adaptiveIcon: {
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#ffffff"
-    }
+    },
+    package: 'com.aitraveller.mobile',
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [
+          {
+            scheme: 'aitravellermobile',
+            host: '*',
+          }
+        ],
+        category: ['BROWSABLE', 'DEFAULT']
+      }
+    ]
   },
   web: {
     bundler: "metro",

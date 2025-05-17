@@ -1,10 +1,11 @@
 import { useEffect } from "react";
+import * as WebBrowser from "expo-web-browser";
 
 export const useWarmUpBrowser = () => {
   useEffect(() => {
-    // Browser warmup is no longer needed as we're not using expo-web-browser
+    WebBrowser.warmUpAsync();
     return () => {
-      // Cleanup is no longer needed
+      WebBrowser.coolDownAsync();
     };
   }, []);
 }; 

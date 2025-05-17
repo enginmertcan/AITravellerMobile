@@ -45,6 +45,7 @@ export const colors = {
     border: 'rgba(76, 102, 159, 0.2)',
     overlay: 'rgba(0, 0, 0, 0.7)',
     tabBar: '#000', // Siyah tab bar
+    inputBackground: '#1a1a1a'
   },
 
   // Light theme
@@ -58,6 +59,7 @@ export const colors = {
     border: 'rgba(0, 0, 0, 0.1)',
     overlay: 'rgba(0, 0, 0, 0.5)',
     tabBar: '#000', // Açık temada da siyah tab bar
+    inputBackground: '#fff'
   },
 };
 
