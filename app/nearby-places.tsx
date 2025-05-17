@@ -16,7 +16,7 @@ import { ThemedView } from '@/components/ThemedView';
 import AppStyles from '@/constants/AppStyles';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as NearbyPlacesService from './services/nearby-places.service';
 import { NearbyPlace, LocationData } from './services/nearby-places.service';
@@ -313,267 +313,276 @@ export default function NearbyPlacesScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
-        </TouchableOpacity>
-        <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">Yakın Yerler</ThemedText>
-
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={() => setSortModalVisible(true)}
-        >
-          <MaterialCommunityIcons
-            name="sort"
-            size={24}
-            color="#4c669f"
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={toggleMapView}
-        >
-          <MaterialCommunityIcons
-            name={mapVisible ? "format-list-bulleted" : "map"}
-            size={24}
-            color="#4c669f"
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Sıralama Seçenekleri Modalı */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={sortModalVisible}
-        onRequestClose={() => setSortModalVisible(false)}
+    <ThemedView style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setSortModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle}>Sıralama Seçenekleri</ThemedText>
-              <TouchableOpacity onPress={() => setSortModalVisible(false)}>
-                <MaterialCommunityIcons name="close" size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
+          </TouchableOpacity>
+          <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">Yakın Yerler</ThemedText>
 
-            {SORT_OPTIONS.map((option) => (
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setSortModalVisible(true)}
+          >
+            <MaterialCommunityIcons
+              name="sort"
+              size={24}
+              color="#4c669f"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={toggleMapView}
+          >
+            <MaterialCommunityIcons
+              name={mapVisible ? "format-list-bulleted" : "map"}
+              size={24}
+              color="#4c669f"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Sıralama Seçenekleri Modalı */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={sortModalVisible}
+          onRequestClose={() => setSortModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setSortModalVisible(false)}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>Sıralama Seçenekleri</ThemedText>
+                <TouchableOpacity onPress={() => setSortModalVisible(false)}>
+                  <MaterialCommunityIcons name="close" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              {SORT_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    styles.sortOption,
+                    sortOption === option.id && styles.selectedSortOption
+                  ]}
+                  onPress={() => handleSortChange(option.id as SortOption)}
+                >
+                  <MaterialCommunityIcons
+                    name={option.icon}
+                    size={24}
+                    color={sortOption === option.id ? "#fff" : "#4c669f"}
+                  />
+                  <ThemedText
+                    style={[
+                      styles.sortOptionText,
+                      sortOption === option.id && styles.selectedSortOptionText
+                    ]}
+                  >
+                    {option.name}
+                  </ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        <View style={styles.typeSelector}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.typeSelectorContent}
+          >
+            {PLACE_TYPES.map((type) => (
               <TouchableOpacity
-                key={option.id}
+                key={type.id}
                 style={[
-                  styles.sortOption,
-                  sortOption === option.id && styles.selectedSortOption
+                  styles.typeButton,
+                  selectedType === type.id && styles.selectedTypeButton
                 ]}
-                onPress={() => handleSortChange(option.id as SortOption)}
+                onPress={() => handleTypeSelect(type.id)}
               >
                 <MaterialCommunityIcons
-                  name={option.icon}
-                  size={24}
-                  color={sortOption === option.id ? "#fff" : "#4c669f"}
+                  name={getTypeIcon(type.id)}
+                  size={20}
+                  color={selectedType === type.id ? "#fff" : "#4c669f"}
                 />
                 <ThemedText
                   style={[
-                    styles.sortOptionText,
-                    sortOption === option.id && styles.selectedSortOptionText
+                    styles.typeButtonText,
+                    selectedType === type.id && styles.selectedTypeButtonText
                   ]}
                 >
-                  {option.name}
+                  {type.name}
                 </ThemedText>
               </TouchableOpacity>
             ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <ThemedText style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">
+            {getPlaceTypeTitle()} {userLocation ? '(Yakınınızda)' : ''}
+          </ThemedText>
+
+          <View style={styles.sortIndicator}>
+            <MaterialCommunityIcons
+              name={sortOption === SortOption.RATING ? 'star' : 'map-marker-distance'}
+              size={16}
+              color="#4c669f"
+            />
+            <ThemedText style={styles.sortIndicatorText}>
+              {sortOption === SortOption.RATING ? 'Yıldıza Göre' : 'Uzaklığa Göre'}
+            </ThemedText>
           </View>
-        </TouchableOpacity>
-      </Modal>
-
-      <View style={styles.typeSelector}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.typeSelectorContent}
-        >
-          {PLACE_TYPES.map((type) => (
-            <TouchableOpacity
-              key={type.id}
-              style={[
-                styles.typeButton,
-                selectedType === type.id && styles.selectedTypeButton
-              ]}
-              onPress={() => handleTypeSelect(type.id)}
-            >
-              <MaterialCommunityIcons
-                name={getTypeIcon(type.id)}
-                size={20}
-                color={selectedType === type.id ? "#fff" : "#4c669f"}
-              />
-              <ThemedText
-                style={[
-                  styles.typeButtonText,
-                  selectedType === type.id && styles.selectedTypeButtonText
-                ]}
-              >
-                {type.name}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <View style={styles.sectionHeader}>
-        <ThemedText style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">
-          {getPlaceTypeTitle()} {userLocation ? '(Yakınınızda)' : ''}
-        </ThemedText>
-
-        <View style={styles.sortIndicator}>
-          <MaterialCommunityIcons
-            name={sortOption === SortOption.RATING ? 'star' : 'map-marker-distance'}
-            size={16}
-            color="#4c669f"
-          />
-          <ThemedText style={styles.sortIndicatorText}>
-            {sortOption === SortOption.RATING ? 'Yıldıza Göre' : 'Uzaklığa Göre'}
-          </ThemedText>
         </View>
-      </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4c669f" />
-          <ThemedText style={styles.loadingText}>
-            Yakın yerler yükleniyor...
-          </ThemedText>
-        </View>
-      ) : mapVisible ? (
-        // Harita Görünümü
-        <View style={styles.mapContainer}>
-          {userLocation && (
-            <MapView
-              provider={PROVIDER_GOOGLE}
-              style={styles.map}
-              initialRegion={{
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
-              }}
-            >
-              {/* Kullanıcı konumu */}
-              <Marker
-                coordinate={{
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4c669f" />
+            <ThemedText style={styles.loadingText}>
+              Yakın yerler yükleniyor...
+            </ThemedText>
+          </View>
+        ) : mapVisible ? (
+          // Harita Görünümü
+          <View style={styles.mapContainer}>
+            {userLocation && (
+              <MapView
+                provider={PROVIDER_GOOGLE}
+                style={styles.map}
+                initialRegion={{
                   latitude: userLocation.latitude,
                   longitude: userLocation.longitude,
+                  latitudeDelta: 0.0922,
+                  longitudeDelta: 0.0421,
                 }}
-                title="Konumunuz"
-                pinColor="#4c669f"
-              />
-
-              {/* Yakın yerler */}
-              {places.map((place) => (
+              >
+                {/* Kullanıcı konumu */}
                 <Marker
-                  key={place.id}
                   coordinate={{
-                    latitude: place.geometry.location.lat,
-                    longitude: place.geometry.location.lng,
+                    latitude: userLocation.latitude,
+                    longitude: userLocation.longitude,
                   }}
-                  title={place.name}
-                  description={place.vicinity}
+                  title="Konumunuz"
+                  pinColor="#4c669f"
                 />
-              ))}
-            </MapView>
-          )}
-        </View>
-      ) : (
-        // Liste Görünümü
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
-          {places.length > 0 ? (
-            places.map((place) => (
-              <View key={place.id} style={styles.placeCard}>
-                {place.photos && place.photos.length > 0 ? (
-                  <Image
-                    source={{ uri: place.photos[0] }}
-                    style={styles.placeImage}
-                    resizeMode="cover"
+
+                {/* Yakın yerler */}
+                {places.map((place) => (
+                  <Marker
+                    key={place.id}
+                    coordinate={{
+                      latitude: place.geometry.location.lat,
+                      longitude: place.geometry.location.lng,
+                    }}
+                    title={place.name}
+                    description={place.vicinity}
                   />
-                ) : (
-                  <View style={styles.placeholderImage}>
-                    <MaterialCommunityIcons
-                      name={getTypeIcon(selectedType)}
-                      size={40}
-                      color="#4c669f"
+                ))}
+              </MapView>
+            )}
+          </View>
+        ) : (
+          // Liste Görünümü
+          <View style={styles.content}>
+            {places.length > 0 ? (
+              places.map((place) => (
+                <View key={place.id} style={styles.placeCard}>
+                  {place.photos && place.photos.length > 0 ? (
+                    <Image
+                      source={{ uri: place.photos[0] }}
+                      style={styles.placeImage}
+                      resizeMode="cover"
                     />
+                  ) : (
+                    <View style={styles.placeholderImage}>
+                      <MaterialCommunityIcons
+                        name={getTypeIcon(selectedType)}
+                        size={40}
+                        color="#4c669f"
+                      />
+                    </View>
+                  )}
+
+                  <View style={styles.placeInfo}>
+                    <ThemedText style={styles.placeName}>{place.name}</ThemedText>
+                    <ThemedText style={styles.placeAddress}>{place.vicinity}</ThemedText>
+
+                    <View style={styles.detailsContainer}>
+                      {place.rating ? (
+                        <View style={styles.ratingContainer}>
+                          <MaterialCommunityIcons name="star" size={16} color="#FFD700" />
+                          <ThemedText style={styles.ratingText}>{place.rating.toFixed(1)}</ThemedText>
+                        </View>
+                      ) : null}
+
+                      {place.distance ? (
+                        <View style={styles.distanceContainer}>
+                          <MaterialCommunityIcons name="map-marker-distance" size={16} color="#4c669f" />
+                          <ThemedText style={styles.distanceText}>
+                            {place.distance < 1000
+                              ? `${Math.round(place.distance)} m`
+                              : `${(place.distance / 1000).toFixed(1)} km`}
+                          </ThemedText>
+                        </View>
+                      ) : null}
+                    </View>
                   </View>
-                )}
 
-                <View style={styles.placeInfo}>
-                  <ThemedText style={styles.placeName}>{place.name}</ThemedText>
-                  <ThemedText style={styles.placeAddress}>{place.vicinity}</ThemedText>
-
-                  <View style={styles.detailsContainer}>
-                    {place.rating ? (
-                      <View style={styles.ratingContainer}>
-                        <MaterialCommunityIcons name="star" size={16} color="#FFD700" />
-                        <ThemedText style={styles.ratingText}>{place.rating.toFixed(1)}</ThemedText>
-                      </View>
-                    ) : null}
-
-                    {place.distance ? (
-                      <View style={styles.distanceContainer}>
-                        <MaterialCommunityIcons name="map-marker-distance" size={16} color="#4c669f" />
-                        <ThemedText style={styles.distanceText}>
-                          {place.distance < 1000
-                            ? `${Math.round(place.distance)} m`
-                            : `${(place.distance / 1000).toFixed(1)} km`}
-                        </ThemedText>
-                      </View>
-                    ) : null}
-                  </View>
+                  <TouchableOpacity
+                    style={styles.directionButton}
+                    onPress={() => {
+                      // Google Maps'te yol tarifi için URL oluştur
+                      const url = `https://www.google.com/maps/dir/?api=1&destination=${place.geometry.location.lat},${place.geometry.location.lng}&destination_place_id=${place.id}&travelmode=driving`;
+                      // URL'yi açmak için Linking kullan
+                      Linking.openURL(url);
+                    }}
+                  >
+                    <MaterialCommunityIcons name="directions" size={24} color="#4c669f" />
+                  </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity
-                  style={styles.directionButton}
-                  onPress={() => {
-                    // Google Maps'te yol tarifi için URL oluştur
-                    const url = `https://www.google.com/maps/dir/?api=1&destination=${place.geometry.location.lat},${place.geometry.location.lng}&destination_place_id=${place.id}&travelmode=driving`;
-                    // URL'yi açmak için Linking kullan
-                    Linking.openURL(url);
-                  }}
-                >
-                  <MaterialCommunityIcons name="directions" size={24} color="#4c669f" />
-                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.noResultsContainer}>
+                <ThemedText style={styles.noResultsText}>
+                  Yakınınızda yer bulunamadı.
+                </ThemedText>
               </View>
-            ))
-          ) : (
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="map-search" size={80} color="#4c669f" />
-              <ThemedText style={styles.emptyText}>
-                Yakınınızda {getPlaceTypeTitle().toLowerCase()} bulunamadı.
-              </ThemedText>
-            </View>
-          )}
-        </ScrollView>
-      )}
-    </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: AppStyles.colors.dark.background,
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: AppStyles.colors.dark.background,
   },
   header: {
     padding: 24,
@@ -728,10 +737,6 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     fontFamily: 'InterRegular',
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -819,14 +824,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emptyContainer: {
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  noResultsContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
-    marginTop: 40,
   },
-  emptyText: {
+  noResultsText: {
     marginTop: 16,
     fontSize: 16,
     color: '#ccc',
