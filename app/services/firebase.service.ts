@@ -21,6 +21,8 @@ const TRAVEL_PLANS_COLLECTION = "travelPlans";
 const USERS_COLLECTION = "users";
 const TRAVEL_PLANS_COMMENTS_COLLECTION = "travelPlans_comments";
 const COMMENT_PHOTOS_COLLECTION = "commentPhotos";
+const BUDGETS_COLLECTION = "budgets";
+const EXPENSES_COLLECTION = "expenses";
 
 // Seyahat planlarını işleme servisi
 export const TravelPlanService = {
@@ -3129,12 +3131,462 @@ export const CommentService = {
   }
 };
 
+// Bütçe servisi
+export const BudgetService = {
+  // Yeni bütçe oluştur
+  async createBudget(budget: any): Promise<string> {
+    try {
+      if (!budget.userId || !budget.travelPlanId) {
+        throw new Error("Kullanıcı ID ve seyahat planı ID gereklidir");
+      }
+
+      const budgetRef = collection(db, BUDGETS_COLLECTION);
+
+      // Timestamp ekle
+      const budgetWithTimestamp = {
+        ...budget,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      // Firestore'a ekle
+      const docRef = await addDoc(budgetRef, budgetWithTimestamp);
+      console.log("Bütçe oluşturuldu:", docRef.id);
+
+      return docRef.id;
+    } catch (error) {
+      console.error('Bütçe oluşturma hatası:', error);
+      throw error;
+    }
+  },
+
+  // Bütçe bilgilerini getir
+  async getBudget(budgetId: string): Promise<any | null> {
+    try {
+      if (!budgetId?.trim()) {
+        console.warn("Geçersiz bütçe ID'si");
+        return null;
+      }
+
+      const budgetDocRef = doc(db, BUDGETS_COLLECTION, budgetId);
+      const budgetDoc = await getDoc(budgetDocRef);
+
+      if (!budgetDoc.exists()) {
+        console.warn('Bütçe bulunamadı:', budgetId);
+        return null;
+      }
+
+      const data = budgetDoc.data();
+
+      // Timestamp'i Date'e dönüştür
+      const createdAt = data.createdAt instanceof Timestamp
+        ? data.createdAt.toDate().toISOString()
+        : undefined;
+
+      const updatedAt = data.updatedAt instanceof Timestamp
+        ? data.updatedAt.toDate().toISOString()
+        : undefined;
+
+      return {
+        id: budgetDoc.id,
+        ...data,
+        createdAt,
+        updatedAt
+      };
+    } catch (error) {
+      console.error('Bütçe getirme hatası:', error);
+      throw error;
+    }
+  },
+
+  // Seyahat planına ait bütçeyi getir
+  async getBudgetByTravelPlanId(travelPlanId: string): Promise<any | null> {
+    try {
+      if (!travelPlanId?.trim()) {
+        console.warn("Geçersiz seyahat planı ID'si");
+        return null;
+      }
+
+      const budgetQuery = query(
+        collection(db, BUDGETS_COLLECTION),
+        where('travelPlanId', '==', travelPlanId)
+      );
+
+      const budgetSnapshot = await getDocs(budgetQuery);
+
+      if (budgetSnapshot.empty) {
+        console.log("Seyahat planına ait bütçe bulunamadı:", travelPlanId);
+        return null;
+      }
+
+      const budgetDoc = budgetSnapshot.docs[0];
+      const data = budgetDoc.data();
+
+      // Timestamp'i Date'e dönüştür
+      const createdAt = data.createdAt instanceof Timestamp
+        ? data.createdAt.toDate().toISOString()
+        : undefined;
+
+      const updatedAt = data.updatedAt instanceof Timestamp
+        ? data.updatedAt.toDate().toISOString()
+        : undefined;
+
+      return {
+        id: budgetDoc.id,
+        ...data,
+        createdAt,
+        updatedAt
+      };
+    } catch (error) {
+      console.error('Seyahat planı bütçesi getirme hatası:', error);
+      throw error;
+    }
+  },
+
+  // Kullanıcıya ait bütçeleri getir
+  async getUserBudgets(userId: string): Promise<any[]> {
+    try {
+      if (!userId?.trim()) {
+        console.warn("Geçersiz kullanıcı ID'si");
+        return [];
+      }
+
+      const budgetQuery = query(
+        collection(db, BUDGETS_COLLECTION),
+        where('userId', '==', userId)
+      );
+
+      const budgetSnapshot = await getDocs(budgetQuery);
+
+      if (budgetSnapshot.empty) {
+        console.log("Kullanıcıya ait bütçe bulunamadı:", userId);
+        return [];
+      }
+
+      return budgetSnapshot.docs.map(doc => {
+        const data = doc.data();
+
+        // Timestamp'i Date'e dönüştür
+        const createdAt = data.createdAt instanceof Timestamp
+          ? data.createdAt.toDate().toISOString()
+          : undefined;
+
+        const updatedAt = data.updatedAt instanceof Timestamp
+          ? data.updatedAt.toDate().toISOString()
+          : undefined;
+
+        return {
+          id: doc.id,
+          ...data,
+          createdAt,
+          updatedAt
+        };
+      });
+    } catch (error) {
+      console.error('Kullanıcı bütçeleri getirme hatası:', error);
+      throw error;
+    }
+  },
+
+  // Bütçeyi güncelle
+  async updateBudget(budgetId: string, updates: any): Promise<boolean> {
+    try {
+      if (!budgetId?.trim()) {
+        console.warn("Geçersiz bütçe ID'si");
+        return false;
+      }
+
+      const budgetDocRef = doc(db, BUDGETS_COLLECTION, budgetId);
+
+      // Timestamp ekle
+      const updatesWithTimestamp = {
+        ...updates,
+        updatedAt: serverTimestamp(),
+      };
+
+      await updateDoc(budgetDocRef, updatesWithTimestamp);
+      console.log("Bütçe güncellendi:", budgetId);
+
+      return true;
+    } catch (error) {
+      console.error('Bütçe güncelleme hatası:', error);
+      throw error;
+    }
+  },
+
+  // Bütçeyi sil
+  async deleteBudget(budgetId: string): Promise<boolean> {
+    try {
+      if (!budgetId?.trim()) {
+        console.warn("Geçersiz bütçe ID'si");
+        return false;
+      }
+
+      // Önce bütçeye ait harcamaları sil
+      const expenseQuery = query(
+        collection(db, EXPENSES_COLLECTION),
+        where('budgetId', '==', budgetId)
+      );
+
+      const expenseSnapshot = await getDocs(expenseQuery);
+
+      const deletePromises = expenseSnapshot.docs.map(doc =>
+        deleteDoc(doc.ref)
+      );
+
+      await Promise.all(deletePromises);
+
+      // Sonra bütçeyi sil
+      const budgetDocRef = doc(db, BUDGETS_COLLECTION, budgetId);
+      await deleteDoc(budgetDocRef);
+
+      console.log("Bütçe silindi:", budgetId);
+      return true;
+    } catch (error) {
+      console.error('Bütçe silme hatası:', error);
+      throw error;
+    }
+  }
+};
+
+// Harcama servisi
+export const ExpenseService = {
+  // Yeni harcama ekle
+  async addExpense(expense: any): Promise<string> {
+    try {
+      console.log("ExpenseService.addExpense çağrıldı:", JSON.stringify(expense, null, 2));
+
+      // Zorunlu alanları kontrol et
+      if (!expense.userId) {
+        console.error("userId eksik:", expense);
+        throw new Error("Kullanıcı ID gereklidir");
+      }
+
+      if (!expense.budgetId) {
+        console.error("budgetId eksik:", expense);
+        throw new Error("Bütçe ID gereklidir");
+      }
+
+      if (!expense.categoryId) {
+        console.error("categoryId eksik:", expense);
+        throw new Error("Kategori ID gereklidir");
+      }
+
+      const expenseRef = collection(db, EXPENSES_COLLECTION);
+
+      // Tarih kontrolü
+      const expenseData = {
+        ...expense,
+        date: expense.date || serverTimestamp(),
+      };
+
+      console.log("Firestore'a kaydedilecek veri:", JSON.stringify(expenseData, null, 2));
+
+      // Firestore'a eklemeden önce son kontrol
+      if (!expenseData.userId || typeof expenseData.userId !== 'string') {
+        console.error("Geçersiz userId formatı:", expenseData.userId);
+        throw new Error("Geçersiz userId formatı. String olmalı.");
+      }
+
+      if (!expenseData.budgetId || typeof expenseData.budgetId !== 'string') {
+        console.error("Geçersiz budgetId formatı:", expenseData.budgetId);
+        throw new Error("Geçersiz budgetId formatı. String olmalı.");
+      }
+
+      if (!expenseData.categoryId || typeof expenseData.categoryId !== 'string') {
+        console.error("Geçersiz categoryId formatı:", expenseData.categoryId);
+        throw new Error("Geçersiz categoryId formatı. String olmalı.");
+      }
+
+      // Firestore'a ekle
+      const docRef = await addDoc(expenseRef, expenseData);
+      console.log("Harcama eklendi:", docRef.id);
+
+      // Kategori harcama miktarını güncelle
+      if (expense.budgetId && expense.categoryId && expense.amount) {
+        const budgetDocRef = doc(db, BUDGETS_COLLECTION, expense.budgetId);
+        const budgetDoc = await getDoc(budgetDocRef);
+
+        if (budgetDoc.exists()) {
+          const budget = budgetDoc.data();
+          const categories = budget.categories || [];
+          const categoryIndex = categories.findIndex((c: any) => c.id === expense.categoryId);
+
+          if (categoryIndex !== -1) {
+            categories[categoryIndex].spentAmount = (categories[categoryIndex].spentAmount || 0) + expense.amount;
+
+            await updateDoc(budgetDocRef, {
+              categories,
+              updatedAt: serverTimestamp(),
+            });
+
+            console.log("Kategori harcama miktarı güncellendi");
+          }
+        }
+      }
+
+      return docRef.id;
+    } catch (error) {
+      console.error('Harcama ekleme hatası:', error);
+      throw error;
+    }
+  },
+
+  // Bütçeye ait harcamaları getir
+  async getExpensesByBudgetId(budgetId: string): Promise<any[]> {
+    try {
+      if (!budgetId?.trim()) {
+        console.warn("Geçersiz bütçe ID'si");
+        return [];
+      }
+
+      const expenseQuery = query(
+        collection(db, EXPENSES_COLLECTION),
+        where('budgetId', '==', budgetId)
+      );
+
+      const expenseSnapshot = await getDocs(expenseQuery);
+
+      if (expenseSnapshot.empty) {
+        console.log("Bütçeye ait harcama bulunamadı:", budgetId);
+        return [];
+      }
+
+      return expenseSnapshot.docs.map(doc => {
+        const data = doc.data();
+
+        // Timestamp'i Date'e dönüştür
+        const date = data.date instanceof Timestamp
+          ? data.date.toDate().toISOString()
+          : data.date;
+
+        return {
+          id: doc.id,
+          ...data,
+          date
+        };
+      });
+    } catch (error) {
+      console.error('Harcama listesi getirme hatası:', error);
+      throw error;
+    }
+  },
+
+  // Harcamayı güncelle
+  async updateExpense(expenseId: string, updates: any, oldAmount?: number): Promise<boolean> {
+    try {
+      if (!expenseId?.trim()) {
+        console.warn("Geçersiz harcama ID'si");
+        return false;
+      }
+
+      const expenseRef = doc(db, EXPENSES_COLLECTION, expenseId);
+      const expenseDoc = await getDoc(expenseRef);
+
+      if (!expenseDoc.exists()) {
+        console.warn("Harcama bulunamadı:", expenseId);
+        return false;
+      }
+
+      const expense = expenseDoc.data();
+
+      // Harcamayı güncelle
+      await updateDoc(expenseRef, updates);
+      console.log("Harcama güncellendi:", expenseId);
+
+      // Eğer miktar değiştiyse, kategori harcama miktarını güncelle
+      if (updates.amount !== undefined && oldAmount !== undefined && expense.budgetId && expense.categoryId) {
+        const amountDiff = updates.amount - oldAmount;
+
+        const budgetDocRef = doc(db, BUDGETS_COLLECTION, expense.budgetId);
+        const budgetDoc = await getDoc(budgetDocRef);
+
+        if (budgetDoc.exists()) {
+          const budget = budgetDoc.data();
+          const categories = budget.categories || [];
+          const categoryIndex = categories.findIndex((c: any) => c.id === expense.categoryId);
+
+          if (categoryIndex !== -1) {
+            categories[categoryIndex].spentAmount = (categories[categoryIndex].spentAmount || 0) + amountDiff;
+
+            await updateDoc(budgetDocRef, {
+              categories,
+              updatedAt: serverTimestamp(),
+            });
+
+            console.log("Kategori harcama miktarı güncellendi");
+          }
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Harcama güncelleme hatası:', error);
+      throw error;
+    }
+  },
+
+  // Harcamayı sil
+  async deleteExpense(expenseId: string): Promise<boolean> {
+    try {
+      if (!expenseId?.trim()) {
+        console.warn("Geçersiz harcama ID'si");
+        return false;
+      }
+
+      const expenseRef = doc(db, EXPENSES_COLLECTION, expenseId);
+      const expenseDoc = await getDoc(expenseRef);
+
+      if (!expenseDoc.exists()) {
+        console.warn("Harcama bulunamadı:", expenseId);
+        return false;
+      }
+
+      const expense = expenseDoc.data();
+
+      // Harcamayı sil
+      await deleteDoc(expenseRef);
+      console.log("Harcama silindi:", expenseId);
+
+      // Kategori harcama miktarını güncelle
+      if (expense.budgetId && expense.categoryId && expense.amount) {
+        const budgetDocRef = doc(db, BUDGETS_COLLECTION, expense.budgetId);
+        const budgetDoc = await getDoc(budgetDocRef);
+
+        if (budgetDoc.exists()) {
+          const budget = budgetDoc.data();
+          const categories = budget.categories || [];
+          const categoryIndex = categories.findIndex((c: any) => c.id === expense.categoryId);
+
+          if (categoryIndex !== -1) {
+            categories[categoryIndex].spentAmount = (categories[categoryIndex].spentAmount || 0) - expense.amount;
+
+            await updateDoc(budgetDocRef, {
+              categories,
+              updatedAt: serverTimestamp(),
+            });
+
+            console.log("Kategori harcama miktarı güncellendi");
+          }
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Harcama silme hatası:', error);
+      throw error;
+    }
+  }
+};
+
 // Firebase servisi - tüm servisleri birleştir
 export const FirebaseService = {
   TravelPlan: TravelPlanService,
   User: UserService,
   Comment: CommentService,
-  CommentPhoto: CommentPhotoService
+  CommentPhoto: CommentPhotoService,
+  Budget: BudgetService,
+  Expense: ExpenseService
 };
 
 // Expo Router için default export gereklidir

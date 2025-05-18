@@ -8,6 +8,7 @@ import { safeParseJSON, parseTripPhotos } from './types/travel';
 import { FirebaseService } from './services/firebase.service';
 import { useAuth } from '@clerk/clerk-expo';
 import { getWeatherForecast, WeatherData } from './services/weather.service';
+import { CurrencyService } from './services/currency.service';
 import AppStyles from '@/constants/AppStyles';
 import WeatherCard from './components/WeatherCard';
 import TripPhotoUploader from './components/TripPhotoUploader';
@@ -48,6 +49,10 @@ export default function TripDetailsScreen() {
 
   // Önerme modalı için state
   const [recommendModalVisible, setRecommendModalVisible] = useState(false);
+
+  // Bütçe bilgisi için state
+  const [budgetData, setBudgetData] = useState<any>(null);
+  const [budgetLoading, setBudgetLoading] = useState(false);
 
   const screenWidth = Dimensions.get('window').width;
   const router = useRouter();
@@ -544,6 +549,12 @@ export default function TripDetailsScreen() {
     }
 
     setWeatherLoading(true);
+
+    // Eğer plan ID'si varsa, bütçe verilerini getir
+    if (plan.id) {
+      loadBudgetData(plan.id);
+    }
+
     try {
       // Destinasyon bilgisini al
       const destination = plan.destination;
@@ -1036,6 +1047,130 @@ export default function TripDetailsScreen() {
     }
   };
 
+  // Bütçe verilerini yükle
+  const loadBudgetData = async (travelPlanId: string) => {
+    try {
+      setBudgetLoading(true);
+
+      // Seyahat planına ait bütçeyi getir
+      const budget = await FirebaseService.Budget.getBudgetByTravelPlanId(travelPlanId);
+
+      if (budget) {
+        setBudgetData(budget);
+      } else {
+        setBudgetData(null);
+      }
+    } catch (error) {
+      console.error('Bütçe verisi yükleme hatası:', error);
+      setBudgetData(null);
+    } finally {
+      setBudgetLoading(false);
+    }
+  };
+
+  // Bütçe kategorilerini kontrol et ve gerekirse varsayılan kategorileri ekle
+  const checkAndAddDefaultCategories = async () => {
+    try {
+      if (!budgetData || !budgetData.id) {
+        Alert.alert('Hata', 'Bütçe bulunamadı.');
+        return false;
+      }
+
+      // Kategorileri kontrol et
+      if (!budgetData.categories || budgetData.categories.length === 0) {
+        // Kullanıcıya varsayılan kategorileri eklemek isteyip istemediğini sor
+        Alert.alert(
+          '✨ Kategori Gerekiyor',
+          'Harcama ekleyebilmek için kategorilere ihtiyacınız var. Sizin için hazırladığımız kategorileri eklemek ister misiniz?\n\n• Konaklama\n• Yemek\n• Ulaşım\n• Aktiviteler\n• Alışveriş\n• Diğer',
+          [
+            {
+              text: 'Vazgeç',
+              style: 'cancel',
+              onPress: () => {
+                // İptal edilirse bütçe detay sayfasına yönlendir
+                router.push(`/budget-details?budgetId=${budgetData.id}`);
+              }
+            },
+            {
+              text: '✅ Kategorileri Ekle',
+              style: 'default',
+              onPress: async () => {
+                try {
+                  // Varsayılan kategorileri ekle
+                  const DEFAULT_BUDGET_CATEGORIES = [
+                    { name: 'Konaklama', icon: 'bed', color: '#FF6384' },
+                    { name: 'Yemek', icon: 'food', color: '#36A2EB' },
+                    { name: 'Ulaşım', icon: 'train-car', color: '#FFCE56' },
+                    { name: 'Aktiviteler', icon: 'ticket', color: '#4BC0C0' },
+                    { name: 'Alışveriş', icon: 'shopping', color: '#9966FF' },
+                    { name: 'Diğer', icon: 'dots-horizontal', color: '#FF9F40' }
+                  ];
+
+                  // Benzersiz ID'ler oluştur
+                  const categoriesWithIds = DEFAULT_BUDGET_CATEGORIES.map(category => ({
+                    ...category,
+                    id: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+                    allocatedAmount: 0,
+                    spentAmount: 0
+                  }));
+
+                  // Bütçeyi güncelle
+                  await FirebaseService.Budget.updateBudget(budgetData.id, {
+                    categories: categoriesWithIds
+                  });
+
+                  // Bütçe verilerini yeniden yükle
+                  const updatedBudget = await FirebaseService.Budget.getBudget(budgetData.id);
+                  if (updatedBudget) {
+                    setBudgetData(updatedBudget);
+
+                    // Başarılı mesajı göster
+                    Alert.alert(
+                      '✅ Kategoriler Eklendi',
+                      'Harika! Kategoriler başarıyla eklendi. Şimdi harcamalarınızı ekleyebilirsiniz.',
+                      [
+                        {
+                          text: 'Harcama Ekle',
+                          style: 'default',
+                          onPress: () => {
+                            // Harcama ekle sayfasına yönlendir
+                            router.push(`/add-expense?budgetId=${budgetData.id}`);
+                          }
+                        }
+                      ]
+                    );
+                    return true;
+                  }
+                } catch (error) {
+                  console.error('Kategori ekleme hatası:', error);
+                  Alert.alert(
+                    '❌ Hata Oluştu',
+                    'Kategoriler eklenirken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.',
+                    [
+                      {
+                        text: 'Tamam',
+                        style: 'default'
+                      }
+                    ]
+                  );
+                  return false;
+                }
+              }
+            }
+          ]
+        );
+        return false;
+      }
+
+      // Kategoriler zaten varsa true döndür
+      return true;
+    } catch (error) {
+      console.error('Kategori kontrol hatası:', error);
+      Alert.alert('Hata', 'Kategoriler kontrol edilirken bir hata oluştu.');
+      return false;
+    }
+  };
+
   // Tek bir planı ID'ye göre yükle
   const loadSinglePlan = async (id: string) => {
     try {
@@ -1047,6 +1182,8 @@ export default function TripDetailsScreen() {
       const plan = await FirebaseService.TravelPlan.getTravelPlanById(id);
 
       if (plan && Object.keys(plan).length > 0) {
+        // Bütçe verilerini getir
+        loadBudgetData(id);
 
         // İtinerary alanını parse et
         if (plan.itinerary && typeof plan.itinerary === 'string') {
@@ -3195,6 +3332,107 @@ export default function TripDetailsScreen() {
             return null;
           })()}
 
+          {/* Bütçe Bilgisi */}
+          {budgetLoading ? (
+            <View style={styles.section}>
+              <View style={styles.sectionTitleContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <ThemedText>
+                    <MaterialCommunityIcons name="wallet" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  </ThemedText>
+                  <ThemedText style={styles.sectionTitle} numberOfLines={2}>Bütçe Bilgisi</ThemedText>
+                </View>
+              </View>
+              <View style={[styles.card, styles.weatherLoadingContainer]}>
+                <ActivityIndicator size="small" color="#4c669f" />
+                <ThemedText style={styles.weatherLoadingText}>Bütçe bilgileri yükleniyor...</ThemedText>
+              </View>
+            </View>
+          ) : budgetData ? (
+            <View style={styles.section}>
+              <View style={styles.sectionTitleContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <ThemedText>
+                    <MaterialCommunityIcons name="wallet" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  </ThemedText>
+                  <ThemedText style={styles.sectionTitle} numberOfLines={2}>Bütçe Bilgisi</ThemedText>
+                </View>
+                <TouchableOpacity
+                  style={styles.budgetActionButton}
+                  onPress={() => router.push(`/budget-details?budgetId=${budgetData.id}`)}
+                >
+                  <ThemedText style={styles.budgetActionButtonText}>Detaylar</ThemedText>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.card}>
+                <View style={styles.budgetSummary}>
+                  <View style={styles.budgetSummaryItem}>
+                    <ThemedText style={styles.budgetSummaryLabel}>Toplam Bütçe</ThemedText>
+                    <ThemedText style={styles.budgetSummaryValue}>
+                      {CurrencyService.formatCurrency(budgetData.totalBudget, budgetData.currency)}
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.budgetSummaryItem}>
+                    <ThemedText style={styles.budgetSummaryLabel}>Harcanan</ThemedText>
+                    <ThemedText style={[styles.budgetSummaryValue, { color: '#FF6384' }]}>
+                      {CurrencyService.formatCurrency(
+                        budgetData.categories.reduce((sum: number, cat: any) => sum + cat.spentAmount, 0),
+                        budgetData.currency
+                      )}
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.budgetSummaryItem}>
+                    <ThemedText style={styles.budgetSummaryLabel}>Kalan</ThemedText>
+                    <ThemedText style={[styles.budgetSummaryValue, { color: '#4BC0C0' }]}>
+                      {CurrencyService.formatCurrency(
+                        budgetData.totalBudget - budgetData.categories.reduce((sum: number, cat: any) => sum + cat.spentAmount, 0),
+                        budgetData.currency
+                      )}
+                    </ThemedText>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.addExpenseButton}
+                  onPress={async () => {
+                    // Önce kategorileri kontrol et
+                    const hasCategories = await checkAndAddDefaultCategories();
+                    // Eğer kategoriler varsa harcama ekle sayfasına yönlendir
+                    if (hasCategories) {
+                      router.push(`/add-expense?budgetId=${budgetData.id}`);
+                    }
+                  }}
+                >
+                  <MaterialCommunityIcons name="plus" size={16} color="#fff" />
+                  <ThemedText style={styles.addExpenseButtonText}>Harcama Ekle</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : tripData.id && userId ? (
+            <View style={styles.section}>
+              <View style={styles.sectionTitleContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <ThemedText>
+                    <MaterialCommunityIcons name="wallet" size={22} color="#4c669f" style={{ marginRight: 8 }} />
+                  </ThemedText>
+                  <ThemedText style={styles.sectionTitle} numberOfLines={2}>Bütçe Bilgisi</ThemedText>
+                </View>
+              </View>
+              <View style={styles.card}>
+                <ThemedText style={styles.noBudgetText}>Bu seyahat için henüz bir bütçe oluşturulmamış.</ThemedText>
+                <TouchableOpacity
+                  style={styles.createBudgetButton}
+                  onPress={() => router.push(`/create-budget?travelPlanId=${tripData.id}`)}
+                >
+                  <MaterialCommunityIcons name="wallet-plus" size={16} color="#fff" />
+                  <ThemedText style={styles.createBudgetButtonText}>Bütçe Oluştur</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
+
           {/* Hava Durumu */}
           {weatherLoading ? (
             <View style={styles.section}>
@@ -4055,5 +4293,81 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'InterSemiBold',
     textAlign: 'center',
+  },
+
+  // Bütçe bölümü stilleri
+  budgetActionButton: {
+    backgroundColor: AppStyles.colors.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    ...AppStyles.shadows.small,
+  },
+  budgetActionButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: 'InterSemiBold',
+  },
+  budgetSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(76, 102, 159, 0.2)',
+  },
+  budgetSummaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  budgetSummaryLabel: {
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 4,
+    fontFamily: 'InterRegular',
+  },
+  budgetSummaryValue: {
+    fontSize: 18,
+    color: '#fff',
+    fontFamily: 'InterBold',
+  },
+  addExpenseButton: {
+    backgroundColor: AppStyles.colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    ...AppStyles.shadows.small,
+  },
+  addExpenseButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    marginLeft: 8,
+    fontFamily: 'InterSemiBold',
+  },
+  noBudgetText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontFamily: 'InterRegular',
+  },
+  createBudgetButton: {
+    backgroundColor: AppStyles.colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    ...AppStyles.shadows.small,
+  },
+  createBudgetButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    marginLeft: 8,
+    fontFamily: 'InterSemiBold',
   },
 });

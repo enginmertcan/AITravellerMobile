@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
+import { ClerkProvider } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -10,7 +10,6 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import Constants from 'expo-constants';
 import { AuthGuard } from './components/AuthGuard';
 import { UserSyncProvider } from './components/UserSyncProvider';
-import * as Linking from 'expo-linking';
 
 // WebBrowser oturumlarını temizle
 WebBrowser.maybeCompleteAuthSession();
@@ -20,7 +19,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {
   /* ignore error */
 });
 
-// TokenCache implementation 
+// TokenCache implementation
 const tokenCache = {
   async getToken(key: string) {
     try {
@@ -40,20 +39,7 @@ const tokenCache = {
   },
 };
 
-// Root URL yol yapısını belirleyen ayarlar
-const routing = {
-  initialRouteName: '(tabs)',
-  screens: {
-    '(auth)/oauth-callback': 'oauth-callback',
-    '(auth)': {
-      screens: {
-        'sign-in': 'sign-in',
-        'sign-up': 'sign-up',
-      }
-    },
-    '(tabs)': '*',
-  },
-};
+// Note: Deep linking configuration is now handled in app.json/app.config.js
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -71,7 +57,7 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => {
         /* ignore error */
       });
-      
+
       // Ensure auth session is completed
       try {
         WebBrowser.maybeCompleteAuthSession();
@@ -96,7 +82,6 @@ export default function RootLayout() {
     <ClerkProvider
       publishableKey={clerkPublishableKey}
       tokenCache={tokenCache}
-      redirectUrl={Linking.createURL('oauth-callback')}
     >
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <UserSyncProvider>
@@ -107,12 +92,13 @@ export default function RootLayout() {
                   backgroundColor: colorScheme === 'dark' ? '#000' : '#fff',
                 },
                 headerTintColor: colorScheme === 'dark' ? '#fff' : '#000',
+                headerShown: false, // Hide header for all screens by default
               }}
             >
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(home)" options={{ headerShown: false }} />
-              <Stack.Screen name="+not-found" />
+              <Stack.Screen name="+not-found" options={{ headerShown: true }} />
             </Stack>
           </AuthGuard>
         </UserSyncProvider>
