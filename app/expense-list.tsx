@@ -17,6 +17,7 @@ import { FirebaseService } from '@/app/services/firebase.service';
 import { CurrencyService } from '@/app/services/currency.service';
 import { Budget, Expense } from '@/app/types/budget';
 import AppStyles from '@/constants/AppStyles';
+import { useAuth } from '@clerk/clerk-expo';
 
 export default function ExpenseListScreen() {
   const [loading, setLoading] = useState(true);
@@ -31,6 +32,7 @@ export default function ExpenseListScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const budgetId = params.budgetId as string;
+  const { userId } = useAuth();
 
   useEffect(() => {
     if (!budgetId) {
@@ -51,7 +53,7 @@ export default function ExpenseListScreen() {
       setLoading(true);
 
       // Bütçe bilgilerini getir
-      const budgetData = await FirebaseService.Budget.getBudget(budgetId);
+      const budgetData = await FirebaseService.Budget.getBudget(budgetId, userId);
 
       if (!budgetData) {
         Alert.alert('Hata', 'Bütçe bulunamadı.');
@@ -62,7 +64,7 @@ export default function ExpenseListScreen() {
       setBudget(budgetData);
 
       // Bütçeye ait harcamaları getir
-      const expensesData = await FirebaseService.Expense.getExpensesByBudgetId(budgetId);
+      const expensesData = await FirebaseService.Expense.getExpensesByBudgetId(budgetId, userId);
       setExpenses(expensesData);
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
@@ -134,15 +136,21 @@ export default function ExpenseListScreen() {
             text: 'Sil',
             style: 'destructive',
             onPress: async () => {
+              // Kullanıcı bütçe sahibi değilse, silme işlemi yapılamaz
+              if (budget && !budget.isOwner) {
+                Alert.alert('Hata', 'Sadece bütçe sahibi harcamaları silebilir.');
+                return;
+              }
+
               setLoading(true);
-              const success = await FirebaseService.Expense.deleteExpense(expenseId);
+              const success = await FirebaseService.Expense.deleteExpense(expenseId, userId);
 
               if (success) {
                 // Harcamayı listeden kaldır
                 setExpenses(prevExpenses => prevExpenses.filter(e => e.id !== expenseId));
 
                 // Bütçeyi yeniden yükle (kategori harcama miktarı güncellendi)
-                const updatedBudget = await FirebaseService.Budget.getBudget(budgetId);
+                const updatedBudget = await FirebaseService.Budget.getBudget(budgetId, userId);
                 if (updatedBudget) {
                   setBudget(updatedBudget);
                 }
@@ -235,12 +243,14 @@ export default function ExpenseListScreen() {
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.title}>Harcama Listesi</ThemedText>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push(`/add-expense?budgetId=${budget.id}`)}
-        >
-          <MaterialCommunityIcons name="plus" size={24} color="#fff" />
-        </TouchableOpacity>
+        {budget.isOwner && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => router.push(`/add-expense?budgetId=${budget.id}`)}
+          >
+            <MaterialCommunityIcons name="plus" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.searchContainer}>
@@ -353,12 +363,16 @@ export default function ExpenseListScreen() {
               ? 'Arama kriterlerine uygun harcama bulunamadı.'
               : 'Henüz harcama kaydı yok'}
           </ThemedText>
-          <TouchableOpacity
-            style={styles.addExpenseButton}
-            onPress={() => router.push(`/add-expense?budgetId=${budget.id}`)}
-          >
-            <ThemedText style={styles.addExpenseButtonText}>Harcama Ekle</ThemedText>
-          </TouchableOpacity>
+          {budget.isOwner ? (
+            <TouchableOpacity
+              style={styles.addExpenseButton}
+              onPress={() => router.push(`/add-expense?budgetId=${budget.id}`)}
+            >
+              <ThemedText style={styles.addExpenseButtonText}>Harcama Ekle</ThemedText>
+            </TouchableOpacity>
+          ) : (
+            <ThemedText style={styles.noPermissionText}>Sadece bütçe sahibi harcama ekleyebilir</ThemedText>
+          )}
         </View>
       )}
     </View>
@@ -593,5 +607,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  noPermissionText: {
+    fontSize: 14,
+    color: '#ff6b6b',
+    marginTop: 16,
+    textAlign: 'center',
   },
 });

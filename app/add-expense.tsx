@@ -67,11 +67,18 @@ export default function AddExpenseScreen() {
       console.log("Bütçe yükleniyor, budgetId:", budgetId);
 
       // Bütçe bilgilerini getir
-      const budgetData = await FirebaseService.Budget.getBudget(budgetId);
+      const budgetData = await FirebaseService.Budget.getBudget(budgetId, userId);
       console.log("Bütçe verileri:", budgetData ? "Yüklendi" : "Bulunamadı");
 
       if (!budgetData) {
         Alert.alert('Hata', 'Bütçe bulunamadı.');
+        router.back();
+        return;
+      }
+
+      // Kullanıcı bütçe sahibi değilse, uyarı göster ve geri dön
+      if (!budgetData.isOwner) {
+        Alert.alert('Erişim Reddedildi', 'Sadece bütçe sahibi harcama ekleyebilir.');
         router.back();
         return;
       }
@@ -342,7 +349,7 @@ export default function AddExpenseScreen() {
 
       try {
         // Firebase'e kaydet
-        const expenseId = await FirebaseService.Expense.addExpense(expense);
+        const expenseId = await FirebaseService.Expense.addExpense(expense, userId);
 
         if (expenseId) {
           // Başarılı mesajı göster

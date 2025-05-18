@@ -49,7 +49,7 @@ export default function BudgetDetailsScreen() {
       setLoading(true);
 
       // Bütçe bilgilerini getir
-      const budgetData = await FirebaseService.Budget.getBudget(budgetId);
+      const budgetData = await FirebaseService.Budget.getBudget(budgetId, userId);
 
       if (!budgetData) {
         Alert.alert('Hata', 'Bütçe bulunamadı.');
@@ -66,7 +66,7 @@ export default function BudgetDetailsScreen() {
       }
 
       // Bütçeye ait harcamaları getir
-      const expensesData = await FirebaseService.Expense.getExpensesByBudgetId(budgetId);
+      const expensesData = await FirebaseService.Expense.getExpensesByBudgetId(budgetId, userId);
       setExpenses(expensesData);
 
       // Toplam harcama ve kalan bütçeyi hesapla
@@ -146,12 +146,14 @@ export default function BudgetDetailsScreen() {
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.title}>Bütçe Detayları</ThemedText>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push(`/add-expense?budgetId=${budget.id}`)}
-        >
-          <MaterialCommunityIcons name="plus" size={24} color="#fff" />
-        </TouchableOpacity>
+        {budget.isOwner && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => router.push(`/add-expense?budgetId=${budget.id}`)}
+          >
+            <MaterialCommunityIcons name="plus" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
@@ -293,12 +295,16 @@ export default function BudgetDetailsScreen() {
             <View style={styles.noDataContainer}>
               <MaterialCommunityIcons name="cash-remove" size={50} color="#666" />
               <ThemedText style={styles.noDataText}>Henüz harcama kaydı yok</ThemedText>
-              <TouchableOpacity
-                style={styles.addExpenseButton}
-                onPress={() => router.push(`/add-expense?budgetId=${budget.id}`)}
-              >
-                <ThemedText style={styles.addExpenseButtonText}>Harcama Ekle</ThemedText>
-              </TouchableOpacity>
+              {budget.isOwner ? (
+                <TouchableOpacity
+                  style={styles.addExpenseButton}
+                  onPress={() => router.push(`/add-expense?budgetId=${budget.id}`)}
+                >
+                  <ThemedText style={styles.addExpenseButtonText}>Harcama Ekle</ThemedText>
+                </TouchableOpacity>
+              ) : (
+                <ThemedText style={styles.noPermissionText}>Sadece bütçe sahibi harcama ekleyebilir</ThemedText>
+              )}
             </View>
           )}
         </View>
@@ -499,6 +505,12 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 16,
     marginBottom: 16,
+  },
+  noPermissionText: {
+    fontSize: 14,
+    color: '#ff6b6b',
+    marginTop: 16,
+    textAlign: 'center',
   },
   addExpenseButton: {
     backgroundColor: AppStyles.colors.primary,

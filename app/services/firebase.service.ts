@@ -3161,7 +3161,7 @@ export const BudgetService = {
   },
 
   // Bütçe bilgilerini getir
-  async getBudget(budgetId: string): Promise<any | null> {
+  async getBudget(budgetId: string, currentUserId?: string): Promise<any | null> {
     try {
       if (!budgetId?.trim()) {
         console.warn("Geçersiz bütçe ID'si");
@@ -3187,11 +3187,23 @@ export const BudgetService = {
         ? data.updatedAt.toDate().toISOString()
         : undefined;
 
+      // Kullanıcı bütçe sahibi mi kontrol et (isOwner özelliği için)
+      let isOwner = false;
+      if (currentUserId) {
+        isOwner = data.userId === currentUserId;
+
+        // Kullanıcı bütçenin sahibi değilse, log kaydı oluştur
+        if (!isOwner) {
+          console.log('Kullanıcı bütçe sahibi değil, sadece görüntüleme yetkisi var');
+        }
+      }
+
       return {
         id: budgetDoc.id,
         ...data,
         createdAt,
-        updatedAt
+        updatedAt,
+        isOwner // Kullanıcının bütçe sahibi olup olmadığı bilgisi
       };
     } catch (error) {
       console.error('Bütçe getirme hatası:', error);
@@ -3289,7 +3301,7 @@ export const BudgetService = {
   },
 
   // Bütçeyi güncelle
-  async updateBudget(budgetId: string, updates: any): Promise<boolean> {
+  async updateBudget(budgetId: string, updates: any, currentUserId?: string): Promise<boolean> {
     try {
       if (!budgetId?.trim()) {
         console.warn("Geçersiz bütçe ID'si");
@@ -3297,6 +3309,20 @@ export const BudgetService = {
       }
 
       const budgetDocRef = doc(db, BUDGETS_COLLECTION, budgetId);
+      const budgetDoc = await getDoc(budgetDocRef);
+
+      if (!budgetDoc.exists()) {
+        console.warn('Bütçe bulunamadı:', budgetId);
+        return false;
+      }
+
+      const budgetData = budgetDoc.data();
+
+      // Erişim kontrolü: Sadece bütçe sahibi güncelleyebilir
+      if (currentUserId && budgetData.userId !== currentUserId) {
+        console.warn('Erişim reddedildi: Sadece bütçe sahibi bütçeyi güncelleyebilir');
+        return false;
+      }
 
       // Timestamp ekle
       const updatesWithTimestamp = {
@@ -3315,10 +3341,26 @@ export const BudgetService = {
   },
 
   // Bütçeyi sil
-  async deleteBudget(budgetId: string): Promise<boolean> {
+  async deleteBudget(budgetId: string, currentUserId?: string): Promise<boolean> {
     try {
       if (!budgetId?.trim()) {
         console.warn("Geçersiz bütçe ID'si");
+        return false;
+      }
+
+      const budgetDocRef = doc(db, BUDGETS_COLLECTION, budgetId);
+      const budgetDoc = await getDoc(budgetDocRef);
+
+      if (!budgetDoc.exists()) {
+        console.warn('Bütçe bulunamadı:', budgetId);
+        return false;
+      }
+
+      const budgetData = budgetDoc.data();
+
+      // Erişim kontrolü: Sadece bütçe sahibi silebilir
+      if (currentUserId && budgetData.userId !== currentUserId) {
+        console.warn('Erişim reddedildi: Sadece bütçe sahibi bütçeyi silebilir');
         return false;
       }
 
@@ -3337,7 +3379,6 @@ export const BudgetService = {
       await Promise.all(deletePromises);
 
       // Sonra bütçeyi sil
-      const budgetDocRef = doc(db, BUDGETS_COLLECTION, budgetId);
       await deleteDoc(budgetDocRef);
 
       console.log("Bütçe silindi:", budgetId);
@@ -3352,7 +3393,7 @@ export const BudgetService = {
 // Harcama servisi
 export const ExpenseService = {
   // Yeni harcama ekle
-  async addExpense(expense: any): Promise<string> {
+  async addExpense(expense: any, currentUserId?: string): Promise<string> {
     try {
       console.log("ExpenseService.addExpense çağrıldı:", JSON.stringify(expense, null, 2));
 
@@ -3370,6 +3411,25 @@ export const ExpenseService = {
       if (!expense.categoryId) {
         console.error("categoryId eksik:", expense);
         throw new Error("Kategori ID gereklidir");
+      }
+
+      // Erişim kontrolü: Sadece bütçe sahibi harcama ekleyebilir
+      if (currentUserId) {
+        const budgetDocRef = doc(db, BUDGETS_COLLECTION, expense.budgetId);
+        const budgetDoc = await getDoc(budgetDocRef);
+
+        if (!budgetDoc.exists()) {
+          console.warn('Bütçe bulunamadı:', expense.budgetId);
+          throw new Error("Bütçe bulunamadı");
+        }
+
+        const budgetData = budgetDoc.data();
+
+        // Kullanıcı bütçenin sahibi değilse, harcama ekleyemez
+        if (budgetData.userId !== currentUserId) {
+          console.warn('Erişim reddedildi: Sadece bütçe sahibi harcama ekleyebilir');
+          throw new Error("Erişim reddedildi: Sadece bütçe sahibi harcama ekleyebilir");
+        }
       }
 
       const expenseRef = collection(db, EXPENSES_COLLECTION);
@@ -3433,11 +3493,48 @@ export const ExpenseService = {
   },
 
   // Bütçeye ait harcamaları getir
-  async getExpensesByBudgetId(budgetId: string): Promise<any[]> {
+  async getExpensesByBudgetId(budgetId: string, currentUserId?: string): Promise<any[]> {
     try {
       if (!budgetId?.trim()) {
         console.warn("Geçersiz bütçe ID'si");
         return [];
+      }
+
+      // Önce bütçeyi getir ve erişim kontrolü yap
+      if (currentUserId) {
+        const budgetDocRef = doc(db, BUDGETS_COLLECTION, budgetId);
+        const budgetDoc = await getDoc(budgetDocRef);
+
+        if (!budgetDoc.exists()) {
+          console.warn('Bütçe bulunamadı:', budgetId);
+          return [];
+        }
+
+        const budgetData = budgetDoc.data();
+
+        // Kullanıcı bütçenin sahibi değilse, seyahat planı katılımcısı mı kontrol et
+        if (budgetData.userId !== currentUserId) {
+          const travelPlanRef = doc(db, TRAVEL_PLANS_COLLECTION, budgetData.travelPlanId);
+          const travelPlanDoc = await getDoc(travelPlanRef);
+
+          if (!travelPlanDoc.exists()) {
+            console.warn('Erişim reddedildi: İlgili seyahat planı bulunamadı');
+            return [];
+          }
+
+          const travelPlanData = travelPlanDoc.data();
+          const isParticipant = travelPlanData.participantUserIds &&
+                               Array.isArray(travelPlanData.participantUserIds) &&
+                               travelPlanData.participantUserIds.includes(currentUserId);
+
+          if (!isParticipant) {
+            console.warn('Erişim reddedildi: Kullanıcı bu bütçenin harcamalarına erişim yetkisine sahip değil');
+            return [];
+          }
+
+          // Kullanıcı katılımcı ise, harcamaları görüntüleme yetkisine sahiptir
+          console.log('Kullanıcı seyahat planı katılımcısı olarak harcamalara erişiyor');
+        }
       }
 
       const expenseQuery = query(
@@ -3473,7 +3570,7 @@ export const ExpenseService = {
   },
 
   // Harcamayı güncelle
-  async updateExpense(expenseId: string, updates: any, oldAmount?: number): Promise<boolean> {
+  async updateExpense(expenseId: string, updates: any, oldAmount?: number, currentUserId?: string): Promise<boolean> {
     try {
       if (!expenseId?.trim()) {
         console.warn("Geçersiz harcama ID'si");
@@ -3489,6 +3586,25 @@ export const ExpenseService = {
       }
 
       const expense = expenseDoc.data();
+
+      // Erişim kontrolü: Sadece bütçe sahibi harcamayı güncelleyebilir
+      if (currentUserId && expense.budgetId) {
+        const budgetDocRef = doc(db, BUDGETS_COLLECTION, expense.budgetId);
+        const budgetDoc = await getDoc(budgetDocRef);
+
+        if (!budgetDoc.exists()) {
+          console.warn('Bütçe bulunamadı:', expense.budgetId);
+          return false;
+        }
+
+        const budgetData = budgetDoc.data();
+
+        // Kullanıcı bütçenin sahibi değilse, harcamayı güncelleyemez
+        if (budgetData.userId !== currentUserId) {
+          console.warn('Erişim reddedildi: Sadece bütçe sahibi harcamayı güncelleyebilir');
+          return false;
+        }
+      }
 
       // Harcamayı güncelle
       await updateDoc(expenseRef, updates);
@@ -3527,7 +3643,7 @@ export const ExpenseService = {
   },
 
   // Harcamayı sil
-  async deleteExpense(expenseId: string): Promise<boolean> {
+  async deleteExpense(expenseId: string, currentUserId?: string): Promise<boolean> {
     try {
       if (!expenseId?.trim()) {
         console.warn("Geçersiz harcama ID'si");
@@ -3543,6 +3659,25 @@ export const ExpenseService = {
       }
 
       const expense = expenseDoc.data();
+
+      // Erişim kontrolü: Sadece bütçe sahibi harcamayı silebilir
+      if (currentUserId && expense.budgetId) {
+        const budgetDocRef = doc(db, BUDGETS_COLLECTION, expense.budgetId);
+        const budgetDoc = await getDoc(budgetDocRef);
+
+        if (!budgetDoc.exists()) {
+          console.warn('Bütçe bulunamadı:', expense.budgetId);
+          return false;
+        }
+
+        const budgetData = budgetDoc.data();
+
+        // Kullanıcı bütçenin sahibi değilse, harcamayı silemez
+        if (budgetData.userId !== currentUserId) {
+          console.warn('Erişim reddedildi: Sadece bütçe sahibi harcamayı silebilir');
+          return false;
+        }
+      }
 
       // Harcamayı sil
       await deleteDoc(expenseRef);
