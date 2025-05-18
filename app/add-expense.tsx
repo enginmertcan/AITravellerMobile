@@ -413,7 +413,12 @@ export default function AddExpenseScreen() {
         <ThemedText style={styles.title}>Harcama Ekle</ThemedText>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      >
         <View style={styles.formSection}>
           <ThemedText style={styles.sectionTitle}>Harcama Bilgileri</ThemedText>
 
@@ -488,6 +493,7 @@ export default function AddExpenseScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.categoryScrollView}
+                nestedScrollEnabled={true}
               >
                 {budget.categories.map((category) => (
                   <TouchableOpacity

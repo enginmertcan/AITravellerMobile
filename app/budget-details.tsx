@@ -154,7 +154,12 @@ export default function BudgetDetailsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      >
         {travelPlan && (
           <View style={styles.destinationCard}>
             <MaterialCommunityIcons name="map-marker" size={24} color={AppStyles.colors.primary} />

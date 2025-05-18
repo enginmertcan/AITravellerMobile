@@ -1773,6 +1773,8 @@ export default function TripDetailsScreen() {
     <ScrollView
       style={styles.container}
       nestedScrollEnabled={true}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 20 }}
     >
       <View style={styles.header}>
         <TouchableOpacity
@@ -2145,6 +2147,7 @@ export default function TripDetailsScreen() {
                             keyExtractor={(_, imgIndex) => `hotel-${index}-image-${imgIndex}`}
                             horizontal
                             showsHorizontalScrollIndicator={false}
+                            nestedScrollEnabled={true}
                             renderItem={({ item, index: imgIndex }) => {
                               if (!item || !item.url) return null;
                               const imageUrl = item.url;
@@ -3513,9 +3516,7 @@ export default function TripDetailsScreen() {
         </View>
       ) : (
         <View style={styles.errorContainer}>
-          <ThemedText>
-            <MaterialCommunityIcons name="alert-circle-outline" size={50} color="#ff6b6b" />
-          </ThemedText>
+          <MaterialCommunityIcons name="alert-circle-outline" size={50} color="#ff6b6b" />
           <ThemedText style={styles.errorText}>
             Seyahat planı yüklenemedi. Lütfen tekrar deneyin.
           </ThemedText>

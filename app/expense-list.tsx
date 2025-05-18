@@ -262,7 +262,11 @@ export default function ExpenseListScreen() {
       </View>
 
       <View style={styles.filterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled={true}
+        >
           <TouchableOpacity
             style={[
               styles.filterButton,
@@ -335,6 +339,11 @@ export default function ExpenseListScreen() {
           renderItem={renderExpenseItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
+          nestedScrollEnabled={true}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
         />
       ) : (
         <View style={styles.noDataContainer}>

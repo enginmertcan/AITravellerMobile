@@ -960,6 +960,10 @@ const TripComments: React.FC<TripCommentsProps> = ({ travelPlanId }) => {
               keyExtractor={(item) => item.id}
               style={styles.commentsList}
               nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={false}
+              initialNumToRender={5}
+              maxToRenderPerBatch={10}
+              windowSize={5}
             />
           ) : (
             <ThemedText style={dynamicStyles.noComments}>Henüz yorum yapılmamış. İlk yorumu siz yapın!</ThemedText>
