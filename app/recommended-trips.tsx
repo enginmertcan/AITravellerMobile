@@ -352,7 +352,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppStyles.colors.dark.background,
-    paddingBottom: 20,
+    paddingBottom: 0, // Ensure no padding at the bottom
   },
   header: {
     padding: 24,
@@ -382,6 +382,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingBottom: 0, // Ensure no padding at the bottom
     backgroundColor: AppStyles.colors.dark.background,
   },
   planCard: {

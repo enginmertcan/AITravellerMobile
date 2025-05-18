@@ -579,10 +579,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppStyles.colors.dark.background,
+    paddingBottom: 0, // Ensure no padding at the bottom
   },
   scrollView: {
     flex: 1,
     backgroundColor: AppStyles.colors.dark.background,
+    paddingBottom: 0, // Ensure no padding at the bottom
   },
   header: {
     padding: 24,

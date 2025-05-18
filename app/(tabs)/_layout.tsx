@@ -15,9 +15,9 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: theme.tabBar,
-          borderTopColor: 'rgba(76, 102, 159, 0.2)',
-          borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 80 : 65, // Yüksekliği biraz azalttım
+          borderTopColor: theme.tabBar, // Match the tab bar background color to remove the visible line
+          borderTopWidth: 0, // Remove the border completely
+          height: Platform.OS === 'ios' ? 80 : 65,
           paddingBottom: Platform.OS === 'ios' ? 25 : 10,
           paddingTop: 10,
           shadowColor: '#000',

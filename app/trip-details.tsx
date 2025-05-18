@@ -168,7 +168,7 @@ export default function TripDetailsScreen() {
           throw new Error('Geçersiz tarih formatı');
         }
 
- 
+
       } catch (error) {
         console.error('Tarih parse hatası:', error);
         Alert.alert(
@@ -575,7 +575,7 @@ export default function TripDetailsScreen() {
       }
       // Sonra startDate alanını kontrol et
       else if (plan.startDate && typeof plan.startDate === 'string') {
- 
+
         // DD/MM/YYYY formatı
         if (plan.startDate.includes('/')) {
           const [day, month, year] = plan.startDate.split('/').map(Number);
@@ -622,7 +622,7 @@ export default function TripDetailsScreen() {
               if (!isNaN(day) && monthIndex !== undefined && !isNaN(year)) {
                 // UTC kullanarak tarih oluştur
                 tripDate = new Date(Date.UTC(year, monthIndex, day));
- 
+
                 // ISO formatında startDate ve startDateISO alanlarını güncelle
                 (plan as any).startDateISO = tripDate.toISOString();
                 (plan as any).originalStartDate = tripDate.toISOString();
@@ -868,14 +868,14 @@ export default function TripDetailsScreen() {
       const forecast = await getWeatherForecast(destination, tripDate, durationDays);
 
       if (forecast && forecast.length > 0) {
- 
+
         // Hava durumu verilerini kontrol et
         if (forecast.length < durationDays) {
           console.warn(`Warning: Received fewer weather days (${forecast.length}) than requested (${durationDays})`);
         }
 
         setWeatherData(forecast);
- 
+
         // Hava durumu verilerini detaylı olarak logla
         forecast.forEach((day, index) => {
          });
@@ -2558,10 +2558,10 @@ export default function TripDetailsScreen() {
                 }
               }
 
- 
+
               // Eksik günleri tamamla
               if (itineraryToUse.length < expectedDays) {
- 
+
                 for (let i = itineraryToUse.length + 1; i <= expectedDays; i++) {
                   itineraryToUse.push({
                     day: `${i}. Gün`,
@@ -2788,7 +2788,7 @@ export default function TripDetailsScreen() {
 
             // Eksik alanları tamamla
             if (culturalDifferencesData) {
- 
+
               // Temel kültürel farklılıklar
               if (!culturalDifferencesData.culturalDifferences) {
                 culturalDifferencesData.culturalDifferences = "Bilgi bulunmuyor";
@@ -2990,7 +2990,7 @@ export default function TripDetailsScreen() {
 
             // Eksik alanları tamamla
             if (localTipsData) {
- 
+
               // Yerel ulaşım rehberi
               if (!localTipsData.localTransportationGuide) {
                 localTipsData.localTransportationGuide = "Bilgi bulunmuyor";
@@ -3292,6 +3292,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: AppStyles.colors.dark.background,
     padding: 16,
+    paddingBottom: 0, // Ensure no padding at the bottom
   },
   header: {
     padding: 24,
@@ -3685,6 +3686,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     paddingTop: 0,
+    paddingBottom: 0, // Ensure no padding at the bottom
   },
   planCard: {
     backgroundColor: '#111',

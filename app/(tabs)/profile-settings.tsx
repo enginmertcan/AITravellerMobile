@@ -156,7 +156,7 @@ export default function ProfileSettingsScreen() {
         err.errors?.[0]?.message || 'Fotoğraf güncellenirken bir hata oluştu.'
       );
     } finally {
-      setLoading(false);  
+      setLoading(false);
     }
   };
 
@@ -365,6 +365,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppStyles.colors.dark.background,
+    paddingBottom: 0, // Ensure no padding at the bottom
   },
   header: {
     padding: 16,

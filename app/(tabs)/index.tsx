@@ -270,6 +270,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     ...AppStyles.layout.container,
+    paddingBottom: 0, // Ensure no padding at the bottom
   },
   travelPlansContainer: {
     marginVertical: AppStyles.spacing.lg,
