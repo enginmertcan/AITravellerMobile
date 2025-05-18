@@ -65,12 +65,17 @@ export default function BudgetDetailsScreen() {
         setTravelPlan(planData);
       }
 
-      // Bütçeye ait harcamaları getir
-      const expensesData = await FirebaseService.Expense.getExpensesByBudgetId(budgetId, userId);
+      // Bütçeye ait harcamaları getir - userId parametresini kaldırdık
+      const expensesData = await FirebaseService.Expense.getExpensesByBudgetId(budgetId);
+      console.log('Yüklenen harcama sayısı:', expensesData.length);
       setExpenses(expensesData);
 
       // Toplam harcama ve kalan bütçeyi hesapla
-      const spent = expensesData.reduce((sum, expense) => sum + expense.amount, 0);
+      // Kategori harcama miktarlarını topla (budgetData.categories artık güncel)
+      const spent = budgetData.categories.reduce((sum, category) => sum + (category.spentAmount || 0), 0);
+      console.log('Hesaplanan toplam harcama:', spent);
+      console.log('Kategori harcamaları:', budgetData.categories.map(c => ({ id: c.id, name: c.name, spent: c.spentAmount })));
+
       setTotalSpent(spent);
       setRemainingBudget(budgetData.totalBudget - spent);
     } catch (error) {

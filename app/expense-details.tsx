@@ -54,17 +54,19 @@ export default function ExpenseDetailsScreen() {
 
       setExpense(expenseData);
 
-      // Bütçe bilgilerini getir
+      // Bütçe bilgilerini getir - userId parametresi ile
       if (expenseData.budgetId) {
-        const budgetData = await FirebaseService.Budget.getBudget(expenseData.budgetId);
+        const budgetData = await FirebaseService.Budget.getBudget(expenseData.budgetId, userId);
 
         if (budgetData) {
           setBudget(budgetData);
+          console.log('Bütçe bilgileri yüklendi, isOwner:', budgetData.isOwner);
 
           // Kategori bilgisini bul
           const categoryData = budgetData.categories.find(cat => cat.id === expenseData.categoryId);
           if (categoryData) {
             setCategory(categoryData);
+            console.log('Kategori bilgisi yüklendi:', categoryData.name);
           }
         }
       }
@@ -144,12 +146,14 @@ export default function ExpenseDetailsScreen() {
           <MaterialCommunityIcons name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.title}>Harcama Detayı</ThemedText>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={handleDeleteExpense}
-        >
-          <MaterialCommunityIcons name="trash-can-outline" size={24} color="#ff6b6b" />
-        </TouchableOpacity>
+        {budget.isOwner && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDeleteExpense}
+          >
+            <MaterialCommunityIcons name="trash-can-outline" size={24} color="#ff6b6b" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -254,13 +258,15 @@ export default function ExpenseDetailsScreen() {
           </View>
         )}
 
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => router.push(`/edit-expense?expenseId=${expense.id}`)}
-        >
-          <MaterialCommunityIcons name="pencil" size={20} color="#fff" />
-          <ThemedText style={styles.editButtonText}>Harcamayı Düzenle</ThemedText>
-        </TouchableOpacity>
+        {budget.isOwner && (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => router.push(`/edit-expense?expenseId=${expense.id}`)}
+          >
+            <MaterialCommunityIcons name="pencil" size={20} color="#fff" />
+            <ThemedText style={styles.editButtonText}>Harcamayı Düzenle</ThemedText>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );

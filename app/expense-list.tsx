@@ -52,7 +52,7 @@ export default function ExpenseListScreen() {
     try {
       setLoading(true);
 
-      // Bütçe bilgilerini getir
+      // Bütçe bilgilerini getir - userId parametresi ile
       const budgetData = await FirebaseService.Budget.getBudget(budgetId, userId);
 
       if (!budgetData) {
@@ -63,8 +63,9 @@ export default function ExpenseListScreen() {
 
       setBudget(budgetData);
 
-      // Bütçeye ait harcamaları getir
-      const expensesData = await FirebaseService.Expense.getExpensesByBudgetId(budgetId, userId);
+      // Bütçeye ait harcamaları getir - userId parametresini kaldırdık
+      const expensesData = await FirebaseService.Expense.getExpensesByBudgetId(budgetId);
+      console.log('Harcama listesi yüklendi, toplam:', expensesData.length);
       setExpenses(expensesData);
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
@@ -199,12 +200,14 @@ export default function ExpenseListScreen() {
             {new Date(item.date).toLocaleDateString('tr-TR')}
           </ThemedText>
         </View>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteExpense(item.id, item.amount, item.categoryId)}
-        >
-          <MaterialCommunityIcons name="trash-can-outline" size={20} color="#ff6b6b" />
-        </TouchableOpacity>
+        {budget.isOwner && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteExpense(item.id, item.amount, item.categoryId)}
+          >
+            <MaterialCommunityIcons name="trash-can-outline" size={20} color="#ff6b6b" />
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
     );
   };

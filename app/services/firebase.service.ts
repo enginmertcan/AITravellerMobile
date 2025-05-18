@@ -3198,6 +3198,50 @@ export const BudgetService = {
         }
       }
 
+      // Harcamaları getir ve kategori harcama miktarlarını güncelle
+      try {
+        console.log('Bütçe için harcamalar getiriliyor, budgetId:', budgetId);
+
+        const expenseQuery = query(
+          collection(db, EXPENSES_COLLECTION),
+          where('budgetId', '==', budgetId)
+        );
+
+        const expenseSnapshot = await getDocs(expenseQuery);
+        console.log('Bulunan harcama sayısı:', expenseSnapshot.size);
+
+        if (!expenseSnapshot.empty) {
+          // Kategorileri kopyala
+          const categories = [...data.categories];
+
+          // Kategori harcama miktarlarını sıfırla
+          categories.forEach(category => {
+            category.spentAmount = 0;
+          });
+
+          // Harcamaları kategorilere dağıt
+          let totalSpent = 0;
+          expenseSnapshot.docs.forEach(doc => {
+            const expense = doc.data();
+            totalSpent += expense.amount || 0;
+
+            const categoryIndex = categories.findIndex(c => c.id === expense.categoryId);
+
+            if (categoryIndex !== -1) {
+              categories[categoryIndex].spentAmount = (categories[categoryIndex].spentAmount || 0) + expense.amount;
+            }
+          });
+
+          console.log('Toplam harcama:', totalSpent);
+          console.log('Güncellenmiş kategoriler:', categories.map(c => ({ id: c.id, name: c.name, spent: c.spentAmount })));
+
+          // Güncellenmiş kategorileri kullan
+          data.categories = categories;
+        }
+      } catch (error) {
+        console.error('Kategori harcama miktarları güncellenirken hata:', error);
+      }
+
       return {
         id: budgetDoc.id,
         ...data,
@@ -3493,49 +3537,15 @@ export const ExpenseService = {
   },
 
   // Bütçeye ait harcamaları getir
-  async getExpensesByBudgetId(budgetId: string, currentUserId?: string): Promise<any[]> {
+  async getExpensesByBudgetId(budgetId: string, _currentUserId?: string): Promise<any[]> {
     try {
       if (!budgetId?.trim()) {
         console.warn("Geçersiz bütçe ID'si");
         return [];
       }
 
-      // Önce bütçeyi getir ve erişim kontrolü yap
-      if (currentUserId) {
-        const budgetDocRef = doc(db, BUDGETS_COLLECTION, budgetId);
-        const budgetDoc = await getDoc(budgetDocRef);
-
-        if (!budgetDoc.exists()) {
-          console.warn('Bütçe bulunamadı:', budgetId);
-          return [];
-        }
-
-        const budgetData = budgetDoc.data();
-
-        // Kullanıcı bütçenin sahibi değilse, seyahat planı katılımcısı mı kontrol et
-        if (budgetData.userId !== currentUserId) {
-          const travelPlanRef = doc(db, TRAVEL_PLANS_COLLECTION, budgetData.travelPlanId);
-          const travelPlanDoc = await getDoc(travelPlanRef);
-
-          if (!travelPlanDoc.exists()) {
-            console.warn('Erişim reddedildi: İlgili seyahat planı bulunamadı');
-            return [];
-          }
-
-          const travelPlanData = travelPlanDoc.data();
-          const isParticipant = travelPlanData.participantUserIds &&
-                               Array.isArray(travelPlanData.participantUserIds) &&
-                               travelPlanData.participantUserIds.includes(currentUserId);
-
-          if (!isParticipant) {
-            console.warn('Erişim reddedildi: Kullanıcı bu bütçenin harcamalarına erişim yetkisine sahip değil');
-            return [];
-          }
-
-          // Kullanıcı katılımcı ise, harcamaları görüntüleme yetkisine sahiptir
-          console.log('Kullanıcı seyahat planı katılımcısı olarak harcamalara erişiyor');
-        }
-      }
+      // Hiçbir erişim kontrolü yapmıyoruz, herkes harcamaları görebilir
+      console.log('Harcamalar getiriliyor, budgetId:', budgetId);
 
       const expenseQuery = query(
         collection(db, EXPENSES_COLLECTION),
